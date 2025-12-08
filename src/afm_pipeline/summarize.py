@@ -8,7 +8,8 @@ Core rules from the spec:
 
 import csv
 import logging
-from typing import Dict, Any, List
+from pathlib import Path
+from typing import Dict, Any, List, Callable
 
 log = logging.getLogger(__name__)
 
@@ -85,3 +86,48 @@ def build_csv_row(mode_result: Dict[str, Any], csv_def: Dict[str, Any], processi
         row_values.append("")
 
     return row_values
+
+
+def summarize_folder_to_csv(
+    input_root: str | Path,
+    output_csv_path: str | Path,
+    processing_mode: str,
+    csv_mode: str,
+    cfg: Dict[str, Any],
+    processor: Callable[[Path, str, Dict[str, Any]], Dict[str, Any]] | None = None,
+) -> None:
+    """
+    Walk a folder of TIFFs, process each with processing_mode, map to CSV via csv_mode.
+
+    processor: injectable function for processing a single TIFF; defaults to processing.process_tiff_with_gwyddion.
+    """
+    from . import processing as processing_mod
+
+    proc_fn = processor or processing_mod.process_tiff_with_gwyddion
+
+    csv_def = cfg.get("csv_modes", {}).get(csv_mode)
+    if not csv_def:
+        raise ValueError(f"Unknown csv_mode: {csv_mode}")
+
+    input_root = Path(input_root)
+    tiff_files = sorted(input_root.glob("*.tif"))
+    if not tiff_files:
+        log.warning("No TIFF files found in %s", input_root)
+
+    out_path = Path(output_csv_path)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+
+    header_cols = [col["name"] for col in csv_def.get("columns", [])]
+    with out_path.open("w", newline="") as f:
+        writer = csv.writer(f)
+        writer.writerow(header_cols)
+
+        for path in tiff_files:
+            try:
+                mode_result = proc_fn(path, processing_mode, cfg)
+                row = build_csv_row(mode_result, csv_def, processing_mode, csv_mode)
+                if row is None:
+                    continue
+                writer.writerow(row)
+            except Exception as exc:  # keep looping other files
+                log.error("Failed processing %s: %s", path, exc)
