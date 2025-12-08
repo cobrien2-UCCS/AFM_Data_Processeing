@@ -23,6 +23,15 @@ python scripts/check_env.py
 - Python-only `.gwy` reader (no pygwy): https://pypi.org/project/gwyfile/
 - Community pygwy examples (reference only, unvetted): https://github.com/Drilack7/Python-Scripts-for-Gwyddion
 
+#### pygwy prerequisites (Windows)
+- Python 2.7 (e.g., python-2.7.16.msi; 32-bit) is required for pygwy.
+- PyGTK2 stack: install PyGTK, PyCairo, and PyGObject for Python 2.7 (32-bit). The Gwyddion SourceForge mirrors include:
+  - pygobject-2.28.3.win32-py2.7.msi
+  - pycairo-1.8.10.win32-py2.7.msi
+  - pygtk-2.24.0.win32-py2.7.msi
+- An all-in-one installer (pygtk-all-in-one-2.24.2.win32-py2.7.msi) exists but installs GTK+ twice; use with caution. The separate installers are recommended.
+// TODO: add direct download links for the installers above once confirmed.
+
 ### Recommended dual-environment workflow
 - Keep pygwy-dependent processing in a small Python 2.7 (32-bit) module/script that only uses pygwy/Gwyddion and writes neutral outputs (CSV/JSON/NumPy arrays) to disk.
 - Run summarization/plotting/CLI in Python 3.x, consuming those neutral outputs. This avoids Py3-only imports in the Py2 layer and keeps Py2 surface minimal.
@@ -41,6 +50,7 @@ python scripts/check_env.py
   ```
 - Summarization/plotting stay in Python 3.x and consume the outputs written by the Py2 run.
 - The Py2 runner writes `summary.csv` (or `--output-csv`) using the `csv_mode_definition` embedded in the manifest. pygwy is required; no fallback is executed to avoid producing invalid data. Implement real pygwy logic in `scripts/run_pygwy_job.py` where indicated.
+- Units: the pygwy runner reads field units, applies optional conversions from `unit_conversions`, and enforces per-mode `expected_units` with `on_unit_mismatch` (`error|warn|skip_row`).
 
 ### Py3 CLI helpers
 - Summarize TIFFs to CSV (uses config.modes/csv_modes):
@@ -57,3 +67,9 @@ python scripts/check_env.py
 ### Example config
 See `config.example.yaml` for a starter config matching the spec structure:
 - `channel_defaults`, `modes`, `grid`, `csv_modes`, `result_schemas`, `plotting_modes`, `profiles`.
+
+### Tests
+Run Py3 unit tests (covers summarize/plot helpers):
+```bash
+python -m unittest discover -s tests -p "test_*.py"
+```

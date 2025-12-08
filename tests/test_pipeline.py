@@ -127,6 +127,48 @@ class PipelineTestCase(unittest.TestCase):
             plot_file = out_dir / "sample_bar_with_error.png"
             self.assertTrue(plot_file.exists(), "Plot file was not created")
 
+    def test_plot_heatmap_grid_generates_file(self):
+        cfg = dict(self.cfg)
+        cfg["plotting_modes"] = dict(cfg["plotting_modes"])
+        cfg["plotting_modes"]["heatmap_grid"] = {
+            "result_schema": "default_scalar",
+            "recipe": "heatmap_grid",
+            "title": "Grid Heatmap",
+            "colorbar_label": "avg_value",
+        }
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp = Path(tmpdir)
+            csv_path = tmp / "summary.csv"
+            with csv_path.open("w", newline="") as f:
+                writer = csv.writer(f)
+                writer.writerow(
+                    ["source_file", "mode", "metric_type", "avg_value", "std_value", "units", "nx", "ny", "row_idx", "col_idx"]
+                )
+                writer.writerow(["r0_c0.tif", "modulus_basic", "modulus", "1.0", "0.1", "GPa", "512", "512", "0", "0"])
+                writer.writerow(["r0_c1.tif", "modulus_basic", "modulus", "2.0", "0.1", "GPa", "512", "512", "0", "1"])
+                writer.writerow(["r1_c0.tif", "modulus_basic", "modulus", "3.0", "0.1", "GPa", "512", "512", "1", "0"])
+                writer.writerow(["r1_c1.tif", "modulus_basic", "modulus", "4.0", "0.1", "GPa", "512", "512", "1", "1"])
+            out_dir = tmp / "plots"
+            plot_summary_from_csv(str(csv_path), "heatmap_grid", cfg, str(out_dir))
+            plot_file = out_dir / "heatmap_grid.png"
+            self.assertTrue(plot_file.exists(), "Heatmap plot file was not created")
+
+    def test_build_csv_row_missing_field_error(self):
+        csv_def = self.cfg["csv_modes"]["default_scalar"]
+        # Remove a required key to trigger error
+        mode_result = {
+            "core.source_file": "a.tif",
+            "core.mode": "modulus_basic",
+            # "core.metric_type" missing
+            "core.avg_value": 1.0,
+            "core.std_value": 0.1,
+            "core.units": "GPa",
+            "core.nx": 128,
+            "core.ny": 128,
+        }
+        with self.assertRaises(KeyError):
+            build_csv_row(mode_result, csv_def, "modulus_basic", "default_scalar")
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -27,6 +27,7 @@ def try_import_pygwy():
         import gwy  # noqa: F401
         return True
     except ImportError:
+        sys.stderr.write("ERROR: pygwy (gwy module) not importable; ensure 32-bit Gwyddion/pygwy is installed.\n")
         return False
 
 
@@ -35,6 +36,7 @@ def try_import_numpy():
         import numpy  # noqa: F401
         return True
     except ImportError:
+        sys.stderr.write("ERROR: numpy missing in pygwy environment.\n")
         return False
 
 
@@ -53,6 +55,19 @@ def _field_to_numpy(field):
     except Exception:
         pass
     return arr
+
+
+def _get_field_units(field):
+    """Best-effort retrieval of z-units from the DataField."""
+    try:
+        unit_obj = field.get_si_unit_z()
+        if unit_obj:
+            u = unit_obj.get_unit_string()
+            if u:
+                return u
+    except Exception:
+        return None
+    return None
 
 
 def _connected_components(mask):
@@ -103,7 +118,6 @@ def _select_data_field(container, mode_def, channel_defaults):
     if not data_dir:
         raise RuntimeError("No data fields found in container.")
 
-    # Try channel_family hint
     channel_family = None
     if mode_def:
         channel_family = mode_def.get("channel_family")
@@ -113,7 +127,6 @@ def _select_data_field(container, mode_def, channel_defaults):
             if name and channel_family.lower() in name.lower():
                 return key, field
 
-    # Fallback: first field
     first_key = list(data_dir.keys())[0]
     return first_key, data_dir[first_key]
 
@@ -140,38 +153,6 @@ def build_csv_row(mode_result, csv_def, processing_mode, csv_mode):
         sys.stderr.write("WARN: Missing field '%s' mode=%s csv_mode=%s; writing empty\n" % (key, processing_mode, csv_mode))
         row.append("")
     return row
-
-
-def _process_with_pillow_numpy(path, mode_def, processing_mode):
-    """Fallback: read TIFF via Pillow + numpy; compute mean/std."""
-    has_np = try_import_numpy()
-    has_pillow = try_import_pillow()
-    if not (has_np and has_pillow):
-        raise RuntimeError("Fallback requires numpy + pillow; install them or use pygwy.")
-
-    import numpy as np  # type: ignore
-    from PIL import Image  # type: ignore
-
-    img = Image.open(path)
-    data = np.asarray(img, dtype=float)
-    valid = data[np.isfinite(data)]
-    mean_val = float(np.mean(valid)) if valid.size else 0.0
-    std_val = float(np.std(valid)) if valid.size else 0.0
-
-    metric_type = mode_def.get("metric_type", "unknown")
-    units = mode_def.get("units", "a.u.")
-
-    result = {
-        "core.source_file": os.path.basename(path),
-        "core.mode": processing_mode,
-        "core.metric_type": metric_type,
-        "core.avg_value": mean_val,
-        "core.std_value": std_val,
-        "core.units": units,
-        "core.nx": int(img.size[0]),
-        "core.ny": int(img.size[1]),
-    }
-    return result
 
 
 def derive_grid_indices(path, grid_cfg):
@@ -211,6 +192,8 @@ def process_file(path, manifest, use_pygwy):
     if not use_pygwy:
         raise RuntimeError("pygwy required for processing; no fallback is executed.")
     result = _process_with_pygwy(path, processing_mode, mode_def, channel_defaults, manifest)
+    if result is None:
+        return None
 
     if row_idx is not None:
         result["grid.row_idx"] = row_idx
@@ -224,7 +207,7 @@ def _process_with_pygwy(path, processing_mode, mode_def, channel_defaults, manif
     Implement APPLY_MODE_PIPELINE per the spec:
     - modulus_basic
     - topography_flat
-    - particle_count_basic (stub)
+    - particle_count_basic
     - raw_noop
     """
     try:
@@ -232,7 +215,6 @@ def _process_with_pygwy(path, processing_mode, mode_def, channel_defaults, manif
     except ImportError:
         raise RuntimeError("pygwy (gwy module) not available.")
 
-    # Load container
     container = gwy.gwy_file_load(path)
     if container is None:
         raise RuntimeError("Failed to load file with pygwy: %s" % path)
@@ -240,25 +222,34 @@ def _process_with_pygwy(path, processing_mode, mode_def, channel_defaults, manif
     field_id, field = _select_data_field(container, mode_def, channel_defaults)
     mode = processing_mode or "raw_noop"
 
-    if mode == "raw_noop":
-        processed_field = field.duplicate()
-        return _to_mode_result(processed_field, mode_def, mode, path)
-
     if mode in ("modulus_basic", "topography_flat"):
         f = field.duplicate()
-        # Optional: plane leveling if requested
         if mode_def.get("plane_level", True):
             try:
-                # fit_plane returns coefficients; apply via gwyutils sub or module
                 pa, pbx, pby = f.fit_plane()
-                # f is modified in place by fit_plane in some builds; if not, we could apply manually.
-            except Exception:
-                pass  # continue without leveling
-        # Additional filters could be added here per mode_def (median, line flatten, etc.)
-        return _to_mode_result(f, mode_def, mode, path)
+            except Exception as exc:
+                sys.stderr.write("WARN: plane_level failed for %s: %s\n" % (path, exc))
+        median_size = mode_def.get("median_size")
+        if median_size:
+            try:
+                gwy.gwy_process_func_run("median", {"data": f, "size": int(median_size)})
+            except Exception as exc:
+                sys.stderr.write("WARN: median filter failed for %s: %s\n" % (path, exc))
+        if mode_def.get("line_level_x"):
+            try:
+                gwy.gwy_process_func_run("level-line", {"data": f, "direction": 0})
+            except Exception as exc:
+                sys.stderr.write("WARN: line_level_x failed for %s: %s\n" % (path, exc))
+        if mode_def.get("line_level_y"):
+            try:
+                gwy.gwy_process_func_run("level-line", {"data": f, "direction": 1})
+            except Exception as exc:
+                sys.stderr.write("WARN: line_level_y failed for %s: %s\n" % (path, exc))
+        detected_unit = _get_field_units(f)
+        result = _to_mode_result(f, mode_def, mode, path)
+        return _apply_units(result, processing_mode, mode_def, manifest, detected_unit)
 
     if mode == "particle_count_basic":
-        # Use pygwy grain tools when available; fallback to numpy-based mask if grain ops fail.
         f = field.duplicate()
         try:
             import numpy as np  # type: ignore
@@ -271,18 +262,14 @@ def _process_with_pygwy(path, processing_mode, mode_def, channel_defaults, manif
         if thresh is None:
             thresh = float(np.mean(arr))
 
-        # Try pygwy grain marking if available
         grains_result = None
         try:
-            import gwy  # type: ignore
             mask_field = f.duplicate()
             mask_data = mask_field.get_data()
-            # simple threshold mask
             for i in range(len(mask_data)):
                 mask_data[i] = 1.0 if mask_data[i] > thresh else 0.0
             grains = mask_field.number_grains()
             sizes = mask_field.get_grain_sizes(grains)
-            # skip grain 0 (background)
             sizes_list = list(sizes)[1:] if len(sizes) > 0 else []
             count_total = len(sizes_list)
             count_density = float(count_total) / float(f.get_xres() * f.get_yres()) if f.get_xres() and f.get_yres() else 0.0
@@ -300,10 +287,10 @@ def _process_with_pygwy(path, processing_mode, mode_def, channel_defaults, manif
                 "particle.mean_diameter_px": float(mean_diam),
                 "particle.std_diameter_px": float(std_diam),
             }
-        except Exception:
+        except Exception as exc:
+            sys.stderr.write("WARN: pygwy grain ops failed for %s: %s; falling back to numpy CC.\n" % (path, exc))
             grains_result = None
 
-        # Fallback: simple numpy connected components if pygwy grain stats fail
         if grains_result is None:
             mask = arr > thresh
             sizes = _connected_components(mask)
@@ -335,7 +322,13 @@ def _process_with_pygwy(path, processing_mode, mode_def, channel_defaults, manif
             "core.ny": int(f.get_yres()),
         }
         result.update(grains_result)
-        return result
+        return _apply_units(result, processing_mode, mode_def, manifest, "count")
+
+    if mode == "raw_noop":
+        processed_field = field.duplicate()
+        detected_unit = _get_field_units(processed_field)
+        result = _to_mode_result(processed_field, mode_def, mode, path)
+        return _apply_units(result, processing_mode, mode_def, manifest, detected_unit)
 
     raise ValueError("Unknown processing_mode: %s" % mode)
 
@@ -365,6 +358,40 @@ def _to_mode_result(field, mode_def, processing_mode, src_path):
         "core.nx": int(field.get_xres()),
         "core.ny": int(field.get_yres()),
     }
+
+
+def _apply_units(result, processing_mode, mode_def, manifest, detected_unit):
+    """Apply unit detection, conversion, and mismatch policy."""
+    current_unit = detected_unit or result.get("core.units") or mode_def.get("units")
+    conversions = (manifest.get("unit_conversions") or {}).get(processing_mode, {})
+    if current_unit in conversions:
+        conv = conversions.get(current_unit) or {}
+        try:
+            factor = float(conv.get("factor", 1.0))
+        except Exception:
+            factor = 1.0
+        target_unit = conv.get("target", current_unit)
+        try:
+            result["core.avg_value"] = float(result.get("core.avg_value", 0.0)) * factor
+            result["core.std_value"] = float(abs(factor)) * float(result.get("core.std_value", 0.0))
+            current_unit = target_unit
+        except Exception as exc:
+            sys.stderr.write("WARN: unit conversion failed (%s): %s\n" % (current_unit, exc))
+
+    expected = mode_def.get("expected_units")
+    policy = mode_def.get("on_unit_mismatch", "error")
+    if expected and current_unit != expected:
+        msg = "Unit mismatch for %s: detected '%s', expected '%s'\n" % (processing_mode, current_unit, expected)
+        if policy == "skip_row":
+            sys.stderr.write("WARN: %s; skipping row.\n" % msg.strip())
+            return None
+        if policy == "warn":
+            sys.stderr.write("WARN: %s; continuing.\n" % msg.strip())
+        else:
+            raise RuntimeError(msg)
+
+    result["core.units"] = current_unit or result.get("core.units")
+    return result
 
 
 def write_summary_csv(rows, csv_def, output_csv, processing_mode, csv_mode):
@@ -401,9 +428,7 @@ def process_manifest(manifest, dry_run=False):
         return
 
     use_pygwy = try_import_pygwy()
-    if use_pygwy:
-        print("pygwy detected; implement APPLY_MODE_PIPELINE for real processing.")
-    else:
+    if not use_pygwy:
         raise RuntimeError(
             "pygwy not available in this interpreter. Install 32-bit Gwyddion/pygwy "
             "and rerun. No fallback will be used to avoid producing invalid data."
@@ -412,6 +437,9 @@ def process_manifest(manifest, dry_run=False):
     for path in files:
         try:
             mode_result = process_file(path, manifest, use_pygwy)
+            if mode_result is None:
+                sys.stderr.write("INFO: Skipped %s due to unit mismatch policy.\n" % path)
+                continue
             row = build_csv_row(mode_result, csv_def, processing_mode, csv_mode)
             if row is not None:
                 rows.append(row)
