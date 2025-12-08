@@ -301,8 +301,8 @@ def _process_with_pygwy(path, processing_mode, mode_def, channel_defaults, manif
             if std_circ is not None:
                 grains_result["particle.std_circularity"] = float(std_circ)
         except Exception as exc:
-            sys.stderr.write("ERROR: pygwy grain ops failed for %s: %s\n" % (path, exc))
-            raise
+            sys.stderr.write("WARN: pygwy grain ops failed for %s: %s; skipping row.\n" % (path, exc))
+            return None
 
         result = {
             "core.source_file": os.path.basename(path),

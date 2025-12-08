@@ -8,6 +8,18 @@ This guide explains how to configure and extend the AFM TIFF → summary CSV →
 - Py3 plot: `python -m afm_pipeline.cli plot --config config.yaml --csv summary.csv --plotting-mode sample_bar_with_error --out plots/`
 - Py2 (pygwy) processing: `python2 scripts/run_pygwy_job.py --manifest job_manifest.json` (manifest generated via `scripts/make_job_manifest.py`).
 
+## 1.1) Common CLI recipes
+- Generate manifest (Py3):  
+  `python scripts/make_job_manifest.py --config config.yaml --input-root scans/ --output-dir out/ --processing-mode modulus_basic --csv-mode default_scalar --out job_manifest.json`
+  - Patterns: defaults to `*.tif;*.tiff`. Use `--pattern "**/*.tif;**/*.tiff"` to recurse.
+- Run pygwy processing (Py2):  
+  `python2 scripts/run_pygwy_job.py --manifest job_manifest.json`
+- Summarize directly (Py3, using stub/mocked processor or when runner outputs CSV):  
+  `python -m afm_pipeline.cli summarize --config config.yaml --input-root scans/ --out-csv summary.csv --processing-mode modulus_basic --csv-mode default_scalar`
+- Plot from CSV (Py3):  
+  `python -m afm_pipeline.cli plot --config config.yaml --csv summary.csv --plotting-mode sample_bar_with_error --out plots/`
+- Use profiles (Py3 summarize/plot): add `--profile your_profile` to pull defaults from `config.profiles`.
+
 ## 2) Config anatomy
 Top-level sections (see `config.example.yaml`):
 - `channel_defaults`: hints to pick channels (e.g., `modulus_family`, `topography_family`).
@@ -49,8 +61,13 @@ Top-level sections (see `config.example.yaml`):
 - Plots are written to the specified output directory with filenames = plotting_mode names (`sample_bar_with_error.png`, `heatmap_grid.png`, etc.).
 - pygwy runner writes `summary.csv` (or `--output-csv`) and enforces unit policies.
 
+## 9) Troubleshooting
+- pygwy not found: ensure 32-bit Python 2.7 with PyGTK2/pygwy installed; run from that interpreter. No fallback is executed.
+- Unit mismatch errors: set `expected_units`/`on_unit_mismatch` in mode config and `unit_conversions` if needed.
+- No files found: adjust patterns (`*.tif;*.tiff`), set `summarize.recursive: true`, or use `**/*.tif` patterns.
+- Missing fields in CSV: ensure mode_result provides keys required by `csv_mode` or adjust `on_missing_field`.
+
 ## 8) Notes for pygwy (Py2) processing
 - Requires 32-bit Python 2.7 with PyGTK2 and pygwy/Gwyddion installed.
 - No fallback processing if pygwy is missing; errors are raised.
 - Particle metrics use pygwy grain tools; plane/median/line filters use Gwyddion modules; clipping is optional Python-side.
-

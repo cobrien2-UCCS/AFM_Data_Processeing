@@ -17,20 +17,12 @@ python scripts/check_env.py
 - The checker will flag a 64-bit host Python as incompatible for pygwy; use the interpreter bundled with Gwyddion when running pygwy modes.
 - If you only need to read `.gwy` files outside pygwy, consider the optional `gwyfile` package (`python -m pip install gwyfile`).
 
-#### Install resources
-- Official install guide (pygwy, Windows): https://gwyddion.net/documentation/user-guide-en/installation-ms-windows.html#installation-ms-windows-pygwy
-- 32-bit PyGTK runtime and matching 32-bit Python 2.7 (required by pygwy on Windows): https://sourceforge.net/projects/gwyddion/files/pygtk-win32/
+#### Install resources (Windows)
+- Official install guide (pygwy): https://gwyddion.net/documentation/user-guide-en/installation-ms-windows.html#installation-ms-windows-pygwy
+- 32-bit PyGTK runtime and matching 32-bit Python 2.7: https://sourceforge.net/projects/gwyddion/files/pygtk-win32/
 - Python-only `.gwy` reader (no pygwy): https://pypi.org/project/gwyfile/
 - Community pygwy examples (reference only, unvetted): https://github.com/Drilack7/Python-Scripts-for-Gwyddion
-
-#### pygwy prerequisites (Windows)
-- Python 2.7 (e.g., python-2.7.16.msi; 32-bit) is required for pygwy.
-- PyGTK2 stack: install PyGTK, PyCairo, and PyGObject for Python 2.7 (32-bit). The Gwyddion SourceForge mirrors include:
-  - pygobject-2.28.3.win32-py2.7.msi
-  - pycairo-1.8.10.win32-py2.7.msi
-  - pygtk-2.24.0.win32-py2.7.msi
-- An all-in-one installer (pygtk-all-in-one-2.24.2.win32-py2.7.msi) exists but installs GTK+ twice; use with caution. The separate installers are recommended.
-  Direct links (mirrors):
+- Required installers (mirrors):
   - Python 2.7.16 (32-bit MSI): https://sourceforge.net/projects/gwyddion/files/pygtk-win32/python-2.7.16.msi/download
   - pygobject-2.28.3.win32-py2.7.msi: https://sourceforge.net/projects/gwyddion/files/pygtk-win32/pygobject-2.28.3.win32-py2.7.msi/download
   - pycairo-1.8.10.win32-py2.7.msi: https://sourceforge.net/projects/gwyddion/files/pygtk-win32/pycairo-1.8.10.win32-py2.7.msi/download
@@ -55,6 +47,10 @@ python scripts/check_env.py
   ```
 - The manifest contains: processing_mode, csv_mode, grid/channel defaults, mode/csv definitions, and the file list.
 - Patterns: defaults to `*.tif;*.tiff`. Use `**/*.tif` (or similar) to recurse.
+ - Typical workflow:
+   - Py3: generate manifest.
+   - Py2: run pygwy processing to produce summary CSV.
+   - Py3: plot from the CSV.
 - Run pygwy processing with the Py2.7 interpreter (32-bit) that ships with Gwyddion:
   ```bash
   python2 scripts/run_pygwy_job.py --manifest job_manifest.json
@@ -78,6 +74,7 @@ python scripts/check_env.py
 ### Example config
 See `config.example.yaml` for a starter config matching the spec structure:
 - `channel_defaults`, `modes`, `grid`, `csv_modes`, `result_schemas`, `plotting_modes`, `profiles`.
+- `summarize.recursive` controls recursive TIFF search for summarize.
 
 ### Tests
 Run Py3 unit tests (covers summarize/plot helpers):
