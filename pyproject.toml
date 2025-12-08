@@ -10,7 +10,7 @@ readme = "README.md"
 requires-python = ">=3.8"
 license = { file = "LICENSE" }
 authors = [
-  { name = "Conor O'Brien", email = "conor@example.com" }
+  { name = "Conor O'Brien", email = "cobrien2@uccs.edu" }
 ]
 keywords = ["AFM", "pygwy", "Gwyddion", "microscopy", "plotting", "CSV"]
 classifiers = [
