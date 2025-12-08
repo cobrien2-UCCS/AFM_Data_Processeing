@@ -1,16 +1,47 @@
 import sys
 import unittest
+from pathlib import Path
 
 py2 = sys.version_info[0] == 2
+
+# Ensure local package import without install
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+
+def _can_import_gwy():
+    try:
+        import gwy  # noqa: F401
+        return True
+    except Exception:
+        return False
 
 
 @unittest.skipUnless(py2, "Py2/pygwy-specific tests; skipped on Py3.")
 class Py2RunnerTests(unittest.TestCase):
-    def test_placeholder(self):
-        # These tests are intended to run in a Python 2.7 environment with pygwy installed.
-        # They are skipped under Py3 in this repository. Add pygwy-specific assertions here
-        # when running under the proper environment.
-        self.assertTrue(py2)
+    def test_try_import_pygwy_flag(self):
+        from scripts import run_pygwy_job
+
+        can = run_pygwy_job.try_import_pygwy()
+        expected = _can_import_gwy()
+        self.assertEqual(can, expected)
+
+    def test_process_manifest_dry_run(self):
+        if not _can_import_gwy():
+            self.skipTest("pygwy not importable in this environment")
+        from scripts import run_pygwy_job
+
+        manifest = {
+            "files": [],
+            "output_dir": ".",
+            "output_csv": "summary.csv",
+            "csv_mode_definition": {},
+            "processing_mode": "raw_noop",
+            "csv_mode": "default",
+        }
+        # Should not raise when dry_run is True even with empty files list.
+        run_pygwy_job.process_manifest(manifest, dry_run=True)
 
 
 if __name__ == "__main__":
