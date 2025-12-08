@@ -50,11 +50,20 @@ def resolve_modes(cfg: Dict[str, Any], profile: str, processing_mode: str, csv_m
 
 def collect_files(input_root: Path, pattern: str) -> Dict[str, Any]:
     patterns = [pat.strip() for pat in pattern.split(";") if pat.strip()]
+    recursive = False
+    if any(p.startswith("**/") for p in patterns):
+        recursive = True
+    base_patterns = []
+    for p in patterns:
+        base_patterns.append(p[3:] if p.startswith("**/") else p)
     if not patterns:
         patterns = [pattern]
     files = []
-    for pat in patterns:
-        files.extend(str(p.resolve()) for p in input_root.glob(pat) if p.is_file())
+    for pat in base_patterns:
+        if recursive:
+            files.extend(str(p.resolve()) for p in input_root.rglob(pat) if p.is_file())
+        else:
+            files.extend(str(p.resolve()) for p in input_root.glob(pat) if p.is_file())
     files = sorted(set(files))
     return {"files": files, "input_root": str(input_root.resolve()), "pattern": pattern}
 

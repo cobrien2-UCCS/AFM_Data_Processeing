@@ -12,6 +12,12 @@ license = { file = "LICENSE" }
 authors = [
   { name = "Conor O'Brien", email = "conor@example.com" }
 ]
+keywords = ["AFM", "pygwy", "Gwyddion", "microscopy", "plotting", "CSV"]
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: OS Independent",
+]
 dependencies = [
   "numpy>=1.22.0",
   "matplotlib>=3.6.0",
@@ -21,6 +27,10 @@ dependencies = [
 [project.optional-dependencies]
 dev = [
   "pytest",
+]
+# Optional helper for reading .gwy files without pygwy
+gwyfile = [
+  "gwyfile>=0.2.0",
 ]
 
 [project.scripts]

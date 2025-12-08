@@ -110,11 +110,15 @@ def summarize_folder_to_csv(
         raise ValueError(f"Unknown csv_mode: {csv_mode}")
 
     input_root = Path(input_root)
-    # Search patterns: both .tif and .tiff
+    # Search patterns: both .tif and .tiff; optional recursion via cfg["summarize"].get("recursive")
+    recursive = cfg.get("summarize", {}).get("recursive", False)
     patterns = ["*.tif", "*.tiff"]
     tiff_files: list[Path] = []
     for pat in patterns:
-        tiff_files.extend(input_root.glob(pat))
+        if recursive:
+            tiff_files.extend(input_root.rglob(pat))
+        else:
+            tiff_files.extend(input_root.glob(pat))
     tiff_files = sorted({p.resolve() for p in tiff_files})
     if not tiff_files:
         log.warning("No TIFF files found in %s", input_root)

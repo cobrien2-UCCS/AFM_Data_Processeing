@@ -54,6 +54,7 @@ python scripts/check_env.py
   # or use --profile to pull defaults from config.profiles
   ```
 - The manifest contains: processing_mode, csv_mode, grid/channel defaults, mode/csv definitions, and the file list.
+- Patterns: defaults to `*.tif;*.tiff`. Use `**/*.tif` (or similar) to recurse.
 - Run pygwy processing with the Py2.7 interpreter (32-bit) that ships with Gwyddion:
   ```bash
   python2 scripts/run_pygwy_job.py --manifest job_manifest.json

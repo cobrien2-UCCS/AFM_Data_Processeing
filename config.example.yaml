@@ -50,6 +50,10 @@ grid:
   # Regex with named groups row/col to place samples on a grid.
   filename_regex: "r(?P<row>\\d+)_c(?P<col>\\d+)"
 
+# Summarization options
+summarize:
+  recursive: false   # if true, search TIFFs recursively
+
 # CSV modes define column layout and mapping from ModeResultRecord keys.
 csv_modes:
   default_scalar:
