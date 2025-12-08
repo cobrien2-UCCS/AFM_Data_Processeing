@@ -6,6 +6,9 @@ Py2.7/pygwy runner that consumes a JSON manifest and writes a summary CSV.
 Notes:
 - Py2-only stdlib (json/argparse/os). Avoid Py3 constructs.
 - Requires pygwy; no fallback will run to avoid producing invalid data.
+- Philosophy: use Gwyddion/pygwy modules for core processing (leveling, filtering,
+  grain ops). Use Python-side math only for small supplemental steps (e.g., clipping,
+  unit conversions) when Gwyddion lacks a direct function.
 """
 
 from __future__ import print_function
@@ -71,37 +74,8 @@ def _get_field_units(field):
 
 
 def _connected_components(mask):
-    """Simple 4-neighbor connected components; returns list of sizes."""
-    try:
-        import numpy as np  # type: ignore
-    except ImportError:
-        raise RuntimeError("numpy required for particle counting.")
-
-    visited = np.zeros_like(mask, dtype=bool)
-    sizes = []
-    rows, cols = mask.shape
-    neighbors = [(-1, 0), (1, 0), (0, -1), (0, 1)]
-
-    for r in range(rows):
-        for c in range(cols):
-            if not mask[r, c] or visited[r, c]:
-                continue
-            stack = [(r, c)]
-            visited[r, c] = True
-            size = 0
-            while stack:
-                cr, cc = stack.pop()
-                size += 1
-                for dr, dc in neighbors:
-                    nr, nc = cr + dr, cc + dc
-                    if nr < 0 or nr >= rows or nc < 0 or nc >= cols:
-                        continue
-                    if visited[nr, nc] or not mask[nr, nc]:
-                        continue
-                    visited[nr, nc] = True
-                    stack.append((nr, nc))
-            sizes.append(size)
-    return sizes
+    """Deprecated: no longer used; particle counting relies on pygwy grain stats."""
+    return []
 
 
 def _select_data_field(container, mode_def, channel_defaults):
@@ -226,9 +200,13 @@ def _process_with_pygwy(path, processing_mode, mode_def, channel_defaults, manif
         f = field.duplicate()
         if mode_def.get("plane_level", True):
             try:
-                pa, pbx, pby = f.fit_plane()
-            except Exception as exc:
-                sys.stderr.write("WARN: plane_level failed for %s: %s\n" % (path, exc))
+                # Prefer Gwyddion's plane-level module if available
+                gwy.gwy_process_func_run("level", {"data": f, "method": 0})
+            except Exception:
+                try:
+                    gwy.gwy_process_func_run("plane-level", {"data": f})
+                except Exception as exc:
+                    sys.stderr.write("WARN: plane_level failed for %s: %s\n" % (path, exc))
         median_size = mode_def.get("median_size")
         if median_size:
             try:
@@ -245,6 +223,18 @@ def _process_with_pygwy(path, processing_mode, mode_def, channel_defaults, manif
                 gwy.gwy_process_func_run("level-line", {"data": f, "direction": 1})
             except Exception as exc:
                 sys.stderr.write("WARN: line_level_y failed for %s: %s\n" % (path, exc))
+        # Python-side clipping is optional and used only when Gwyddion lacks a direct op.
+        clip = mode_def.get("clip_percentiles")
+        if clip and isinstance(clip, (list, tuple)) and len(clip) == 2:
+            try:
+                import numpy as np  # type: ignore
+                arr = _field_to_numpy(f)
+                low, high = float(clip[0]), float(clip[1])
+                lo_val, hi_val = np.percentile(arr, [low, high])
+                arr = np.clip(arr, lo_val, hi_val)
+                f.set_data(arr.ravel().tolist())
+            except Exception as exc:
+                sys.stderr.write("WARN: clip_percentiles failed for %s: %s\n" % (path, exc))
         detected_unit = _get_field_units(f)
         result = _to_mode_result(f, mode_def, mode, path)
         return _apply_units(result, processing_mode, mode_def, manifest, detected_unit)
@@ -272,7 +262,14 @@ def _process_with_pygwy(path, processing_mode, mode_def, channel_defaults, manif
             sizes = mask_field.get_grain_sizes(grains)
             sizes_list = list(sizes)[1:] if len(sizes) > 0 else []
             count_total = len(sizes_list)
-            count_density = float(count_total) / float(f.get_xres() * f.get_yres()) if f.get_xres() and f.get_yres() else 0.0
+            # Prefer physical area for density if available
+            try:
+                area_real = float(f.get_xreal() * f.get_yreal())
+            except Exception:
+                area_real = 0.0
+            pixel_area = float(f.get_xres() * f.get_yres()) if f.get_xres() and f.get_yres() else 0.0
+            denom = area_real if area_real > 0 else pixel_area
+            count_density = float(count_total) / denom if denom else 0.0
             sizes_arr = np.asarray(sizes_list, dtype=float)
             if sizes_arr.size:
                 equiv_diam = 2.0 * np.sqrt(sizes_arr / np.pi)
@@ -281,35 +278,31 @@ def _process_with_pygwy(path, processing_mode, mode_def, channel_defaults, manif
             else:
                 mean_diam = 0.0
                 std_diam = 0.0
+            mean_circ = None
+            std_circ = None
+            try:
+                import gwy  # type: ignore
+                circ_vals = f.grains_get_values(grains, gwy.GrainQuantity.CIRCULARITY)
+                circ_list = list(circ_vals)[1:] if len(circ_vals) > 0 else []
+                if circ_list:
+                    circ_arr = np.asarray(circ_list, dtype=float)
+                    mean_circ = float(np.mean(circ_arr))
+                    std_circ = float(np.std(circ_arr))
+            except Exception:
+                pass
             grains_result = {
                 "particle.count_total": int(count_total),
                 "particle.count_density": float(count_density),
                 "particle.mean_diameter_px": float(mean_diam),
                 "particle.std_diameter_px": float(std_diam),
             }
+            if mean_circ is not None:
+                grains_result["particle.mean_circularity"] = float(mean_circ)
+            if std_circ is not None:
+                grains_result["particle.std_circularity"] = float(std_circ)
         except Exception as exc:
-            sys.stderr.write("WARN: pygwy grain ops failed for %s: %s; falling back to numpy CC.\n" % (path, exc))
-            grains_result = None
-
-        if grains_result is None:
-            mask = arr > thresh
-            sizes = _connected_components(mask)
-            count_total = len(sizes)
-            count_density = float(count_total) / float(mask.size) if mask.size else 0.0
-            if sizes:
-                sizes_arr = np.asarray(sizes, dtype=float)
-                equiv_diam = 2.0 * np.sqrt(sizes_arr / np.pi)
-                mean_diam = float(np.mean(equiv_diam))
-                std_diam = float(np.std(equiv_diam))
-            else:
-                mean_diam = 0.0
-                std_diam = 0.0
-            grains_result = {
-                "particle.count_total": int(count_total),
-                "particle.count_density": float(count_density),
-                "particle.mean_diameter_px": float(mean_diam),
-                "particle.std_diameter_px": float(std_diam),
-            }
+            sys.stderr.write("ERROR: pygwy grain ops failed for %s: %s\n" % (path, exc))
+            raise
 
         result = {
             "core.source_file": os.path.basename(path),

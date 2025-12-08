@@ -4,6 +4,7 @@ import csv
 import unittest
 import tempfile
 from pathlib import Path
+import json
 
 # Ensure local package import without install
 ROOT = Path(__file__).resolve().parents[1]
@@ -12,8 +13,9 @@ if str(ROOT) not in sys.path:
 
 os.environ.setdefault("MPLBACKEND", "Agg")
 
-from afm_pipeline import summarize_folder_to_csv, plot_summary_from_csv, load_config  # noqa: E402
-from afm_pipeline.summarize import build_result_object_from_csv_row, build_csv_row  # noqa: E402
+from afm_pipeline import summarize_folder_to_csv, plot_summary_from_csv, load_config  # type: ignore # noqa: E402
+from afm_pipeline.summarize import build_result_object_from_csv_row, build_csv_row  # type: ignore # noqa: E402
+from scripts import run_pygwy_job  # type: ignore # noqa: E402
 
 
 class PipelineTestCase(unittest.TestCase):
@@ -126,6 +128,8 @@ class PipelineTestCase(unittest.TestCase):
             plot_summary_from_csv(str(csv_path), "sample_bar_with_error", self.cfg, str(out_dir))
             plot_file = out_dir / "sample_bar_with_error.png"
             self.assertTrue(plot_file.exists(), "Plot file was not created")
+            # Unit-aware ylabel should be set when not overridden; we read metadata from the PNG text fields if present.
+            # Matplotlib does not store labels in PNG text by default, so we just assert file exists here.
 
     def test_plot_heatmap_grid_generates_file(self):
         cfg = dict(self.cfg)
@@ -152,6 +156,7 @@ class PipelineTestCase(unittest.TestCase):
             plot_summary_from_csv(str(csv_path), "heatmap_grid", cfg, str(out_dir))
             plot_file = out_dir / "heatmap_grid.png"
             self.assertTrue(plot_file.exists(), "Heatmap plot file was not created")
+            # As above, labels are not easily introspected from PNG without extra libraries; presence of file is our proxy.
 
     def test_build_csv_row_missing_field_error(self):
         csv_def = self.cfg["csv_modes"]["default_scalar"]
@@ -168,6 +173,45 @@ class PipelineTestCase(unittest.TestCase):
         }
         with self.assertRaises(KeyError):
             build_csv_row(mode_result, csv_def, "modulus_basic", "default_scalar")
+
+    def test_unit_conversion_and_mismatch_policy(self):
+        manifest = {
+            "mode_definition": {
+                "metric_type": "modulus",
+                "units": "GPa",
+                "expected_units": "GPa",
+                "on_unit_mismatch": "error",
+            },
+            "unit_conversions": {
+                "modulus_basic": {
+                    "MPa": {"target": "GPa", "factor": 0.001}
+                }
+            },
+        }
+        base = {
+            "core.source_file": "a.tif",
+            "core.mode": "modulus_basic",
+            "core.metric_type": "modulus",
+            "core.avg_value": 100.0,
+            "core.std_value": 10.0,
+            "core.units": "GPa",
+            "core.nx": 1,
+            "core.ny": 1,
+        }
+        # matching units
+        applied = run_pygwy_job._apply_units(base.copy(), "modulus_basic", manifest["mode_definition"], manifest, "GPa")
+        self.assertEqual(applied["core.units"], "GPa")
+        # convertible units
+        res_mpa = base.copy()
+        res_mpa["core.avg_value"] = 200.0
+        applied = run_pygwy_job._apply_units(res_mpa.copy(), "modulus_basic", manifest["mode_definition"], manifest, "MPa")
+        self.assertAlmostEqual(applied["core.avg_value"], 0.2)
+        self.assertEqual(applied["core.units"], "GPa")
+        # mismatch skip_row
+        mode_def_skip = manifest["mode_definition"].copy()
+        mode_def_skip["on_unit_mismatch"] = "skip_row"
+        skipped = run_pygwy_job._apply_units(base.copy(), "modulus_basic", mode_def_skip, manifest, "kPa")
+        self.assertIsNone(skipped)
 
 
 if __name__ == "__main__":

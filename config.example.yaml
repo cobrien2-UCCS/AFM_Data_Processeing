@@ -6,6 +6,8 @@ channel_defaults:
   topography_family: "height"
 
 # Processing modes define how a TIFF is processed in pygwy.
+# Philosophy: use Gwyddion/pygwy for core ops (leveling, filters, grains).
+# Use Python-side helpers only when Gwyddion lacks the needed function.
 modes:
   modulus_basic:
     channel_family: "modulus"      # pick modulus-like channel
@@ -13,6 +15,7 @@ modes:
     median_size: null              # optional median filter size (odd int), null to skip
     line_level_x: false            # optional line flatten in X
     line_level_y: false            # optional line flatten in Y
+    clip_percentiles: null         # e.g., [5, 95] to clip extremes; null to skip
     metric_type: "modulus"         # core.metric_type value
     units: "GPa"
     expected_units: "GPa"          # optional validation target
@@ -23,6 +26,7 @@ modes:
     median_size: null
     line_level_x: false
     line_level_y: false
+    clip_percentiles: null
     metric_type: "topography_height"
     units: "nm"
     expected_units: "nm"

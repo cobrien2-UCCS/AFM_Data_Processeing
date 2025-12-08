@@ -37,6 +37,11 @@ python scripts/check_env.py
 - Run summarization/plotting/CLI in Python 3.x, consuming those neutral outputs. This avoids Py3-only imports in the Py2 layer and keeps Py2 surface minimal.
 - If you need shared helpers, restrict them to pure I/O or other Py2-safe code, or maintain separate Py2/Py3 stubs.
 
+### Processing philosophy
+- Use Gwyddion/pygwy as the primary execution path for all leveling, filtering, and grain/particle operations.
+- Allow Python-side math only for supplementary steps (e.g., clipping, unit conversions, aggregations) that are not available or are impractical in Gwyddion.
+- When adding new modes, prefer Gwyddion modules first; use Python helpers as an explicit secondary step.
+
 ### Manifest bridge (YAML in Py3 → JSON for Py2 pygwy)
 - Author/edit the config in YAML (Python 3.x) and generate a JSON manifest for the Py2 runner:
   ```bash
