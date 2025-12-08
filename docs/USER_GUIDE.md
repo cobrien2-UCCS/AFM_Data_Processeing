@@ -71,3 +71,6 @@ Top-level sections (see `config.example.yaml`):
 - Requires 32-bit Python 2.7 with PyGTK2 and pygwy/Gwyddion installed.
 - No fallback processing if pygwy is missing; errors are raised.
 - Particle metrics use pygwy grain tools; plane/median/line filters use Gwyddion modules; clipping is optional Python-side.
+
+## 10) LLM / agent prompts
+- See `docs/llm_agent_formats.md` for ready-to-use templates to add modes, CSV layouts, schemas, plotting modes, unit conversions, and pygwy mode branches. Keep changes config-driven whenever possible.
