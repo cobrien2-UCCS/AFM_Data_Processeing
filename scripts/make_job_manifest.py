@@ -57,6 +57,10 @@ def build_manifest(cfg: Dict[str, Any], args: argparse.Namespace) -> Dict[str, A
     mode_sel = resolve_modes(cfg, args.profile, args.processing_mode, args.csv_mode)
     files_info = collect_files(Path(args.input_root), args.pattern)
 
+    output_csv = args.output_csv
+    if not output_csv:
+        output_csv = str(Path(args.output_dir).resolve() / "summary.csv")
+
     manifest = {
         "manifest_version": "1.0",
         "processing_mode": mode_sel["processing_mode"],
@@ -65,6 +69,7 @@ def build_manifest(cfg: Dict[str, Any], args: argparse.Namespace) -> Dict[str, A
         "pattern": files_info["pattern"],
         "files": files_info["files"],
         "output_dir": str(Path(args.output_dir).resolve()),
+        "output_csv": output_csv,
         # Minimal slices of config needed downstream.
         "grid": cfg.get("grid", {}),
         "channel_defaults": cfg.get("channel_defaults", {}),
@@ -83,6 +88,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--profile", help="Optional profile name from config.")
     parser.add_argument("--processing-mode", help="Processing mode (overrides profile).")
     parser.add_argument("--csv-mode", help="CSV mode (overrides profile).")
+    parser.add_argument("--output-csv", help="Override output CSV path (default: <output_dir>/summary.csv).")
     parser.add_argument("--pattern", default="*.tif", help="Glob pattern for TIFF files (default: *.tif).")
     return parser.parse_args()
 

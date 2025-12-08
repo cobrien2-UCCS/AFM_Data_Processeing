@@ -40,3 +40,16 @@ python scripts/check_env.py
   python2 scripts/run_pygwy_job.py --manifest job_manifest.json
   ```
 - Summarization/plotting stay in Python 3.x and consume the outputs written by the Py2 run.
+- The Py2 runner writes `summary.csv` (or `--output-csv`) using the `csv_mode_definition` embedded in the manifest. pygwy is required; no fallback is executed to avoid producing invalid data. Implement real pygwy logic in `scripts/run_pygwy_job.py` where indicated.
+
+### Py3 CLI helpers
+- Summarize TIFFs to CSV (uses config.modes/csv_modes):
+  ```bash
+  python scripts/cli_summarize.py --config config.yaml --input-root scans/ --out-csv summary.csv --processing-mode modulus_basic --csv-mode default_scalar
+  # or use --profile to pull defaults
+  ```
+- Plot from CSV (uses config.plotting_modes/result_schemas):
+  ```bash
+  python scripts/cli_plot.py --config config.yaml --csv summary.csv --plotting-mode sample_bar_with_error --out plots/
+  # or use --profile to pick plotting_modes
+  ```
