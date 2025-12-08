@@ -5,8 +5,7 @@ Py2.7/pygwy runner that consumes a JSON manifest and writes a summary CSV.
 
 Notes:
 - Py2-only stdlib (json/argparse/os). Avoid Py3 constructs.
-- If pygwy is available, plug real processing into `_process_with_pygwy`.
-- If pygwy is not available, a basic Pillow/numpy fallback computes mean/std of TIFF pixels.
+- Requires pygwy; no fallback will run to avoid producing invalid data.
 """
 
 from __future__ import print_function
@@ -62,6 +61,40 @@ def _field_to_numpy(field):
     except Exception:
         pass
     return arr
+
+
+def _connected_components(mask):
+    """Simple 4-neighbor connected components; returns list of sizes."""
+    try:
+        import numpy as np  # type: ignore
+    except ImportError:
+        raise RuntimeError("numpy required for particle counting.")
+
+    visited = np.zeros_like(mask, dtype=bool)
+    sizes = []
+    rows, cols = mask.shape
+    neighbors = [(-1, 0), (1, 0), (0, -1), (0, 1)]
+
+    for r in range(rows):
+        for c in range(cols):
+            if not mask[r, c] or visited[r, c]:
+                continue
+            stack = [(r, c)]
+            visited[r, c] = True
+            size = 0
+            while stack:
+                cr, cc = stack.pop()
+                size += 1
+                for dr, dc in neighbors:
+                    nr, nc = cr + dr, cc + dc
+                    if nr < 0 or nr >= rows or nc < 0 or nc >= cols:
+                        continue
+                    if visited[nr, nc] or not mask[nr, nc]:
+                        continue
+                    visited[nr, nc] = True
+                    stack.append((nr, nc))
+            sizes.append(size)
+    return sizes
 
 
 def _select_data_field(container, mode_def, channel_defaults):
@@ -237,7 +270,44 @@ def _process_with_pygwy(path, processing_mode, mode_def, channel_defaults, manif
         return _to_mode_result(f, mode_def, mode, path)
 
     if mode == "particle_count_basic":
-        raise NotImplementedError("particle_count_basic requires pygwy grain ops; implement as needed.")
+        f = field.duplicate()
+        arr = _field_to_numpy(f)
+        try:
+            import numpy as np  # type: ignore
+        except ImportError:
+            raise RuntimeError("numpy required for particle_count_basic.")
+
+        thresh = mode_def.get("threshold")
+        if thresh is None:
+            thresh = float(np.mean(arr))
+        mask = arr > thresh
+        sizes = _connected_components(mask)
+        count_total = len(sizes)
+        count_density = float(count_total) / float(mask.size) if mask.size else 0.0
+        if sizes:
+            sizes_arr = np.asarray(sizes, dtype=float)
+            equiv_diam = 2.0 * np.sqrt(sizes_arr / np.pi)
+            mean_diam = float(np.mean(equiv_diam))
+            std_diam = float(np.std(equiv_diam))
+        else:
+            mean_diam = 0.0
+            std_diam = 0.0
+
+        result = {
+            "core.source_file": os.path.basename(path),
+            "core.mode": processing_mode,
+            "core.metric_type": mode_def.get("metric_type", "particle_count"),
+            "core.avg_value": float(count_total),
+            "core.std_value": 0.0,
+            "core.units": "count",
+            "core.nx": int(f.get_xres()),
+            "core.ny": int(f.get_yres()),
+            "particle.count_total": int(count_total),
+            "particle.count_density": float(count_density),
+            "particle.mean_diameter_px": float(mean_diam),
+            "particle.std_diameter_px": float(std_diam),
+        }
+        return result
 
     raise ValueError("Unknown processing_mode: %s" % mode)
 
