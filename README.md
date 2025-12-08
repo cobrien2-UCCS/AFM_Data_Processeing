@@ -84,3 +84,6 @@ Run Py3 unit tests (covers summarize/plot helpers):
 ```bash
 python -m unittest discover -s tests -p "test_*.py"
 ```
+
+### User guide
+See `docs/USER_GUIDE.md` for how to create configs, add modes/plots/CSV rules, unit handling, and expected outputs.
