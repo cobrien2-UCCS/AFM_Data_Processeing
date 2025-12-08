@@ -110,7 +110,12 @@ def summarize_folder_to_csv(
         raise ValueError(f"Unknown csv_mode: {csv_mode}")
 
     input_root = Path(input_root)
-    tiff_files = sorted(input_root.glob("*.tif"))
+    # Search patterns: both .tif and .tiff
+    patterns = ["*.tif", "*.tiff"]
+    tiff_files: list[Path] = []
+    for pat in patterns:
+        tiff_files.extend(input_root.glob(pat))
+    tiff_files = sorted({p.resolve() for p in tiff_files})
     if not tiff_files:
         log.warning("No TIFF files found in %s", input_root)
 

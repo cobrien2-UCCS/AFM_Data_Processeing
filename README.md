@@ -30,7 +30,12 @@ python scripts/check_env.py
   - pycairo-1.8.10.win32-py2.7.msi
   - pygtk-2.24.0.win32-py2.7.msi
 - An all-in-one installer (pygtk-all-in-one-2.24.2.win32-py2.7.msi) exists but installs GTK+ twice; use with caution. The separate installers are recommended.
-// TODO: add direct download links for the installers above once confirmed.
+  Direct links (mirrors):
+  - Python 2.7.16 (32-bit MSI): https://sourceforge.net/projects/gwyddion/files/pygtk-win32/python-2.7.16.msi/download
+  - pygobject-2.28.3.win32-py2.7.msi: https://sourceforge.net/projects/gwyddion/files/pygtk-win32/pygobject-2.28.3.win32-py2.7.msi/download
+  - pycairo-1.8.10.win32-py2.7.msi: https://sourceforge.net/projects/gwyddion/files/pygtk-win32/pycairo-1.8.10.win32-py2.7.msi/download
+  - pygtk-2.24.0.win32-py2.7.msi: https://sourceforge.net/projects/gwyddion/files/pygtk-win32/pygtk-2.24.0.win32-py2.7.msi/download
+  - All-in-one (not recommended): https://sourceforge.net/projects/gwyddion/files/pygtk-win32/pygtk-all-in-one-2.24.2.win32-py2.7.msi/download
 
 ### Recommended dual-environment workflow
 - Keep pygwy-dependent processing in a small Python 2.7 (32-bit) module/script that only uses pygwy/Gwyddion and writes neutral outputs (CSV/JSON/NumPy arrays) to disk.

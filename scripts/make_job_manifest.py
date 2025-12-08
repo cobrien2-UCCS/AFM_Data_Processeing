@@ -49,7 +49,13 @@ def resolve_modes(cfg: Dict[str, Any], profile: str, processing_mode: str, csv_m
 
 
 def collect_files(input_root: Path, pattern: str) -> Dict[str, Any]:
-    files = sorted(str(p.resolve()) for p in input_root.glob(pattern) if p.is_file())
+    patterns = [pat.strip() for pat in pattern.split(";") if pat.strip()]
+    if not patterns:
+        patterns = [pattern]
+    files = []
+    for pat in patterns:
+        files.extend(str(p.resolve()) for p in input_root.glob(pat) if p.is_file())
+    files = sorted(set(files))
     return {"files": files, "input_root": str(input_root.resolve()), "pattern": pattern}
 
 
@@ -90,7 +96,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--processing-mode", help="Processing mode (overrides profile).")
     parser.add_argument("--csv-mode", help="CSV mode (overrides profile).")
     parser.add_argument("--output-csv", help="Override output CSV path (default: <output_dir>/summary.csv).")
-    parser.add_argument("--pattern", default="*.tif", help="Glob pattern for TIFF files (default: *.tif).")
+    parser.add_argument("--pattern", default="*.tif;*.tiff", help="Glob pattern(s) for TIFF files, ';' separated (default: *.tif;*.tiff).")
     return parser.parse_args()
 
 
