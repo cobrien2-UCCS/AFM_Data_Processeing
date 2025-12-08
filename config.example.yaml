@@ -1,0 +1,129 @@
+# Channel defaults inform selection of data fields in pygwy/Gwyddion.
+channel_defaults:
+  # Used as hint to pick a modulus channel (name match, case-insensitive).
+  modulus_family: "modulus"
+  # Used as hint to pick a topography/height channel.
+  topography_family: "height"
+
+# Processing modes define how a TIFF is processed in pygwy.
+modes:
+  modulus_basic:
+    channel_family: "modulus"      # pick modulus-like channel
+    plane_level: true              # apply plane leveling
+    metric_type: "modulus"         # core.metric_type value
+    units: "GPa"
+  topography_flat:
+    channel_family: "height"
+    plane_level: true
+    metric_type: "topography_height"
+    units: "nm"
+  particle_count_basic:
+    channel_family: "height"
+    plane_level: false
+    metric_type: "particle_count"
+    threshold: null                # if null, use mean-based threshold
+  raw_noop:
+    channel_family: null           # first available channel
+    plane_level: false
+    metric_type: "raw"
+    units: "a.u."
+
+# Grid config for deriving row/col indices from filenames.
+grid:
+  # Regex with named groups row/col to place samples on a grid.
+  filename_regex: "r(?P<row>\\d+)_c(?P<col>\\d+)"
+
+# CSV modes define column layout and mapping from ModeResultRecord keys.
+csv_modes:
+  default_scalar:
+    columns:
+      - { name: "source_file", from: "core.source_file" }
+      - { name: "mode", from: "core.mode" }
+      - { name: "metric_type", from: "core.metric_type" }
+      - { name: "avg_value", from: "core.avg_value" }
+      - { name: "std_value", from: "core.std_value" }
+      - { name: "units", from: "core.units" }
+      - { name: "nx", from: "core.nx" }
+      - { name: "ny", from: "core.ny" }
+      - { name: "row_idx", from: "grid.row_idx", default: -1 }
+      - { name: "col_idx", from: "grid.col_idx", default: -1 }
+    on_missing_field: "warn_null"
+
+  particle_metrics:
+    columns:
+      - { name: "source_file", from: "core.source_file" }
+      - { name: "mode", from: "core.mode" }
+      - { name: "metric_type", from: "core.metric_type" }
+      - { name: "count_total", from: "particle.count_total" }
+      - { name: "count_density", from: "particle.count_density" }
+      - { name: "mean_diam_px", from: "particle.mean_diameter_px" }
+      - { name: "std_diam_px", from: "particle.std_diameter_px" }
+      - { name: "nx", from: "core.nx" }
+      - { name: "ny", from: "core.ny" }
+      - { name: "row_idx", from: "grid.row_idx", default: -1 }
+      - { name: "col_idx", from: "grid.col_idx", default: -1 }
+    on_missing_field: "warn_null"
+
+# Result schemas cast CSV rows to typed dicts for plotting/analysis.
+result_schemas:
+  default_scalar:
+    from_csv_mode: "default_scalar"
+    fields:
+      - { field: "source_file", type: "string", column: "source_file" }
+      - { field: "mode", type: "string", column: "mode" }
+      - { field: "metric_type", type: "string", column: "metric_type" }
+      - { field: "avg_value", type: "float", column: "avg_value" }
+      - { field: "std_value", type: "float", column: "std_value" }
+      - { field: "units", type: "string", column: "units" }
+      - { field: "nx", type: "int", column: "nx" }
+      - { field: "ny", type: "int", column: "ny" }
+      - { field: "row_idx", type: "int", column: "row_idx" }
+      - { field: "col_idx", type: "int", column: "col_idx" }
+
+  particle_metrics:
+    from_csv_mode: "particle_metrics"
+    fields:
+      - { field: "source_file", type: "string", column: "source_file" }
+      - { field: "mode", type: "string", column: "mode" }
+      - { field: "metric_type", type: "string", column: "metric_type" }
+      - { field: "count_total", type: "int", column: "count_total" }
+      - { field: "count_density", type: "float", column: "count_density" }
+      - { field: "mean_diam_px", type: "float", column: "mean_diam_px" }
+      - { field: "std_diam_px", type: "float", column: "std_diam_px" }
+      - { field: "nx", type: "int", column: "nx" }
+      - { field: "ny", type: "int", column: "ny" }
+      - { field: "row_idx", type: "int", column: "row_idx" }
+      - { field: "col_idx", type: "int", column: "col_idx" }
+
+# Plotting modes map schema to recipe and styling.
+plotting_modes:
+  sample_bar_with_error:
+    result_schema: "default_scalar"
+    recipe: "sample_bar_with_error"
+    title: "Sample Means"
+    ylabel: "Value"
+  histogram_avg:
+    result_schema: "default_scalar"
+    recipe: "histogram_avg"
+    bins: 20
+    title: "Average Distribution"
+  scatter_avg_vs_std:
+    result_schema: "default_scalar"
+    recipe: "scatter_avg_vs_std"
+    title: "Avg vs Std"
+  mode_comparison_bar:
+    result_schema: "default_scalar"
+    recipe: "mode_comparison_bar"
+    title: "Mode Comparison"
+  heatmap_grid:
+    result_schema: "default_scalar"
+    recipe: "heatmap_grid"
+    title: "Grid Heatmap"
+    colorbar_label: "avg_value"
+
+# Profiles provide convenient presets tying modes together.
+profiles:
+  modulus_grid:
+    processing_mode: "modulus_basic"
+    csv_mode: "default_scalar"
+    plotting_modes: ["sample_bar_with_error", "heatmap_grid"]

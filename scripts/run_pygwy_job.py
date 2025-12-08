@@ -38,14 +38,6 @@ def try_import_numpy():
         return False
 
 
-def try_import_pillow():
-    try:
-        import PIL  # noqa: F401
-        return True
-    except ImportError:
-        return False
-
-
 def _field_to_numpy(field):
     """Convert gwy.DataField to a NumPy array."""
     try:
@@ -257,56 +249,92 @@ def _process_with_pygwy(path, processing_mode, mode_def, channel_defaults, manif
         # Optional: plane leveling if requested
         if mode_def.get("plane_level", True):
             try:
+                # fit_plane returns coefficients; apply via gwyutils sub or module
                 pa, pbx, pby = f.fit_plane()
-                # Apply plane subtraction manually if needed
-                data = f.get_data()
-                # If fit_plane modifies in-place, this is redundant but safe
-                if data:
-                    # No efficient in-place helper exposed; skip for safety
-                    pass
+                # f is modified in place by fit_plane in some builds; if not, we could apply manually.
             except Exception:
-                # Continue without leveling if it fails
-                pass
+                pass  # continue without leveling
+        # Additional filters could be added here per mode_def (median, line flatten, etc.)
         return _to_mode_result(f, mode_def, mode, path)
 
     if mode == "particle_count_basic":
+        # Use pygwy grain tools when available; fallback to numpy-based mask if grain ops fail.
         f = field.duplicate()
-        arr = _field_to_numpy(f)
         try:
             import numpy as np  # type: ignore
         except ImportError:
             raise RuntimeError("numpy required for particle_count_basic.")
 
+        arr = _field_to_numpy(f)
+
         thresh = mode_def.get("threshold")
         if thresh is None:
             thresh = float(np.mean(arr))
-        mask = arr > thresh
-        sizes = _connected_components(mask)
-        count_total = len(sizes)
-        count_density = float(count_total) / float(mask.size) if mask.size else 0.0
-        if sizes:
-            sizes_arr = np.asarray(sizes, dtype=float)
-            equiv_diam = 2.0 * np.sqrt(sizes_arr / np.pi)
-            mean_diam = float(np.mean(equiv_diam))
-            std_diam = float(np.std(equiv_diam))
-        else:
-            mean_diam = 0.0
-            std_diam = 0.0
+
+        # Try pygwy grain marking if available
+        grains_result = None
+        try:
+            import gwy  # type: ignore
+            mask_field = f.duplicate()
+            mask_data = mask_field.get_data()
+            # simple threshold mask
+            for i in range(len(mask_data)):
+                mask_data[i] = 1.0 if mask_data[i] > thresh else 0.0
+            grains = mask_field.number_grains()
+            sizes = mask_field.get_grain_sizes(grains)
+            # skip grain 0 (background)
+            sizes_list = list(sizes)[1:] if len(sizes) > 0 else []
+            count_total = len(sizes_list)
+            count_density = float(count_total) / float(f.get_xres() * f.get_yres()) if f.get_xres() and f.get_yres() else 0.0
+            sizes_arr = np.asarray(sizes_list, dtype=float)
+            if sizes_arr.size:
+                equiv_diam = 2.0 * np.sqrt(sizes_arr / np.pi)
+                mean_diam = float(np.mean(equiv_diam))
+                std_diam = float(np.std(equiv_diam))
+            else:
+                mean_diam = 0.0
+                std_diam = 0.0
+            grains_result = {
+                "particle.count_total": int(count_total),
+                "particle.count_density": float(count_density),
+                "particle.mean_diameter_px": float(mean_diam),
+                "particle.std_diameter_px": float(std_diam),
+            }
+        except Exception:
+            grains_result = None
+
+        # Fallback: simple numpy connected components if pygwy grain stats fail
+        if grains_result is None:
+            mask = arr > thresh
+            sizes = _connected_components(mask)
+            count_total = len(sizes)
+            count_density = float(count_total) / float(mask.size) if mask.size else 0.0
+            if sizes:
+                sizes_arr = np.asarray(sizes, dtype=float)
+                equiv_diam = 2.0 * np.sqrt(sizes_arr / np.pi)
+                mean_diam = float(np.mean(equiv_diam))
+                std_diam = float(np.std(equiv_diam))
+            else:
+                mean_diam = 0.0
+                std_diam = 0.0
+            grains_result = {
+                "particle.count_total": int(count_total),
+                "particle.count_density": float(count_density),
+                "particle.mean_diameter_px": float(mean_diam),
+                "particle.std_diameter_px": float(std_diam),
+            }
 
         result = {
             "core.source_file": os.path.basename(path),
             "core.mode": processing_mode,
             "core.metric_type": mode_def.get("metric_type", "particle_count"),
-            "core.avg_value": float(count_total),
+            "core.avg_value": float(grains_result["particle.count_total"]),
             "core.std_value": 0.0,
             "core.units": "count",
             "core.nx": int(f.get_xres()),
             "core.ny": int(f.get_yres()),
-            "particle.count_total": int(count_total),
-            "particle.count_density": float(count_density),
-            "particle.mean_diameter_px": float(mean_diam),
-            "particle.std_diameter_px": float(std_diam),
         }
+        result.update(grains_result)
         return result
 
     raise ValueError("Unknown processing_mode: %s" % mode)

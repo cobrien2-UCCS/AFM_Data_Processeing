@@ -53,3 +53,7 @@ python scripts/check_env.py
   python scripts/cli_plot.py --config config.yaml --csv summary.csv --plotting-mode sample_bar_with_error --out plots/
   # or use --profile to pick plotting_modes
   ```
+
+### Example config
+See `config.example.yaml` for a starter config matching the spec structure:
+- `channel_defaults`, `modes`, `grid`, `csv_modes`, `result_schemas`, `plotting_modes`, `profiles`.
