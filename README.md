@@ -1,5 +1,5 @@
-# AFM-Data-Processeing
-This Repo is for all things related to the data management of the my Thesis. It will include a MATLAB Data Storeage Class, which imports .tiff and .hdf5 files and creates a class for that data for analysis, and exports an .hdf5 for future Lab Calculations and better data management practices.
+# AFM-Data-Management Pipeline
+Config-driven AFM TIFF processing (pygwy/Gwyddion), CSV summarization, and plotting.
 
 ## Environment check
 Use the helper utility to confirm the expected Python packages and Gwyddion are present:
@@ -65,12 +65,12 @@ python scripts/check_env.py
 ### Py3 CLI helpers
 - Summarize TIFFs to CSV (uses config.modes/csv_modes):
   ```bash
-  python scripts/cli_summarize.py --config config.yaml --input-root scans/ --out-csv summary.csv --processing-mode modulus_basic --csv-mode default_scalar
+  python -m afm_pipeline.cli summarize --config config.yaml --input-root scans/ --out-csv summary.csv --processing-mode modulus_basic --csv-mode default_scalar
   # or use --profile to pull defaults
   ```
 - Plot from CSV (uses config.plotting_modes/result_schemas):
   ```bash
-  python scripts/cli_plot.py --config config.yaml --csv summary.csv --plotting-mode sample_bar_with_error --out plots/
+  python -m afm_pipeline.cli plot --config config.yaml --csv summary.csv --plotting-mode sample_bar_with_error --out plots/
   # or use --profile to pick plotting_modes
   ```
 

@@ -24,8 +24,8 @@ dev = [
 ]
 
 [project.scripts]
-afm-summarize = "scripts.cli_summarize:main"
-afm-plot = "scripts.cli_plot:main"
+afm-summarize = "afm_pipeline.cli:main_summarize"
+afm-plot = "afm_pipeline.cli:main_plot"
 
 [tool.setuptools]
 package-dir = {"" = "src"}
