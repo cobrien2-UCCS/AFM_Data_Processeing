@@ -1,0 +1,44 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "afm-data-management"
+version = "0.1.0"
+description = "AFM TIFF to summary stats & plotting pipeline (config-driven, pygwy integration)"
+readme = "README.md"
+requires-python = ">=3.8"
+license = { file = "LICENSE" }
+authors = [
+  { name = "Conor O'Brien", email = "cobrien2@uccs.edu" }
+]
+keywords = ["AFM", "pygwy", "Gwyddion", "microscopy", "plotting", "CSV"]
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: OS Independent",
+]
+dependencies = [
+  "numpy>=1.22.0",
+  "matplotlib>=3.6.0",
+  "PyYAML>=6.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest",
+]
+# Optional helper for reading .gwy files without pygwy
+gwyfile = [
+  "gwyfile>=0.2.0",
+]
+
+[project.scripts]
+afm-summarize = "afm_pipeline.cli:main_summarize"
+afm-plot = "afm_pipeline.cli:main_plot"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
