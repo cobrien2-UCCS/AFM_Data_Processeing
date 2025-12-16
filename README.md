@@ -3,6 +3,7 @@ Config-driven AFM TIFF processing (pygwy/Gwyddion), CSV summarization, and plott
 
 ## TODO 
 Make README human readable for pub
+make main runners on main root dir
 
 ## Environment check
 Use the helper utility to confirm the expected Python packages and Gwyddion are present:
