@@ -39,7 +39,7 @@ def plot_summary_from_csv(csv_path: str, plotting_mode: str, cfg: Dict[str, Any]
     APPLY_PLOTTING_MODE(typed_rows, plotting_mode, cfg, output_dir)
 
 
-def APPLY_PLOTTING_MODE(data_rows: List[Dict[str, Any]], plotting_mode: str, cfg: Dict[str, Any], output_dir: str):
+def APPLY_PLOTTING_MODE(data_rows: List[Dict[str, Any]], plotting_mode: str, cfg: Dict[str, Any], output_dir: str): # CAPS are generaly styled as contatns or gloabl varibles not funcitons. Overal the Dispacher is a good way to do this. 
     """Dispatcher for plotting modes."""
     plotting_def = cfg.get("plotting_modes", {}).get(plotting_mode, {})
     recipe = plotting_def.get("recipe") or plotting_def.get("type") or plotting_mode
@@ -64,7 +64,7 @@ def plot_sample_bar_with_error(rows: List[Dict[str, Any]], plotting_def: Dict[st
     labels = [r.get("source_file", "") for r in rows]
     means = [r.get("avg_value", 0.0) for r in rows]
     stds = [r.get("std_value", 0.0) for r in rows]
-    unit = _infer_unit(rows)
+    unit = _infer_unit(rows) 
 
     fig, ax = plt.subplots()
     ax.bar(range(len(labels)), means, yerr=stds, capsize=4)
