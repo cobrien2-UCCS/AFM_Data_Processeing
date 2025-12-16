@@ -19,6 +19,7 @@ import os
 import re
 import sys
 
+# Questions about the imports being in the functions rather than the main function
 
 def load_manifest(path):
     with open(path, "r") as f:
@@ -43,7 +44,7 @@ def try_import_numpy():
         return False
 
 
-def _field_to_numpy(field):
+def _field_to_numpy(field): # Note to CONOR, _ implies pirvite 
     """Convert gwy.DataField to a NumPy array."""
     try:
         import numpy as np  # type: ignore
@@ -73,9 +74,9 @@ def _get_field_units(field):
     return None
 
 
-def _connected_components(mask):
+def _connected_components(mask): # Why is this here? 
     """Deprecated: no longer used; particle counting relies on pygwy grain stats."""
-    return []
+    return [] # Empty List instead of a message or pass?
 
 
 def _select_data_field(container, mode_def, channel_defaults):
@@ -454,8 +455,8 @@ def main():
     args = parse_args()
     manifest = load_manifest(args.manifest)
     process_manifest(manifest, dry_run=args.dry_run)
-    return 0
+    return 0 
 
 
-if __name__ == "__main__":
+if __name__ == "__main__": # Why is this exiting since a way to use this if condition is to run something?
     sys.exit(main())
