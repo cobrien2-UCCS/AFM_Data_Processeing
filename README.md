@@ -1,6 +1,9 @@
 # AFM-Data-Management Pipeline
 Config-driven AFM TIFF processing (pygwy/Gwyddion), CSV summarization, and plotting. Support material for Conor O'Brien's thesis project.
 
+## TODO 
+Make README human readable for pub
+
 ## Environment check
 Use the helper utility to confirm the expected Python packages and Gwyddion are present:
 
