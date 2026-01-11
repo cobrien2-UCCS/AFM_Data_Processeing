@@ -25,7 +25,7 @@
   "output_dir": "C:\\Users\\Conor O'Brien\\Documents\\GitHub\\AFM-Data-Management\\out",
   "output_csv": "C:\\Users\\Conor O'Brien\\Documents\\GitHub\\AFM-Data-Management\\out\\summary.csv",
   "grid": {
-    "filename_regex": "r(?P<row>\\d+)_c(?P<col>\\d+)"
+    "filename_regex": "LOC_RC(?P<row>\\d{3})(?P<col>\\d{3})"
   },
   "channel_defaults": {
     "modulus_family": "modulus",
@@ -39,7 +39,7 @@
     "line_level_y": false,
     "clip_percentiles": null,
     "metric_type": "modulus",
-    "units": "GPa",
+    "units": "MPa",
     "expected_units": "GPa",
     "on_unit_mismatch": "error"
   },

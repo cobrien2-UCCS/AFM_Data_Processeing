@@ -20,7 +20,7 @@ import os
 import re
 import sys
 
-# Questions about the imports being in the functions rather than the main function
+_GRID_REGEX_MISS_WARNED = set()
 
 def load_manifest(path):
     with open(path, "r") as f:
@@ -203,29 +203,43 @@ def _connected_components(mask): # Why is this here?
 
 def _select_data_field(container, mode_def, channel_defaults):
     """
-    Pick a data field from a container. Uses mode_def.channel_family if provided,
-    else returns the first data field.
-    """
-    try:
-        import gwyutils  # type: ignore
-    except ImportError:
-        raise RuntimeError("gwyutils not available; cannot enumerate data fields.")
+    Pick a data field from a container.
 
-    data_dir = gwyutils.get_data_fields_dir(container)
-    if not data_dir:
-        raise RuntimeError("No data fields found in container.")
+    Uses `mode_def.channel_family` (substring match against the data title) if
+    provided; otherwise returns the first available `/N/data` entry.
+    """
+    names = []
+    try:
+        names = container.keys_by_name()
+    except Exception:
+        names = []
+
+    data_names = []
+    for n in names:
+        if re.match(r"^/\d+/data$", str(n)):
+            data_names.append(str(n))
+
+    if not data_names:
+        raise RuntimeError("No data fields found in container (expected keys like /0/data).")
+
+    def _title_for(data_name):
+        try:
+            return container.get_string_by_name(data_name + "/title") or ""
+        except Exception:
+            return ""
 
     channel_family = None
     if mode_def:
         channel_family = mode_def.get("channel_family")
-    if channel_family:
-        for key, field in data_dir.items():
-            name = getattr(field, "get_title", lambda: "")()
-            if name and channel_family.lower() in name.lower():
-                return key, field
 
-    first_key = list(data_dir.keys())[0]
-    return first_key, data_dir[first_key]
+    if channel_family:
+        for dn in data_names:
+            title = _title_for(dn)
+            if title and channel_family.lower() in title.lower():
+                return dn, container.get_object_by_name(dn)
+
+    first = data_names[0]
+    return first, container.get_object_by_name(first)
 
 
 def build_csv_row(mode_result, csv_def, processing_mode, csv_mode):
@@ -260,6 +274,7 @@ def derive_grid_indices(path, grid_cfg):
       "filename_regex": "r(?P<row>\\d+)_c(?P<col>\\d+)"
     }
     """
+    global _GRID_REGEX_MISS_WARNED
     pattern = None
     if grid_cfg:
         pattern = grid_cfg.get("filename_regex")
@@ -274,6 +289,13 @@ def derive_grid_indices(path, grid_cfg):
             row_val = int(row) if row is not None else None
             col_val = int(col) if col is not None else None
             return row_val, col_val
+        if pattern not in _GRID_REGEX_MISS_WARNED:
+            sys.stderr.write(
+                "WARN: grid.filename_regex did not match '%s' (pattern=%s). "
+                "row_idx/col_idx will be -1. Update config and regenerate the manifest.\n"
+                % (os.path.basename(path), pattern)
+            )
+            _GRID_REGEX_MISS_WARNED.add(pattern)
     except Exception:
         return None, None
     return None, None
@@ -323,29 +345,20 @@ def _process_with_pygwy(path, processing_mode, mode_def, channel_defaults, manif
         f = field.duplicate()
         if mode_def.get("plane_level", True):
             try:
-                # Prefer Gwyddion's plane-level module if available
-                gwy.gwy_process_func_run("level", {"data": f, "method": 0})
-            except Exception:
-                try:
-                    gwy.gwy_process_func_run("plane-level", {"data": f})
-                except Exception as exc:
-                    sys.stderr.write("WARN: plane_level failed for %s: %s\n" % (path, exc))
+                pa, pbx, pby = f.fit_plane()
+                f.plane_level(pa, pbx, pby)
+            except Exception as exc:
+                sys.stderr.write("WARN: plane_level failed for %s: %s\n" % (path, exc))
         median_size = mode_def.get("median_size")
         if median_size:
             try:
-                gwy.gwy_process_func_run("median", {"data": f, "size": int(median_size)})
+                f.filter_median(int(median_size))
             except Exception as exc:
                 sys.stderr.write("WARN: median filter failed for %s: %s\n" % (path, exc))
         if mode_def.get("line_level_x"):
-            try:
-                gwy.gwy_process_func_run("level-line", {"data": f, "direction": 0})
-            except Exception as exc:
-                sys.stderr.write("WARN: line_level_x failed for %s: %s\n" % (path, exc))
+            sys.stderr.write("WARN: line_level_x requested for %s but is not implemented in this runner.\n" % path)
         if mode_def.get("line_level_y"):
-            try:
-                gwy.gwy_process_func_run("level-line", {"data": f, "direction": 1})
-            except Exception as exc:
-                sys.stderr.write("WARN: line_level_y failed for %s: %s\n" % (path, exc))
+            sys.stderr.write("WARN: line_level_y requested for %s but is not implemented in this runner.\n" % path)
         # Python-side clipping is optional and used only when Gwyddion lacks a direct op.
         clip = mode_def.get("clip_percentiles")
         if clip and isinstance(clip, (list, tuple)) and len(clip) == 2:
@@ -566,5 +579,5 @@ def main():
     return 0 
 
 
-if __name__ == "__main__": # Why is this exiting since a way to use this if condition is to run something?
+if __name__ == "__main__":
     sys.exit(main())

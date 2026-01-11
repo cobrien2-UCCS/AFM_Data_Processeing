@@ -1,22 +1,34 @@
 # AFM-Data-Management Pipeline
 Config-driven AFM TIFF processing (pygwy/Gwyddion), CSV summarization, and plotting. Support material for Conor O'Brien's thesis project.
 
-## TODO 
-Make README human readable for pub
-make main runners on main root dir
+## Quick start (Windows / PowerShell)
+Run the full pipeline (Py3 -> Py2/pygwy -> Py3) from the repo root:
+
+```powershell
+.\scripts\run_pipeline.ps1 -InputRoot "C:\path\to\your\tiffs" -Profile modulus_grid -Plot
+```
+
+- Set `PYTHON2_EXE` if your Python 2.7 path is not `C:\Python27\python.exe`.
+- Set `GWY_BIN` if your Gwyddion `bin` folder is not `C:\Program Files (x86)\Gwyddion\bin`.
 
 ## Environment check
 Use the helper utility to confirm the expected Python packages and Gwyddion are present:
 
 ```bash
 python scripts/check_env.py
-# In the pygwy (Python 2.7) environment:
-# python scripts/check_env.py --require-pygwy
 ```
+
+- In the pygwy (Python 2.7, 32-bit) environment (PowerShell example):
+  ```powershell
+  cd "<repo root>"
+  & "C:\Python27\python.exe" scripts\check_env.py --require-pygwy
+  ```
 
 - Returns non-zero if required components are missing.
 - Use `--json` for machine-readable output.
 - Install Python dependencies via `python -m pip install -r requirements.txt`.
+- Optional (recommended): install the Py3 package for `python -m afm_pipeline.cli` and console scripts:
+  `python -m pip install -e .`
 
 ### Gwyddion / pygwy notes (Windows)
 - Gwyddion/pygwy on Windows is 32-bit and ships with Python 2.7; install the 32-bit Gwyddion build plus its pygtk runtime.
@@ -44,17 +56,17 @@ python scripts/check_env.py
 - Set your workspace interpreter to Python 3.x and install `requirements.txt`.
 - From that env:
   - Run `python scripts/check_env.py`.
-  - Generate manifests, summarize, and plot.
+  - Generate manifests and plot.
 - From the 32-bit Python 2.7 + pygwy env:
-  - Run `python scripts/check_env.py --require-pygwy` to validate pygwy.
-  - Run `python scripts/run_pygwy_job.py --manifest job_manifest.json` to process TIFFs.
+  - Run `C:\Python27\python.exe scripts\check_env.py --require-pygwy` (or your Python 2.7 path).
+  - Run `C:\Python27\python.exe scripts\run_pygwy_job.py --manifest job_manifest.json` to process TIFFs.
 
 ### Processing philosophy
 - Use Gwyddion/pygwy as the primary execution path for all leveling, filtering, and grain/particle operations.
 - Allow Python-side math only for supplementary steps (e.g., clipping, unit conversions, aggregations) that are not available or are impractical in Gwyddion.
 - When adding new modes, prefer Gwyddion modules first; use Python helpers as an explicit secondary step.
 
-### Manifest bridge (YAML in Py3 → JSON for Py2 pygwy)
+### Manifest bridge (YAML in Py3 -> JSON for Py2 pygwy)
 - Author/edit the config in YAML (Python 3.x) and generate a JSON manifest for the Py2 runner:
   ```bash
   python scripts/make_job_manifest.py --config config.yaml --input-root scans/ --output-dir out/ --processing-mode modulus_basic --csv-mode default_scalar --out job_manifest.json
@@ -62,29 +74,27 @@ python scripts/check_env.py
   ```
 - The manifest contains: processing_mode, csv_mode, grid/channel defaults, mode/csv definitions, and the file list.
 - Patterns: defaults to `*.tif;*.tiff`. Use `**/*.tif` (or similar) to recurse.
- - Typical workflow:
-   - Py3: generate manifest.
-   - Py2: run pygwy processing to produce summary CSV.
-   - Py3: plot from the CSV.
+- Typical workflow:
+  - Py3: generate manifest.
+  - Py2: run pygwy processing to produce summary CSV.
+  - Py3: plot from the CSV.
 - Run pygwy processing with the Py2.7 interpreter (32-bit) that ships with Gwyddion:
-  ```bash
-  python2 scripts/run_pygwy_job.py --manifest job_manifest.json
+  ```powershell
+  # PowerShell example (Windows):
+  & "C:\Python27\python.exe" scripts\run_pygwy_job.py --manifest job_manifest.json
   ```
 - Summarization/plotting stay in Python 3.x and consume the outputs written by the Py2 run.
 - The Py2 runner writes `summary.csv` (or `--output-csv`) using the `csv_mode_definition` embedded in the manifest. pygwy is required; no fallback is executed to avoid producing invalid data. Implement real pygwy logic in `scripts/run_pygwy_job.py` where indicated.
 - Units: the pygwy runner reads field units, applies optional conversions from `unit_conversions`, and enforces per-mode `expected_units` with `on_unit_mismatch` (`error|warn|skip_row`).
+- Grid indices: if `grid.filename_regex` changes, regenerate the manifest (otherwise `row_idx/col_idx` will remain `-1`).
 
-### Py3 CLI helpers
-- Summarize TIFFs to CSV (uses config.modes/csv_modes):
-  ```bash
-  python -m afm_pipeline.cli summarize --config config.yaml --input-root scans/ --out-csv summary.csv --processing-mode modulus_basic --csv-mode default_scalar
-  # or use --profile to pull defaults
-  ```
+### Py3 helpers
 - Plot from CSV (uses config.plotting_modes/result_schemas):
   ```bash
-  python -m afm_pipeline.cli plot --config config.yaml --csv summary.csv --plotting-mode sample_bar_with_error --out plots/
+  python scripts/cli_plot.py --config config.yaml --csv summary.csv --plotting-mode sample_bar_with_error --out plots/
   # or use --profile to pick plotting_modes
   ```
+- TIFF processing itself is performed by the Py2/pygwy runner (`scripts/run_pygwy_job.py`).
 
 ### Example config
 See `config.example.yaml` for a starter config matching the spec structure:

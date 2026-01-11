@@ -112,7 +112,8 @@ class PipelineTestCase(unittest.TestCase):
                 processor=fake_processor,
             )
 
-            rows = list(csv.DictReader(out_csv.open()))
+            with out_csv.open() as f:
+                rows = list(csv.DictReader(f))
             self.assertEqual(len(rows), 2)
             self.assertEqual(rows[0]["mode"], "modulus_basic")
             self.assertEqual(rows[0]["units"], "GPa")
