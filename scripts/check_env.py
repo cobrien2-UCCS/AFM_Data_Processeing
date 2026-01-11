@@ -17,6 +17,15 @@ import subprocess
 import sys
 import platform
 
+if sys.version_info[0] < 3:
+    # This utility is designed for the Python 3 environment only.
+    # Use it to validate the Py3 summarize/plot setup. For the Py2.7/pygwy
+    # environment, simply verify that `import gwy` succeeds in that interpreter.
+    sys.stderr.write(
+        "check_env.py is intended for Python 3.x only. "
+        "Run it under your Py3 environment to validate numpy/matplotlib/PyYAML.\n"
+    )
+    sys.exit(1)
 try:
     import importlib.metadata as importlib_metadata  # type: ignore
 except ImportError:
