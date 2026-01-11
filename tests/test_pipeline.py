@@ -7,9 +7,11 @@ from pathlib import Path
 import json
 
 # Ensure local package import without install
-ROOT = Path(__file__).resolve().parents[1]
-if str(ROOT) not in sys.path:
-    sys.path.insert(0, str(ROOT))
+REPO_ROOT = Path(__file__).resolve().parents[1]
+SRC_ROOT = REPO_ROOT / "src"
+for p in (REPO_ROOT, SRC_ROOT):
+    if str(p) not in sys.path:
+        sys.path.insert(0, str(p))
 
 os.environ.setdefault("MPLBACKEND", "Agg")
 
