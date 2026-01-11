@@ -10,6 +10,8 @@ Use the helper utility to confirm the expected Python packages and Gwyddion are 
 
 ```bash
 python scripts/check_env.py
+# In the pygwy (Python 2.7) environment:
+# python scripts/check_env.py --require-pygwy
 ```
 
 - Returns non-zero if required components are missing.
@@ -37,6 +39,15 @@ python scripts/check_env.py
 - Keep pygwy-dependent processing in a small Python 2.7 (32-bit) module/script that only uses pygwy/Gwyddion and writes neutral outputs (CSV/JSON/NumPy arrays) to disk.
 - Run summarization/plotting/CLI in Python 3.x, consuming those neutral outputs. This avoids Py3-only imports in the Py2 layer and keeps Py2 surface minimal.
 - If you need shared helpers, restrict them to pure I/O or other Py2-safe code, or maintain separate Py2/Py3 stubs.
+
+#### Typical usage in an IDE (e.g., VS Code)
+- Set your workspace interpreter to Python 3.x and install `requirements.txt`.
+- From that env:
+  - Run `python scripts/check_env.py`.
+  - Generate manifests, summarize, and plot.
+- From the 32-bit Python 2.7 + pygwy env:
+  - Run `python scripts/check_env.py --require-pygwy` to validate pygwy.
+  - Run `python scripts/run_pygwy_job.py --manifest job_manifest.json` to process TIFFs.
 
 ### Processing philosophy
 - Use Gwyddion/pygwy as the primary execution path for all leveling, filtering, and grain/particle operations.
