@@ -155,7 +155,7 @@ def check_optional_packages():
     return results
 
 
-def check_gwyddion():
+def check_gwyddion(required):
     results = []
 
     cli_path = shutil.which("gwyddion")
@@ -166,7 +166,7 @@ def check_gwyddion():
             results.append(
                 {
                     "component": "gwyddion-cli",
-                    "required": True,
+                    "required": required,
                     "ok": code == 0,
                     "detail": version_output if version_output else "exit code %s" % code,
                 }
@@ -175,7 +175,7 @@ def check_gwyddion():
             results.append(
                 {
                     "component": "gwyddion-cli",
-                    "required": True,
+                    "required": required,
                     "ok": False,
                     "detail": "failed to execute: %s" % exc,
                 }
@@ -184,7 +184,7 @@ def check_gwyddion():
         results.append(
             {
                 "component": "gwyddion-cli",
-                "required": True,
+                "required": required,
                 "ok": False,
                 "detail": "gwyddion not found on PATH",
             }
@@ -195,7 +195,7 @@ def check_gwyddion():
         results.append(
             {
                 "component": "pygwy-module",
-                "required": True,
+                "required": required,
                 "ok": True,
                 "detail": "imported `gwy` in current interpreter",
             }
@@ -204,7 +204,7 @@ def check_gwyddion():
         results.append(
             {
                 "component": "pygwy-module",
-                "required": True,
+                "required": required,
                 "ok": False,
                 "detail": (
                     "could not import `gwy`; ensure Gwyddion is installed and "
