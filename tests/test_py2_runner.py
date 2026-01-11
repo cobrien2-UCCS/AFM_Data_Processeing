@@ -26,8 +26,8 @@ class Py2RunnerTests(unittest.TestCase):
         from scripts import run_pygwy_job
 
         can = run_pygwy_job.try_import_pygwy()
-        expected = _can_import_gwy()
-        self.assertEqual(can, expected)
+        imported = _can_import_gwy()
+        self.assertEqual(can, imported)
 
     def test_process_manifest_dry_run(self):
         if not _can_import_gwy():

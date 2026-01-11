@@ -15,6 +15,7 @@ from __future__ import print_function
 import argparse
 import csv
 import json
+import math
 import os
 import re
 import sys
@@ -27,38 +28,60 @@ def load_manifest(path):
 
 
 def try_import_pygwy():
+    """
+    Ensure pygwy is importable in this interpreter.
+
+    On Windows, Gwyddion ships `gwy.pyd` and dependent DLLs in its `bin/` folder.
+    For a system Python 2.7 install (e.g. `C:\\Python27\\python.exe`) you often
+    need to add:
+      - `C:\\Program Files (x86)\\Gwyddion\\bin` to PATH and sys.path
+      - `C:\\Program Files (x86)\\Gwyddion\\share\\gwyddion\\pygwy` to sys.path (for `gwyutils.py`)
+
+    This function tries to bootstrap those paths automatically (configurable via
+    `GWY_BIN` env var). This is *not* a fallback processing path; it's just a
+    convenience to locate the pygwy module.
+    """
     try:
         import gwy  # noqa: F401
         return True
     except ImportError:
-        sys.stderr.write("ERROR: pygwy (gwy module) not importable; ensure 32-bit Gwyddion/pygwy is installed.\n")
-        return False
-
-
-def try_import_numpy():
-    try:
-        import numpy  # noqa: F401
-        return True
-    except ImportError:
-        sys.stderr.write("ERROR: numpy missing in pygwy environment.\n")
-        return False
-
-
-def _field_to_numpy(field): # Note to CONOR, _ implies pirvite 
-    """Convert gwy.DataField to a NumPy array."""
-    try:
-        import numpy as np  # type: ignore
-    except ImportError:
-        raise RuntimeError("numpy is required in the pygwy environment to compute statistics.")
-    data = field.get_data()
-    arr = np.asarray(data, dtype=float)
-    xres = int(field.get_xres())
-    yres = int(field.get_yres())
-    try:
-        arr = arr.reshape((yres, xres))
-    except Exception:
         pass
-    return arr
+
+    candidates = []
+    env_bin = os.environ.get("GWY_BIN") or os.environ.get("GWYDDION_BIN")
+    if env_bin:
+        candidates.append(env_bin)
+    candidates.extend(
+        [
+            r"C:\Program Files (x86)\Gwyddion\bin",
+            r"C:\Program Files\Gwyddion\bin",
+        ]
+    )
+
+    for bin_dir in candidates:
+        if not bin_dir or not os.path.isdir(bin_dir):
+            continue
+        if bin_dir not in os.environ.get("PATH", ""):
+            os.environ["PATH"] = bin_dir + os.pathsep + os.environ.get("PATH", "")
+        if bin_dir not in sys.path:
+            sys.path.insert(0, bin_dir)
+
+        pygwy_dir = os.path.join(os.path.dirname(bin_dir), "share", "gwyddion", "pygwy")
+        if os.path.isdir(pygwy_dir) and pygwy_dir not in sys.path:
+            sys.path.insert(0, pygwy_dir)
+
+        try:
+            import gwy  # noqa: F401
+            return True
+        except Exception:
+            continue
+
+    sys.stderr.write(
+        "ERROR: pygwy (gwy module) not importable.\n"
+        "Hint: set GWY_BIN to your Gwyddion bin directory, e.g.\n"
+        "  set GWY_BIN=C:\\Program Files (x86)\\Gwyddion\\bin\n"
+    )
+    return False
 
 
 def _get_field_units(field):
@@ -72,6 +95,105 @@ def _get_field_units(field):
     except Exception:
         return None
     return None
+
+
+def _field_get_avg(field):
+    """Average value from gwy.DataField."""
+    try:
+        return float(field.get_avg())
+    except Exception:
+        data = field.get_data()
+        n = len(data)
+        if not n:
+            return 0.0
+        s = 0.0
+        for i in range(n):
+            s += float(data[i])
+        return s / float(n)
+
+
+def _field_get_rms(field):
+    """
+    RMS (used as std proxy) from gwy.DataField.
+
+    In Gwyddion terminology, `get_rms()` is typically the RMS roughness
+    (sqrt(mean((z-mean)^2))), i.e. standard deviation after mean subtraction.
+    """
+    try:
+        return float(field.get_rms())
+    except Exception:
+        data = field.get_data()
+        n = len(data)
+        if not n:
+            return 0.0
+        m = _field_get_avg(field)
+        s2 = 0.0
+        for i in range(n):
+            dv = float(data[i]) - m
+            s2 += dv * dv
+        return math.sqrt(s2 / float(n))
+
+
+def _percentile_sorted(sorted_vals, pct):
+    """Linear-interpolated percentile for an already-sorted list."""
+    n = len(sorted_vals)
+    if not n:
+        return 0.0
+    if pct <= 0.0:
+        return float(sorted_vals[0])
+    if pct >= 100.0:
+        return float(sorted_vals[-1])
+    k = (n - 1) * (pct / 100.0)
+    f = int(math.floor(k))
+    c = int(math.ceil(k))
+    if f == c:
+        return float(sorted_vals[f])
+    d0 = float(sorted_vals[f]) * (c - k)
+    d1 = float(sorted_vals[c]) * (k - f)
+    return d0 + d1
+
+
+def _field_clip_percentiles(field, low, high):
+    """Clip field data to [low, high] percentiles (Python-side helper)."""
+    data = field.get_data()
+    n = len(data)
+    if not n:
+        return
+    vals = [float(data[i]) for i in range(n)]
+    vals_sorted = sorted(vals)
+    lo_val = _percentile_sorted(vals_sorted, float(low))
+    hi_val = _percentile_sorted(vals_sorted, float(high))
+    if hi_val < lo_val:
+        lo_val, hi_val = hi_val, lo_val
+    for i in range(n):
+        v = vals[i]
+        if v < lo_val:
+            vals[i] = lo_val
+        elif v > hi_val:
+            vals[i] = hi_val
+    field.set_data(vals)
+
+
+def _mean(values):
+    n = len(values)
+    if not n:
+        return 0.0
+    s = 0.0
+    for v in values:
+        s += float(v)
+    return s / float(n)
+
+
+def _std(values):
+    n = len(values)
+    if not n:
+        return 0.0
+    m = _mean(values)
+    s2 = 0.0
+    for v in values:
+        dv = float(v) - m
+        s2 += dv * dv
+    return math.sqrt(s2 / float(n))
 
 
 def _connected_components(mask): # Why is this here? 
@@ -228,12 +350,8 @@ def _process_with_pygwy(path, processing_mode, mode_def, channel_defaults, manif
         clip = mode_def.get("clip_percentiles")
         if clip and isinstance(clip, (list, tuple)) and len(clip) == 2:
             try:
-                import numpy as np  # type: ignore
-                arr = _field_to_numpy(f)
                 low, high = float(clip[0]), float(clip[1])
-                lo_val, hi_val = np.percentile(arr, [low, high])
-                arr = np.clip(arr, lo_val, hi_val)
-                f.set_data(arr.ravel().tolist())
+                _field_clip_percentiles(f, low, high)
             except Exception as exc:
                 sys.stderr.write("WARN: clip_percentiles failed for %s: %s\n" % (path, exc))
         detected_unit = _get_field_units(f)
@@ -242,16 +360,14 @@ def _process_with_pygwy(path, processing_mode, mode_def, channel_defaults, manif
 
     if mode == "particle_count_basic":
         f = field.duplicate()
-        try:
-            import numpy as np  # type: ignore
-        except ImportError:
-            raise RuntimeError("numpy required for particle_count_basic.")
-
-        arr = _field_to_numpy(f)
-
         thresh = mode_def.get("threshold")
         if thresh is None:
-            thresh = float(np.mean(arr))
+            try:
+                thresh = _field_get_avg(f)
+            except Exception:
+                thresh = 0.0
+        else:
+            thresh = float(thresh)
 
         grains_result = None
         try:
@@ -271,11 +387,10 @@ def _process_with_pygwy(path, processing_mode, mode_def, channel_defaults, manif
             pixel_area = float(f.get_xres() * f.get_yres()) if f.get_xres() and f.get_yres() else 0.0
             denom = area_real if area_real > 0 else pixel_area
             count_density = float(count_total) / denom if denom else 0.0
-            sizes_arr = np.asarray(sizes_list, dtype=float)
-            if sizes_arr.size:
-                equiv_diam = 2.0 * np.sqrt(sizes_arr / np.pi)
-                mean_diam = float(np.mean(equiv_diam))
-                std_diam = float(np.std(equiv_diam))
+            if sizes_list:
+                equiv_diams = [2.0 * math.sqrt(float(a) / math.pi) for a in sizes_list]
+                mean_diam = float(_mean(equiv_diams))
+                std_diam = float(_std(equiv_diams))
             else:
                 mean_diam = 0.0
                 std_diam = 0.0
@@ -286,9 +401,9 @@ def _process_with_pygwy(path, processing_mode, mode_def, channel_defaults, manif
                 circ_vals = f.grains_get_values(grains, gwy.GrainQuantity.CIRCULARITY)
                 circ_list = list(circ_vals)[1:] if len(circ_vals) > 0 else []
                 if circ_list:
-                    circ_arr = np.asarray(circ_list, dtype=float)
-                    mean_circ = float(np.mean(circ_arr))
-                    std_circ = float(np.std(circ_arr))
+                    circ_floats = [float(x) for x in circ_list]
+                    mean_circ = float(_mean(circ_floats))
+                    std_circ = float(_std(circ_floats))
             except Exception:
                 pass
             grains_result = {
@@ -328,16 +443,9 @@ def _process_with_pygwy(path, processing_mode, mode_def, channel_defaults, manif
 
 
 def _to_mode_result(field, mode_def, processing_mode, src_path):
-    """Compute avg/std from a DataField using numpy."""
-    arr = _field_to_numpy(field)
-    try:
-        import numpy as np  # type: ignore
-    except ImportError:
-        raise RuntimeError("numpy required in pygwy environment to compute statistics.")
-
-    valid = arr[np.isfinite(arr)]
-    mean_val = float(np.mean(valid)) if valid.size else 0.0
-    std_val = float(np.std(valid)) if valid.size else 0.0
+    """Compute avg/std from a DataField using Gwyddion-provided stats."""
+    mean_val = _field_get_avg(field)
+    std_val = _field_get_rms(field)
 
     metric_type = mode_def.get("metric_type", processing_mode)
     units = mode_def.get("units", "a.u.")
