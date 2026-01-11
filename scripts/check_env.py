@@ -254,13 +254,18 @@ def main():
         action="store_true",
         help="Emit results as JSON instead of human-readable text.",
     )
+    parser.add_argument(
+        "--require-pygwy",
+        action="store_true",
+        help="Treat Gwyddion/pygwy components as required (use in pygwy/Py2 environment).",
+    )
     args = parser.parse_args()
 
     results = []
     results.append(check_python_version())
     results.extend(check_python_packages())
     results.extend(check_optional_packages())
-    results.extend(check_gwyddion())
+    results.extend(check_gwyddion(required=args.require_pygwy))
     results.append(check_architecture_for_pygwy())
 
     all_required_ok = all(

@@ -1,3 +1,6 @@
 numpy>=1.22.0
 matplotlib>=3.6.0
 PyYAML>=6.0.0
+
+# Optional helpers (install as needed):
+# gwyfile>=0.2.0  # read .gwy files without pygwy (Py3 only; pygwy itself is installed via Gwyddion on Py2.7)
