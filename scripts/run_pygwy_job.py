@@ -21,6 +21,7 @@ import re
 import sys
 
 _GRID_REGEX_MISS_WARNED = set()
+_GRID_INDEX_BASE_WARNED = False
 
 def load_manifest(path):
     with open(path, "r") as f:
@@ -275,6 +276,7 @@ def derive_grid_indices(path, grid_cfg):
     }
     """
     global _GRID_REGEX_MISS_WARNED
+    global _GRID_INDEX_BASE_WARNED
     pattern = None
     if grid_cfg:
         pattern = grid_cfg.get("filename_regex")
@@ -288,6 +290,30 @@ def derive_grid_indices(path, grid_cfg):
             col = m.groupdict().get("col")
             row_val = int(row) if row is not None else None
             col_val = int(col) if col is not None else None
+
+            # Spec expects grid indices to be zero-based.
+            # Filenames are commonly 1-based (e.g. RC001001). Allow explicit config,
+            # and warn if we have to assume the base.
+            index_base = None
+            if grid_cfg:
+                index_base = grid_cfg.get("index_base", None)
+            if index_base is None:
+                index_base = 1
+                if not _GRID_INDEX_BASE_WARNED:
+                    sys.stderr.write(
+                        "WARN: grid.index_base not set; assuming filenames are 1-based and converting to zero-based indices. "
+                        "Set grid.index_base explicitly (0 or 1) to silence this.\n"
+                    )
+                    _GRID_INDEX_BASE_WARNED = True
+            try:
+                index_base = int(index_base)
+            except Exception:
+                index_base = 1
+
+            if row_val is not None:
+                row_val = row_val - index_base
+            if col_val is not None:
+                col_val = col_val - index_base
             return row_val, col_val
         if pattern not in _GRID_REGEX_MISS_WARNED:
             sys.stderr.write(

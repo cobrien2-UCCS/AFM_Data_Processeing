@@ -48,6 +48,9 @@ modes:
 # Grid config for deriving row/col indices from filenames.
 grid:
   # LOC_RC[Row][Col] with 3-digit row/col indices
+  # SmartScan uses 1-based indices (RC001001); the pipeline stores zero-based indices,
+  # so set index_base=1 to subtract 1 from parsed values.
+  index_base: 1
   filename_regex: "LOC_RC(?P<row>\\d{3})(?P<col>\\d{3})"
 
 

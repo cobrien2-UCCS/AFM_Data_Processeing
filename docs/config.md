@@ -8,7 +8,7 @@ See `config.example.yaml` for a concrete example.
   - `channel_family`, `plane_level`, `median_size`, `line_level_x`, `line_level_y`, `clip_percentiles`
   - `metric_type`, `units`, `expected_units`, `on_unit_mismatch`
   - mode-specific (e.g., `threshold` for particle mode)
-- `grid`: `filename_regex` with named groups `row`/`col` to set grid indices.
+- `grid`: `filename_regex` with named groups `row`/`col` to set grid indices. Optional `index_base` (0 or 1) converts filename indices to zero-based values stored in `grid.row_idx`/`grid.col_idx`.
 - `summarize`: `recursive` flag for TIFF search.
 - `csv_modes`: column layout mapping keys (e.g., `core.avg_value`, `grid.row_idx`) to CSV columns.
 - `result_schemas`: casting CSV columns to typed fields for plotting/analysis.

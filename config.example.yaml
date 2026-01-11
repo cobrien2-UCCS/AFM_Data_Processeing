@@ -47,7 +47,12 @@ modes:
 
 # Grid config for deriving row/col indices from filenames.
 grid:
-  # Regex with named groups row/col to place samples on a grid.
+  # Regex with named groups `row` and `col` used to derive grid indices from the TIFF filename.
+  #
+  # The spec defines `grid.row_idx` and `grid.col_idx` as *zero-based* indices. SmartScan exports
+  # commonly use 1-based indices (e.g. `...LOC_RC001001...`), so set `index_base: 1` to convert
+  # `001 -> 0`, `002 -> 1`, etc.
+  index_base: 1
   filename_regex: "r(?P<row>\\d+)_c(?P<col>\\d+)"
 
 # Summarization options

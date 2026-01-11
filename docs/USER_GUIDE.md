@@ -33,7 +33,7 @@ Top-level sections (see `config.example.yaml`):
   - `plane_level`, `median_size`, `line_level_x`, `line_level_y`, `clip_percentiles` (optional post-processing).
   - `metric_type`, `units`, `expected_units`, `on_unit_mismatch` (`error|warn|skip_row`).
   - `threshold` (particle mode), other mode-specific params.
-- `grid`: filename regex with named groups `row`/`col` to add grid indices.
+- `grid`: filename regex with named groups `row`/`col` to add grid indices. Optional `index_base: 1` converts SmartScan-style `RC001001` to zero-based indices stored in the CSV.
 - `summarize`: `recursive: false|true` to control recursive search for TIFFs.
 - `csv_modes`: column layout and mapping from ModeResultRecord keys.
 - `result_schemas`: casting rules from CSV columns to typed fields for plotting.

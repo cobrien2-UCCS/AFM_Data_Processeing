@@ -25,6 +25,7 @@
   "output_dir": "C:\\Users\\Conor O'Brien\\Documents\\GitHub\\AFM-Data-Management\\out",
   "output_csv": "C:\\Users\\Conor O'Brien\\Documents\\GitHub\\AFM-Data-Management\\out\\summary.csv",
   "grid": {
+    "index_base": 1,
     "filename_regex": "LOC_RC(?P<row>\\d{3})(?P<col>\\d{3})"
   },
   "channel_defaults": {
