@@ -68,9 +68,53 @@ def collect_files(input_root: Path, pattern: str) -> Dict[str, Any]:
     return {"files": files, "input_root": str(input_root.resolve()), "pattern": pattern}
 
 
+def apply_input_filters(files: list, cfg: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Apply config-driven include/exclude regex filters to the input file list.
+
+    This is a helper for common edge cases like including only Forward or only
+    Backward scans, without hard-coding rules in code.
+
+    Config shape:
+      input_filters:
+        include_regex: ["..."]
+        exclude_regex: ["..."]
+    """
+    import re
+
+    filt = (cfg.get("input_filters") or {}) if cfg else {}
+    include = filt.get("include_regex") or []
+    exclude = filt.get("exclude_regex") or []
+
+    if isinstance(include, str):
+        include = [include]
+    if isinstance(exclude, str):
+        exclude = [exclude]
+
+    include_rx = [re.compile(p) for p in include if p]
+    exclude_rx = [re.compile(p) for p in exclude if p]
+
+    kept = []
+    for f in files:
+        base = str(Path(f).name)
+        if include_rx and not any(rx.search(base) for rx in include_rx):
+            continue
+        if exclude_rx and any(rx.search(base) for rx in exclude_rx):
+            continue
+        kept.append(f)
+
+    return {
+        "files": kept,
+        "filters_applied": bool(include_rx or exclude_rx),
+        "include_regex": include,
+        "exclude_regex": exclude,
+    }
+
+
 def build_manifest(cfg: Dict[str, Any], args: argparse.Namespace) -> Dict[str, Any]:
     mode_sel = resolve_modes(cfg, args.profile, args.processing_mode, args.csv_mode)
     files_info = collect_files(Path(args.input_root), args.pattern)
+    filt_info = apply_input_filters(files_info["files"], cfg)
 
     output_csv = args.output_csv
     if not output_csv:
@@ -82,7 +126,12 @@ def build_manifest(cfg: Dict[str, Any], args: argparse.Namespace) -> Dict[str, A
         "csv_mode": mode_sel["csv_mode"],
         "input_root": files_info["input_root"],
         "pattern": files_info["pattern"],
-        "files": files_info["files"],
+        "files": filt_info["files"],
+        "input_filters": {
+            "filters_applied": filt_info["filters_applied"],
+            "include_regex": filt_info["include_regex"],
+            "exclude_regex": filt_info["exclude_regex"],
+        },
         "output_dir": str(Path(args.output_dir).resolve()),
         "output_csv": output_csv,
         # Minimal slices of config needed downstream.

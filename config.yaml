@@ -16,6 +16,10 @@ modes:
     line_level_x: false            # optional line flatten in X
     line_level_y: false            # optional line flatten in Y
     clip_percentiles: null         # e.g., [5, 95] to clip extremes; null to skip
+    # Optional stats filtering (Python-side) to exclude invalid/saturated pixels from avg/std.
+    # stats_filter:
+    #   exclude_nonpositive: true
+    #   max_abs_value: 1e12
     metric_type: "modulus"         # core.metric_type value
     units: "MPa"
     expected_units: "GPa"          # optional validation target
@@ -58,11 +62,21 @@ grid:
 summarize:
   recursive: false   # if true, search TIFFs recursively
 
+# Optional input filtering (applied during manifest generation).
+# Useful for excluding duplicate Forward/Backward or repeated scans without changing code.
+# input_filters:
+#   include_regex: ["Backward"]
+#   exclude_regex: ["Forward"]
+
 # CSV modes define column layout and mapping from ModeResultRecord keys.
 csv_modes:
   default_scalar:
     columns:
       - { name: "source_file", from: "core.source_file" }
+      - { name: "channel", from: "file.channel", default: "" }
+      - { name: "direction", from: "file.direction", default: "" }
+      - { name: "grid_id", from: "file.grid_id", default: "" }
+      - { name: "date_code", from: "file.date_code", default: "" }
       - { name: "mode", from: "core.mode" }
       - { name: "metric_type", from: "core.metric_type" }
       - { name: "avg_value", from: "core.avg_value" }
@@ -95,6 +109,10 @@ result_schemas:
     from_csv_mode: "default_scalar"
     fields:
       - { field: "source_file", type: "string", column: "source_file" }
+      - { field: "channel", type: "string", column: "channel" }
+      - { field: "direction", type: "string", column: "direction" }
+      - { field: "grid_id", type: "string", column: "grid_id" }
+      - { field: "date_code", type: "string", column: "date_code" }
       - { field: "mode", type: "string", column: "mode" }
       - { field: "metric_type", type: "string", column: "metric_type" }
       - { field: "avg_value", type: "float", column: "avg_value" }
@@ -145,6 +163,7 @@ plotting_modes:
     recipe: "heatmap_grid"
     title: "Grid Heatmap"
     colorbar_label: "avg_value"
+    duplicate_policy: "warn_mean"
 
 # Profiles provide convenient presets tying modes together.
 profiles:

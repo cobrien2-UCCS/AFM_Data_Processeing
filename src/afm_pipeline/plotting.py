@@ -135,16 +135,64 @@ def plot_heatmap_grid(rows: List[Dict[str, Any]], plotting_def: Dict[str, Any], 
         log.warning("No data rows for heatmap: %s", name)
         return
 
-    max_row = max(int(r.get("row_idx", 0)) for r in rows)
-    max_col = max(int(r.get("col_idx", 0)) for r in rows)
+    # Filter out missing grid indices (default -1) so they don't wrap (Python -1 index).
+    valid_rows = []
+    skipped = 0
+    for r in rows:
+        try:
+            ri = int(r.get("row_idx", -1))
+            ci = int(r.get("col_idx", -1))
+        except Exception:
+            skipped += 1
+            continue
+        if ri < 0 or ci < 0:
+            skipped += 1
+            continue
+        valid_rows.append(r)
+
+    if skipped:
+        log.warning("Skipping %d rows without valid grid indices for heatmap '%s'.", skipped, name)
+
+    if not valid_rows:
+        log.warning("No valid grid-indexed rows for heatmap: %s", name)
+        return
+
+    max_row = max(int(r.get("row_idx", 0)) for r in valid_rows)
+    max_col = max(int(r.get("col_idx", 0)) for r in valid_rows)
     grid = [[float("nan")] * (max_col + 1) for _ in range(max_row + 1)]
 
-    for r in rows:
+    duplicate_policy = plotting_def.get("duplicate_policy", "warn_mean")
+    cell_values: Dict[tuple[int, int], List[float]] = {}
+    for r in valid_rows:
         ri = int(r.get("row_idx", 0))
         ci = int(r.get("col_idx", 0))
-        grid[ri][ci] = r.get("avg_value", float("nan"))
+        try:
+            v = float(r.get("avg_value", float("nan")))
+        except Exception:
+            v = float("nan")
+        cell_values.setdefault((ri, ci), []).append(v)
 
-    unit = _infer_unit(rows)
+    duplicates = {k: v for k, v in cell_values.items() if len(v) > 1}
+    if duplicates:
+        msg = "Found %d duplicate grid cells for heatmap '%s'." % (len(duplicates), name)
+        if duplicate_policy == "error":
+            raise ValueError(msg + " Set plotting_modes.<mode>.duplicate_policy to control behavior.")
+        log.warning("%s Using policy=%s.", msg, duplicate_policy)
+
+    for (ri, ci), vals in cell_values.items():
+        clean = [x for x in vals if x == x]  # drop NaNs
+        if not clean:
+            grid[ri][ci] = float("nan")
+            continue
+        if len(clean) == 1 or duplicate_policy in ("warn_last", "last"):
+            grid[ri][ci] = clean[-1]
+        elif duplicate_policy in ("warn_first", "first"):
+            grid[ri][ci] = clean[0]
+        else:
+            # warn_mean (default): average duplicates
+            grid[ri][ci] = sum(clean) / float(len(clean))
+
+    unit = _infer_unit(valid_rows)
     fig, ax = plt.subplots()
     im = ax.imshow(grid, origin="lower")
     cbar_label = plotting_def.get("colorbar_label") or ("avg_value (%s)" % unit if unit else "avg_value")

@@ -74,6 +74,7 @@ python scripts/check_env.py
   ```
 - The manifest contains: processing_mode, csv_mode, grid/channel defaults, mode/csv definitions, and the file list.
 - Patterns: defaults to `*.tif;*.tiff`. Use `**/*.tif` (or similar) to recurse.
+- Input filtering (optional): set `input_filters` in `config.yaml` (include/exclude regex) to drop Forward/Backward duplicates or other unwanted files during manifest generation.
 - Typical workflow:
   - Py3: generate manifest.
   - Py2: run pygwy processing to produce summary CSV.

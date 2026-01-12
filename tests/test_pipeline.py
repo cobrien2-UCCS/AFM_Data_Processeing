@@ -136,6 +136,12 @@ class PipelineTestCase(unittest.TestCase):
 
     def test_plot_heatmap_grid_generates_file(self):
         cfg = dict(self.cfg)
+        cfg["result_schemas"] = dict(cfg["result_schemas"])
+        cfg["result_schemas"]["default_scalar"] = dict(cfg["result_schemas"]["default_scalar"])
+        cfg["result_schemas"]["default_scalar"]["fields"] = list(cfg["result_schemas"]["default_scalar"]["fields"]) + [
+            {"field": "row_idx", "type": "int", "column": "row_idx"},
+            {"field": "col_idx", "type": "int", "column": "col_idx"},
+        ]
         cfg["plotting_modes"] = dict(cfg["plotting_modes"])
         cfg["plotting_modes"]["heatmap_grid"] = {
             "result_schema": "default_scalar",

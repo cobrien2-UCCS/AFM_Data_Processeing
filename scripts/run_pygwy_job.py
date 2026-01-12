@@ -22,6 +22,109 @@ import sys
 
 _GRID_REGEX_MISS_WARNED = set()
 _GRID_INDEX_BASE_WARNED = False
+_STATS_WARNED = False
+
+
+def _is_finite(x):
+    try:
+        return (x == x) and (x != float("inf")) and (x != float("-inf"))
+    except Exception:
+        return True
+
+
+def _field_stats_filtered(field, filter_cfg):
+    """
+    Compute mean/std/min/max on a DataField with optional value filtering.
+
+    This is a Python-side supplement intended for explicit, config-driven masking
+    when Gwyddion does not provide the exact filtering needed for robust summary
+    stats (e.g., excluding invalid/saturated pixels).
+    """
+    data = field.get_data()
+    n = len(data)
+    if not n:
+        return 0.0, 0.0, 0.0, 0.0, 0
+
+    min_value = filter_cfg.get("min_value") if filter_cfg else None
+    max_value = filter_cfg.get("max_value") if filter_cfg else None
+    max_abs_value = filter_cfg.get("max_abs_value") if filter_cfg else None
+    exclude_zero = bool(filter_cfg.get("exclude_zero")) if filter_cfg else False
+    exclude_nonpositive = bool(filter_cfg.get("exclude_nonpositive")) if filter_cfg else False
+
+    try:
+        min_value = float(min_value) if min_value is not None else None
+    except Exception:
+        min_value = None
+    try:
+        max_value = float(max_value) if max_value is not None else None
+    except Exception:
+        max_value = None
+    try:
+        max_abs_value = float(max_abs_value) if max_abs_value is not None else None
+    except Exception:
+        max_abs_value = None
+
+    vals = []
+    for i in range(n):
+        v = float(data[i])
+        if not _is_finite(v):
+            continue
+        if exclude_zero and v == 0.0:
+            continue
+        if exclude_nonpositive and v <= 0.0:
+            continue
+        if min_value is not None and v < min_value:
+            continue
+        if max_value is not None and v > max_value:
+            continue
+        if max_abs_value is not None and abs(v) > max_abs_value:
+            continue
+        vals.append(v)
+
+    if not vals:
+        return 0.0, 0.0, 0.0, 0.0, 0
+
+    m = float(_mean(vals))
+    s = float(_std(vals))
+    vmin = min(vals)
+    vmax = max(vals)
+    return m, s, float(vmin), float(vmax), int(len(vals))
+
+
+def _parse_filename_basic_metadata(path):
+    """
+    Best-effort filename parsing for common SmartScan exports.
+
+    This stays intentionally lightweight and does not attempt to fully implement
+    the spec's full parsing template. It exists mainly to:
+    - surface Forward/Backward duplicates in the CSV
+    - provide simple grouping keys (channel, date_code, grid_id)
+    """
+    base = os.path.basename(path)
+    out = {}
+
+    # e.g. "...-Modulus_Backward-251021-CRO.tiff"
+    m = re.search(r"-(?P<channel>[^-]+?)_(?P<direction>Forward|Backward)-", base)
+    if m:
+        out["file.channel"] = m.group("channel")
+        out["file.direction"] = m.group("direction")
+    else:
+        m = re.search(r"(?P<direction>Forward|Backward)", base)
+        if m:
+            out["file.direction"] = m.group("direction")
+
+    m = re.search(r"_GrID(?P<grid_id>\d{3,})", base)
+    if m:
+        try:
+            out["file.grid_id"] = int(m.group("grid_id"))
+        except Exception:
+            out["file.grid_id"] = m.group("grid_id")
+
+    m = re.search(r"-(?P<date_code>\d{6})-", base)
+    if m:
+        out["file.date_code"] = m.group("date_code")
+
+    return out
 
 def load_manifest(path):
     with open(path, "r") as f:
@@ -250,11 +353,12 @@ def build_csv_row(mode_result, csv_def, processing_mode, csv_mode):
     row = []
     for col_def in columns:
         key = col_def.get("from")
+        has_default = "default" in col_def
         default = col_def.get("default", "")
         if key in mode_result:
             row.append(mode_result.get(key))
             continue
-        if default != "":
+        if has_default:
             row.append(default)
             continue
         if on_missing == "error":
@@ -340,6 +444,8 @@ def process_file(path, manifest, use_pygwy):
     if result is None:
         return None
 
+    result.update(_parse_filename_basic_metadata(path))
+
     if row_idx is not None:
         result["grid.row_idx"] = row_idx
     if col_idx is not None:
@@ -365,6 +471,10 @@ def _process_with_pygwy(path, processing_mode, mode_def, channel_defaults, manif
         raise RuntimeError("Failed to load file with pygwy: %s" % path)
 
     field_id, field = _select_data_field(container, mode_def, channel_defaults)
+    try:
+        field_title = container.get_string_by_name(field_id + "/title") or ""
+    except Exception:
+        field_title = ""
     mode = processing_mode or "raw_noop"
 
     if mode in ("modulus_basic", "topography_flat"):
@@ -395,6 +505,11 @@ def _process_with_pygwy(path, processing_mode, mode_def, channel_defaults, manif
                 sys.stderr.write("WARN: clip_percentiles failed for %s: %s\n" % (path, exc))
         detected_unit = _get_field_units(f)
         result = _to_mode_result(f, mode_def, mode, path)
+        result["channel.key"] = field_id
+        if field_title:
+            result["channel.title"] = field_title
+        if detected_unit:
+            result["channel.z_units"] = detected_unit
         return _apply_units(result, processing_mode, mode_def, manifest, detected_unit)
 
     if mode == "particle_count_basic":
@@ -469,6 +584,12 @@ def _process_with_pygwy(path, processing_mode, mode_def, channel_defaults, manif
             "core.nx": int(f.get_xres()),
             "core.ny": int(f.get_yres()),
         }
+        result["channel.key"] = field_id
+        if field_title:
+            result["channel.title"] = field_title
+        det_u = _get_field_units(f)
+        if det_u:
+            result["channel.z_units"] = det_u
         result.update(grains_result)
         return _apply_units(result, processing_mode, mode_def, manifest, "count")
 
@@ -476,20 +597,37 @@ def _process_with_pygwy(path, processing_mode, mode_def, channel_defaults, manif
         processed_field = field.duplicate()
         detected_unit = _get_field_units(processed_field)
         result = _to_mode_result(processed_field, mode_def, mode, path)
+        result["channel.key"] = field_id
+        if field_title:
+            result["channel.title"] = field_title
+        if detected_unit:
+            result["channel.z_units"] = detected_unit
         return _apply_units(result, processing_mode, mode_def, manifest, detected_unit)
 
     raise ValueError("Unknown processing_mode: %s" % mode)
 
 
 def _to_mode_result(field, mode_def, processing_mode, src_path):
-    """Compute avg/std from a DataField using Gwyddion-provided stats."""
-    mean_val = _field_get_avg(field)
-    std_val = _field_get_rms(field)
+    """Compute avg/std from a DataField."""
+    global _STATS_WARNED
+    stats_filter = mode_def.get("stats_filter") if mode_def else None
+    if stats_filter:
+        mean_val, std_val, vmin, vmax, n_valid = _field_stats_filtered(field, stats_filter or {})
+        if not _STATS_WARNED:
+            sys.stderr.write(
+                "INFO: Using stats_filter for summary statistics (config-driven masking). "
+                "This affects avg/std values.\n"
+            )
+            _STATS_WARNED = True
+    else:
+        mean_val = _field_get_avg(field)
+        std_val = _field_get_rms(field)
+        vmin, vmax, n_valid = None, None, None
 
     metric_type = mode_def.get("metric_type", processing_mode)
     units = mode_def.get("units", "a.u.")
 
-    return {
+    out = {
         "core.source_file": os.path.basename(src_path),
         "core.mode": processing_mode,
         "core.metric_type": metric_type,
@@ -499,6 +637,13 @@ def _to_mode_result(field, mode_def, processing_mode, src_path):
         "core.nx": int(field.get_xres()),
         "core.ny": int(field.get_yres()),
     }
+    if vmin is not None:
+        out["core.min_value"] = float(vmin)
+    if vmax is not None:
+        out["core.max_value"] = float(vmax)
+    if n_valid is not None:
+        out["core.n_valid"] = int(n_valid)
+    return out
 
 
 def _apply_units(result, processing_mode, mode_def, manifest, detected_unit):
