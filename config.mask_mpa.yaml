@@ -1,118 +1,94 @@
 # Channel defaults inform selection of data fields in pygwy/Gwyddion.
 channel_defaults:
-  # Used as hint to pick a modulus channel (name match, case-insensitive).
   modulus_family: "modulus"
-  # Used as hint to pick a topography/height channel.
   topography_family: "height"
 
-# Processing modes define how a TIFF is processed in pygwy.
-# Philosophy: use Gwyddion/pygwy for core ops (leveling, filters, grains).
-# Use Python-side helpers only when Gwyddion lacks the needed function.
+# Processing modes (Gwyddion-first).
 modes:
   modulus_basic:
-    channel_family: "modulus"      # pick modulus-like channel
-    plane_level: true              # apply plane leveling
-    median_size: 3                 # median filter size (odd int); set null to skip
-    # Line correction using Gwyddion Align Rows (scan line artefacts)
-    # line_correct:
-    #   enable: true
-    #   method: "median"            # median|polynomial|matching|... (defaults to median)
-    #   direction: "horizontal"     # horizontal|vertical
-    line_level_x: false            # legacy flag (maps to line_correct horizontal)
-    line_level_y: false            # legacy flag (maps to line_correct vertical)
-    clip_percentiles: null         # e.g., [5, 95] to clip extremes; null to skip
-    # Optional mask stage (stats computed only on masked pixels).
-    # mask:                         # Uncomment to enable masking for stats
-    #   enable: true
-    #   # Single mask (threshold example; edit threshold for your data):
-    #   # method: "threshold"       # threshold|range|percentile
-    #   # threshold: 0.0            # TODO: set your threshold
-    #   # direction: "above"        # above|below
-    #   # invert: false             # invert selection
-    #   # on_empty: "error"         # error|warn|skip_row
-    #   # OR multi-mask (ordered, combined with AND/OR):
-    #   # combine: "and"            # and|or (order is respected)
-    #   # steps:
-    #   #   - { method: "threshold", threshold: 0.0, direction: "above" }  # TODO: set
-    #   #   - { method: "percentile", percentiles: [5, 95] }
-    # Optional stats filtering (Python-side) to exclude invalid/saturated pixels from avg/std.
-    # This does not change the image; it only affects the computed stats.
-    # stats_filter:
-    #   min_value: 0.0              # exclude values below
-    #   max_value: 1e12             # exclude values above
-    #   exclude_nonpositive: true   # drop <= 0
-    #   on_empty: "error"           # error|warn|skip_row if all pixels are excluded
-    metric_type: "modulus"         # core.metric_type value
-    units: "GPa"
-    expected_units: "GPa"          # optional validation target
-    on_unit_mismatch: "error"      # "error" | "warn" | "skip_row"
-  topography_flat:
-    channel_family: "height"
+    channel_family: "modulus"
     plane_level: true
-    median_size: 3
+    median_size: 3                 # median filter size (odd int); set null to skip
+    # Line correction (Align Rows)
     # line_correct:
     #   enable: true
-    #   method: "median"            # defaults to median
+    #   method: "median"            # defaults to median if omitted
     #   direction: "horizontal"
     line_level_x: false
     line_level_y: false
     clip_percentiles: null
+    # Mask applied before stats (units: raw data, typically MPa pre-conversion).
+    mask:
+      enable: true
+      method: "threshold"
+      threshold: 0.1               # keep values >= 0.1 MPa (adjust as needed)
+      direction: "above"
+      invert: false
+      on_empty: "error"
+    # Value include/exclude for stats (still in raw units, typically MPa).
+    stats_filter:
+      min_value: 0.5               # exclude below 0.5 MPa
+      max_value: 70.0              # exclude above 70 MPa
+      exclude_nonpositive: true
+      on_empty: "warn"             # warn if all pixels are removed
+    metric_type: "modulus"
+    units: "MPa"
+    expected_units: "GPa"          # validate after conversion
+    on_unit_mismatch: "error"
+
+  topography_flat:
+    channel_family: "height"
+    plane_level: true
+    median_size: 3
+    line_level_x: false
+    line_level_y: false
+    clip_percentiles: null
+    # Mask/template left disabled; enable and tune if needed.
     # mask:
     #   enable: true
-    #   # method: "threshold"
-    #   # threshold: 0.0            # TODO: set your threshold
-    #   # direction: "above"
-    #   # invert: false
-    #   # on_empty: "error"
-    #   # OR multi-mask:
-    #   # combine: "and"
-    #   # steps:
-    #   #   - { method: "threshold", threshold: 0.0, direction: "above" }
-    #   #   - { method: "percentile", percentiles: [5, 95] }
+    #   method: "threshold"
+    #   threshold: 0.0
+    #   direction: "above"
+    #   on_empty: "error"
     metric_type: "topography_height"
     units: "nm"
     expected_units: "nm"
     on_unit_mismatch: "error"
+
   particle_count_basic:
     channel_family: "height"
     plane_level: false
     metric_type: "particle_count"
-    threshold: null                # if null, use mean-based threshold
+    threshold: null
     units: "count"
     expected_units: "count"
     on_unit_mismatch: "error"
+
   raw_noop:
-    channel_family: null           # first available channel
+    channel_family: null
     plane_level: false
     metric_type: "raw"
     units: "a.u."
 
 # Grid config for deriving row/col indices from filenames.
 grid:
-  # Regex with named groups `row` and `col` used to derive grid indices from the TIFF filename.
-  #
-  # The spec defines `grid.row_idx` and `grid.col_idx` as *zero-based* indices. SmartScan exports
-  # commonly use 1-based indices (e.g. `...LOC_RC001001...`), so set `index_base: 1` to convert
-  # `001 -> 0`, `002 -> 1`, etc.
   index_base: 1
-  filename_regex: "r(?P<row>\\d+)_c(?P<col>\\d+)"
+  filename_regex: "LOC_RC(?P<row>\\d{3})(?P<col>\\d{3})"
 
 # Summarization options
 summarize:
-  recursive: false   # if true, search TIFFs recursively
+  recursive: false
 
-# Optional input filtering (applied during manifest generation).
-# Useful for excluding duplicate Forward/Backward or repeated scans without changing code.
+# Optional input filtering for manifest generation.
 # input_filters:
 #   include_regex: ["Backward"]
 #   exclude_regex: ["Forward"]
 
-# CSV modes define column layout and mapping from ModeResultRecord keys.
+# CSV modes
 csv_modes:
   default_scalar:
     columns:
       - { name: "source_file", from: "core.source_file" }
-      # Optional filename-derived metadata (helps with Forward/Backward duplicates).
       - { name: "channel", from: "file.channel", default: "" }
       - { name: "direction", from: "file.direction", default: "" }
       - { name: "grid_id", from: "file.grid_id", default: "" }
@@ -143,7 +119,7 @@ csv_modes:
       - { name: "col_idx", from: "grid.col_idx", default: -1 }
     on_missing_field: "warn_null"
 
-# Result schemas cast CSV rows to typed dicts for plotting/analysis.
+# Result schemas
 result_schemas:
   default_scalar:
     from_csv_mode: "default_scalar"
@@ -178,7 +154,7 @@ result_schemas:
       - { field: "row_idx", type: "int", column: "row_idx" }
       - { field: "col_idx", type: "int", column: "col_idx" }
 
-# Plotting modes map schema to recipe and styling.
+# Plotting modes
 plotting_modes:
   sample_bar_with_error:
     result_schema: "default_scalar"
@@ -203,22 +179,16 @@ plotting_modes:
     recipe: "heatmap_grid"
     title: "Grid Heatmap"
     colorbar_label: "avg_value"
-    # If multiple rows map to the same (row_idx, col_idx) cell (e.g. Forward/Backward duplicates),
-    # choose how the heatmap aggregates:
-    # - warn_mean (default): average duplicates
-    # - warn_first / warn_last: take first/last value
-    # - error: abort plotting
     duplicate_policy: "warn_mean"
 
-# Profiles provide convenient presets tying modes together.
+# Profiles
 profiles:
-  modulus_grid:
+  modulus_grid_masked:
     processing_mode: "modulus_basic"
     csv_mode: "default_scalar"
     plotting_modes: ["sample_bar_with_error", "heatmap_grid"]
 
-# Unit conversions (per mode). If detected units match a key, values are scaled
-# by factor and units set to target.
+# Unit conversions
 unit_conversions:
   modulus_basic:
     MPa: { target: "GPa", factor: 0.001 }

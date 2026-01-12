@@ -14,6 +14,7 @@ Reference for the pygwy/Gwyddion functions used by the pipeline (Py2 runner).
     - `/module/linematch/do_plot` (false)
 - Line flatten (legacy flags): `line_level_x` / `line_level_y` map to Align Rows with median method.
 - Optional Python-side clipping: percentile clip after filters (config `clip_percentiles`).
+- Optional mask stage (config `mask`): builds a boolean mask (threshold/range/percentile) and computes stats on masked pixels.
 
 ## Grain / particle
 - Threshold mask: duplicate field, set `1.0`/`0.0` by threshold.

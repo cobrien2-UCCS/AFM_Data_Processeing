@@ -42,9 +42,9 @@ def _is_finite(x):
         return True
 
 
-def _field_stats_filtered(field, filter_cfg):
+def _field_stats_masked(field, mask, filter_cfg):
     """
-    Compute mean/std/min/max on a DataField with optional value filtering.
+    Compute mean/std/min/max on a DataField with optional mask + value filtering.
 
     This is a Python-side supplement intended for explicit, config-driven masking
     when Gwyddion does not provide the exact filtering needed for robust summary
@@ -74,8 +74,14 @@ def _field_stats_filtered(field, filter_cfg):
     except Exception:
         max_abs_value = None
 
-    vals = []
+    count = 0
+    mean_val = 0.0
+    m2 = 0.0
+    vmin = None
+    vmax = None
     for i in range(n):
+        if mask is not None and not mask[i]:
+            continue
         v = float(data[i])
         if not _is_finite(v):
             continue
@@ -89,16 +95,27 @@ def _field_stats_filtered(field, filter_cfg):
             continue
         if max_abs_value is not None and abs(v) > max_abs_value:
             continue
-        vals.append(v)
 
-    if not vals:
+        count += 1
+        if vmin is None or v < vmin:
+            vmin = v
+        if vmax is None or v > vmax:
+            vmax = v
+
+        # Welford online mean/std
+        delta = v - mean_val
+        mean_val += delta / float(count)
+        m2 += delta * (v - mean_val)
+
+    if not count:
         return 0.0, 0.0, 0.0, 0.0, 0
 
-    m = float(_mean(vals))
-    s = float(_std(vals))
-    vmin = min(vals)
-    vmax = max(vals)
-    return m, s, float(vmin), float(vmax), int(len(vals))
+    std_val = math.sqrt(m2 / float(count))
+    return float(mean_val), float(std_val), float(vmin), float(vmax), int(count)
+
+
+def _field_stats_filtered(field, filter_cfg):
+    return _field_stats_masked(field, None, filter_cfg or {})
 
 
 def _parse_filename_basic_metadata(path):
@@ -143,6 +160,189 @@ def _normalize_method_name(name):
     return str(name).strip().lower().replace("-", "_").replace(" ", "_")
 
 
+def _build_single_mask(field, mask_cfg):
+    """Build a boolean mask list from a single mask config entry."""
+    if not mask_cfg:
+        return None, 0, 0
+    if isinstance(mask_cfg, bool):
+        if not mask_cfg:
+            return None, 0, 0
+        mask_cfg = {}
+
+    enabled = bool(mask_cfg.get("enable", True))
+    if not enabled:
+        return None, 0, 0
+
+    method = _normalize_method_name(mask_cfg.get("method") or mask_cfg.get("type") or "threshold")
+    invert = bool(mask_cfg.get("invert"))
+    include_equal = mask_cfg.get("include_equal", True)
+    inclusive = bool(mask_cfg.get("inclusive", True))
+
+    data = field.get_data()
+    n = len(data)
+    if not n:
+        return None, 0, 0
+
+    mask = [False] * n
+    kept = 0
+
+    if method == "threshold":
+        if "threshold" not in mask_cfg:
+            raise RuntimeError("mask.method=threshold requires mask.threshold")
+        try:
+            threshold = float(mask_cfg.get("threshold"))
+        except Exception:
+            raise RuntimeError("mask.threshold must be numeric")
+        direction = _normalize_method_name(mask_cfg.get("direction") or "above")
+        for i in range(n):
+            v = float(data[i])
+            if not _is_finite(v):
+                continue
+            if direction in ("above", "greater", "gt"):
+                keep = v >= threshold if include_equal else v > threshold
+            elif direction in ("below", "less", "lt"):
+                keep = v <= threshold if include_equal else v < threshold
+            else:
+                raise RuntimeError("mask.direction must be 'above' or 'below'")
+            if invert:
+                keep = not keep
+            if keep:
+                mask[i] = True
+                kept += 1
+
+    elif method == "range":
+        min_value = mask_cfg.get("min_value")
+        max_value = mask_cfg.get("max_value")
+        if min_value is None and max_value is None:
+            raise RuntimeError("mask.method=range requires min_value and/or max_value")
+        try:
+            min_value = float(min_value) if min_value is not None else None
+        except Exception:
+            min_value = None
+        try:
+            max_value = float(max_value) if max_value is not None else None
+        except Exception:
+            max_value = None
+        if min_value is None and max_value is None:
+            raise RuntimeError("mask.method=range requires numeric min_value and/or max_value")
+
+        for i in range(n):
+            v = float(data[i])
+            if not _is_finite(v):
+                continue
+            keep = True
+            if min_value is not None:
+                keep = keep and (v >= min_value if inclusive else v > min_value)
+            if max_value is not None:
+                keep = keep and (v <= max_value if inclusive else v < max_value)
+            if invert:
+                keep = not keep
+            if keep:
+                mask[i] = True
+                kept += 1
+
+    elif method == "percentile":
+        pct_pair = mask_cfg.get("percentiles")
+        low = mask_cfg.get("low_percentile")
+        high = mask_cfg.get("high_percentile")
+        if pct_pair and isinstance(pct_pair, (list, tuple)) and len(pct_pair) == 2:
+            low, high = pct_pair[0], pct_pair[1]
+        if low is None or high is None:
+            raise RuntimeError("mask.method=percentile requires low/high percentiles")
+        try:
+            low = float(low)
+            high = float(high)
+        except Exception:
+            raise RuntimeError("mask.percentiles must be numeric")
+
+        vals = []
+        for i in range(n):
+            v = float(data[i])
+            if _is_finite(v):
+                vals.append(v)
+        if not vals:
+            return None, 0, n
+        vals_sorted = sorted(vals)
+        lo_val = _percentile_sorted(vals_sorted, low)
+        hi_val = _percentile_sorted(vals_sorted, high)
+        if hi_val < lo_val:
+            lo_val, hi_val = hi_val, lo_val
+
+        for i in range(n):
+            v = float(data[i])
+            if not _is_finite(v):
+                continue
+            keep = (v >= lo_val if inclusive else v > lo_val) and (v <= hi_val if inclusive else v < hi_val)
+            if invert:
+                keep = not keep
+            if keep:
+                mask[i] = True
+                kept += 1
+
+    else:
+        raise RuntimeError("Unknown mask.method: %s" % method)
+
+    return mask, kept, n
+
+
+def _build_mask(field, mask_cfg):
+    """
+    Build a boolean mask list from config.
+
+    Supports a single mask dict or a list/steps with combine policy.
+    mask[i] == True means the value is included in summary stats.
+    Supported methods: threshold, range, percentile.
+    """
+    if not mask_cfg:
+        return None, None, None
+    if isinstance(mask_cfg, list):
+        steps = mask_cfg
+        combine = "and"
+        on_empty = "error"
+    elif isinstance(mask_cfg, dict) and "steps" in mask_cfg:
+        steps = mask_cfg.get("steps") or []
+        combine = _normalize_method_name(mask_cfg.get("combine") or "and")
+        on_empty = mask_cfg.get("on_empty", "error")
+    else:
+        steps = [mask_cfg]
+        combine = "and"
+        on_empty = mask_cfg.get("on_empty", "error") if isinstance(mask_cfg, dict) else "error"
+
+    if not steps:
+        return None, None, None
+
+    data = field.get_data()
+    n = len(data)
+    if not n:
+        return None, None, None
+
+    combined = None
+    for step in steps:
+        step_mask, _, _ = _build_single_mask(field, step)
+        if step_mask is None:
+            continue
+        if combined is None:
+            combined = step_mask
+        else:
+            if combine in ("or", "union"):
+                combined = [(combined[i] or step_mask[i]) for i in range(n)]
+            else:
+                combined = [(combined[i] and step_mask[i]) for i in range(n)]
+
+    if combined is None:
+        return None, None, None
+
+    kept = sum(1 for m in combined if m)
+    if kept == 0:
+        if on_empty == "skip_row":
+            return combined, kept, n
+        if on_empty == "warn":
+            sys.stderr.write("WARN: Mask stage produced 0 included pixels; continuing.\n")
+        else:
+            raise RuntimeError("Mask stage produced 0 included pixels.")
+    return combined, kept, n
+
+
 def _apply_line_correction(container, field_key, line_cfg, fallback_direction=None):
     """
     Apply scan-line correction using Gwyddion's Align Rows (linematch) module.
@@ -169,10 +369,11 @@ def _apply_line_correction(container, field_key, line_cfg, fallback_direction=No
         return False
 
     method_id = line_cfg.get("method_id")
-    if method_id is None:
-        name = _normalize_method_name(line_cfg.get("method"))
-        if name:
-            method_id = _LINE_MATCH_METHODS.get(name)
+    name = _normalize_method_name(line_cfg.get("method"))
+    if method_id is None and not name:
+        name = "median"
+    if method_id is None and name:
+        method_id = _LINE_MATCH_METHODS.get(name)
 
     direction = line_cfg.get("direction") or fallback_direction
     dir_val = None
@@ -637,8 +838,25 @@ def _process_with_pygwy(path, processing_mode, mode_def, channel_defaults, manif
                 _field_clip_percentiles(f, low, high)
             except Exception as exc:
                 sys.stderr.write("WARN: clip_percentiles failed for %s: %s\n" % (path, exc))
+        mask_cfg = mode_def.get("mask") if mode_def else None
+        mask = None
+        mask_counts = None
+        if mask_cfg:
+            mask, kept, total = _build_mask(f, mask_cfg)
+            if mask is not None:
+                if kept == 0:
+                    policy = mask_cfg.get("on_empty", "error")
+                    msg = "Mask stage produced 0 included pixels for %s" % path
+                    if policy == "skip_row":
+                        sys.stderr.write("WARN: %s; skipping row.\n" % msg)
+                        return None
+                    if policy == "warn":
+                        sys.stderr.write("WARN: %s; continuing.\n" % msg)
+                    else:
+                        raise RuntimeError(msg)
+                mask_counts = (total, kept)
         detected_unit = _get_field_units(f)
-        result = _to_mode_result(f, mode_def, mode, path)
+        result = _to_mode_result(f, mode_def, mode, path, mask=mask, mask_counts=mask_counts)
         result["channel.key"] = field_id
         if field_title:
             result["channel.title"] = field_title
@@ -741,16 +959,32 @@ def _process_with_pygwy(path, processing_mode, mode_def, channel_defaults, manif
     raise ValueError("Unknown processing_mode: %s" % mode)
 
 
-def _to_mode_result(field, mode_def, processing_mode, src_path):
+def _to_mode_result(field, mode_def, processing_mode, src_path, mask=None, mask_counts=None):
     """Compute avg/std from a DataField."""
     global _STATS_WARNED
     stats_filter = mode_def.get("stats_filter") if mode_def else None
-    if stats_filter:
-        mean_val, std_val, vmin, vmax, n_valid = _field_stats_filtered(field, stats_filter or {})
+    if mask is not None or stats_filter:
+        mean_val, std_val, vmin, vmax, n_valid = _field_stats_masked(field, mask, stats_filter or {})
+        if n_valid == 0:
+            policy = "error"
+            if stats_filter and isinstance(stats_filter, dict):
+                policy = stats_filter.get("on_empty", "error")
+            if policy == "skip_row":
+                sys.stderr.write("WARN: Stats filter removed all pixels; skipping row for %s\n" % src_path)
+                return None
+            if policy == "warn":
+                sys.stderr.write("WARN: Stats filter removed all pixels; writing zeros for %s\n" % src_path)
+            else:
+                raise RuntimeError("Stats filter removed all pixels for %s" % src_path)
         if not _STATS_WARNED:
+            if mask is not None and stats_filter:
+                msg = "INFO: Using mask + stats_filter for summary statistics (config-driven masking). "
+            elif mask is not None:
+                msg = "INFO: Using mask for summary statistics (config-driven masking). "
+            else:
+                msg = "INFO: Using stats_filter for summary statistics (config-driven masking). "
             sys.stderr.write(
-                "INFO: Using stats_filter for summary statistics (config-driven masking). "
-                "This affects avg/std values.\n"
+                msg + "This affects avg/std values.\n"
             )
             _STATS_WARNED = True
     else:
@@ -777,6 +1011,12 @@ def _to_mode_result(field, mode_def, processing_mode, src_path):
         out["core.max_value"] = float(vmax)
     if n_valid is not None:
         out["core.n_valid"] = int(n_valid)
+    if mask_counts:
+        total, kept = mask_counts
+        out["mask.n_total"] = int(total)
+        out["mask.n_kept"] = int(kept)
+        if total:
+            out["mask.frac_kept"] = float(kept) / float(total)
     return out
 
 

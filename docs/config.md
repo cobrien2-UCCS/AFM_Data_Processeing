@@ -7,7 +7,8 @@ See `config.example.yaml` for a concrete example.
 - `modes`: processing modes (Gwyddion-first). Common keys:
   - `channel_family`, `plane_level`, `median_size`, `line_level_x`, `line_level_y`, `clip_percentiles`
   - `line_correct` (optional): Gwyddion Align Rows settings for scan-line artefacts (`method`, `direction`, `method_id`)
-  - `stats_filter` (optional): exclude invalid/saturated pixels from stats (Python-side)
+  - `mask` (optional): config-driven mask (threshold/range/percentile); supports multi-step `steps` with `combine: and|or`; `on_empty: error|warn|skip_row`
+  - `stats_filter` (optional): exclude invalid/saturated pixels from stats (Python-side value rules); `on_empty: error|warn|skip_row`
   - `metric_type`, `units`, `expected_units`, `on_unit_mismatch`
   - mode-specific (e.g., `threshold` for particle mode)
 - `grid`: `filename_regex` with named groups `row`/`col` to set grid indices. Optional `index_base` (0 or 1) converts filename indices to zero-based values stored in `grid.row_idx`/`grid.col_idx`.

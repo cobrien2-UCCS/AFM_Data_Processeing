@@ -32,6 +32,8 @@ Top-level sections (see `config.example.yaml`):
 - `modes`: processing modes (Gwyddion-first). Keys:
   - `channel_family`: which channel to select.
   - `plane_level`, `line_correct` (Align Rows), `median_size`, `line_level_x`, `line_level_y`, `clip_percentiles`.
+  - `mask` (optional): apply a config-driven mask and compute stats only on masked pixels (supports multi-step AND/OR combine).
+  - `stats_filter` (optional): include/exclude pixel values from stats without altering the image; `on_empty: error|warn|skip_row`.
   - `metric_type`, `units`, `expected_units`, `on_unit_mismatch` (`error|warn|skip_row`).
   - `threshold` (particle mode), other mode-specific params.
 - `grid`: filename regex with named groups `row`/`col` to add grid indices. Optional `index_base: 1` converts SmartScan-style `RC001001` to zero-based indices stored in the CSV.
@@ -78,6 +80,47 @@ Top-level sections (see `config.example.yaml`):
   2) Align Rows (line correction) for scan-line artefacts
   3) Noise filters (median/denoise)
   4) Mask creation and masked statistics
+
+## 8.1) Masking and stats_filter (include/exclude)
+Two different mechanisms affect summary stats:
+- `mask`: builds a boolean mask over the field; only pixels where `mask[i] == True` are included in avg/std. This is a Gwyddion-first step in the Py2 runner and is intended for ROI selection (e.g., threshold/range/percentile).
+- `stats_filter`: excludes values from stats based on value rules (min/max, nonpositive, zero). This does not change the image; it only affects the computed stats.
+
+Example mask (threshold):
+```yaml
+modes:
+  modulus_basic:
+    mask:
+      enable: true
+      method: "threshold"
+      threshold: 0.0
+      direction: "above"   # keep values >= 0
+      on_empty: "error"
+```
+
+Example multi-mask with AND combine:
+```yaml
+modes:
+  modulus_basic:
+    mask:
+      combine: "and"          # or "or"
+      steps:
+        - { method: "threshold", threshold: 0.0, direction: "above" }
+        - { method: "percentile", percentiles: [5, 95] }
+      on_empty: "warn"        # error|warn|skip_row if no pixels survive
+```
+
+Example stats_filter (include/exclude rules):
+```yaml
+modes:
+  modulus_basic:
+    stats_filter:
+      min_value: 0.0       # exclude values below 0
+      max_value: 1e12      # exclude values above 1e12
+      exclude_zero: true   # exclude exact zeros
+      exclude_nonpositive: true
+      on_empty: "warn"     # error|warn|skip_row if all pixels are excluded
+```
 
 ## 9) Troubleshooting
 - pygwy not found: run `scripts/check_env.py --require-pygwy` under Python 2.7 and ensure `GWY_BIN` is set (or Gwyddion `bin` is on PATH).
