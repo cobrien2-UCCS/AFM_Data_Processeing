@@ -23,6 +23,7 @@ import sys
 _GRID_REGEX_MISS_WARNED = set()
 _GRID_INDEX_BASE_WARNED = False
 _STATS_WARNED = False
+_DEBUG_SAVED = 0
 _LINE_MATCH_METHODS = {
     "median": 0,
     "modus": 1,
@@ -158,6 +159,82 @@ def _normalize_method_name(name):
     if not name:
         return ""
     return str(name).strip().lower().replace("-", "_").replace(" ", "_")
+
+
+def _debug_cfg(manifest):
+    return manifest.get("debug") or {}
+
+
+def _debug_enabled(manifest):
+    dbg = _debug_cfg(manifest)
+    return bool(dbg.get("enable"))
+
+
+def _debug_level(manifest):
+    dbg = _debug_cfg(manifest)
+    lvl = str(dbg.get("level", "info")).lower()
+    return lvl
+
+
+def _debug_should_save(manifest):
+    global _DEBUG_SAVED
+    dbg = _debug_cfg(manifest)
+    if not dbg.get("enable"):
+        return False
+    limit = dbg.get("sample_limit")
+    try:
+        limit = int(limit)
+    except Exception:
+        limit = None
+    if limit is None or limit <= 0:
+        return True
+    return _DEBUG_SAVED < limit
+
+
+def _debug_out_dir(manifest):
+    dbg = _debug_cfg(manifest)
+    out_dir = dbg.get("out_dir")
+    if out_dir:
+        return out_dir
+    out_dir = manifest.get("output_dir") or "."
+    return os.path.join(out_dir, "debug")
+
+
+def _save_field(path, field):
+    """Save a DataField to a file via gwy file save."""
+    try:
+        import gwy  # type: ignore
+    except Exception as exc:
+        sys.stderr.write("WARN: debug save skipped (cannot import gwy): %s\n" % exc)
+        return False
+    try:
+        container = gwy.gwy_container_new()
+        container.set_object_by_name("/0/data", field)
+        gwy.gwy_file_save(container, path)
+        return True
+    except Exception as exc:
+        sys.stderr.write("WARN: debug save failed for %s: %s\n" % (path, exc))
+        return False
+
+
+def _mask_field_from_bool(field, mask):
+    """Create a DataField mask (0/1) from a boolean mask list."""
+    try:
+        mfield = field.duplicate()
+        data = mfield.get_data()
+        for i in range(len(data)):
+            data[i] = 1.0 if mask[i] else 0.0
+        return mfield
+    except Exception:
+        return None
+
+
+def _debug_log_fields(manifest):
+    dbg = _debug_cfg(manifest)
+    fields = dbg.get("log_fields") or []
+    if isinstance(fields, str):
+        fields = [fields]
+    return set([str(f).strip().lower() for f in fields if f])
 
 
 def _build_single_mask(field, mask_cfg):
@@ -739,7 +816,7 @@ def derive_grid_indices(path, grid_cfg):
     return None, None
 
 
-def process_file(path, manifest, use_pygwy):
+def process_file(path, manifest, use_pygwy, allow_debug_save=False):
     mode_def = manifest.get("mode_definition", {}) or {}
     grid_cfg = manifest.get("grid", {}) or {}
     channel_defaults = manifest.get("channel_defaults", {}) or {}
@@ -748,7 +825,7 @@ def process_file(path, manifest, use_pygwy):
 
     if not use_pygwy:
         raise RuntimeError("pygwy required for processing; no fallback is executed.")
-    result = _process_with_pygwy(path, processing_mode, mode_def, channel_defaults, manifest)
+    result = _process_with_pygwy(path, processing_mode, mode_def, channel_defaults, manifest, allow_debug_save=allow_debug_save)
     if result is None:
         return None
 
@@ -758,10 +835,36 @@ def process_file(path, manifest, use_pygwy):
         result["grid.row_idx"] = row_idx
     if col_idx is not None:
         result["grid.col_idx"] = col_idx
+
+    if _debug_enabled(manifest):
+        lvl = _debug_level(manifest)
+        log_fields = _debug_log_fields(manifest)
+        # Default fields if none specified
+        if not log_fields:
+            log_fields = set(["units", "mask_counts", "stats_counts", "grid"])
+        detected_unit = result.get("_debug.detected_unit")
+        final_unit = result.get("core.units")
+        parts = ["[DEBUG] %s" % os.path.basename(path)]
+        if "units" in log_fields:
+            parts.append("unit=%s" % (detected_unit or "n/a"))
+            if detected_unit and final_unit and detected_unit != final_unit:
+                parts.append("->%s" % final_unit)
+        if "stats_counts" in log_fields and "core.n_valid" in result:
+            parts.append("n_valid=%s" % result.get("core.n_valid"))
+        if "mask_counts" in log_fields and "mask.n_kept" in result and "mask.n_total" in result:
+            parts.append("mask=%s/%s" % (result.get("mask.n_kept"), result.get("mask.n_total")))
+        if "grid" in log_fields:
+            r = result.get("grid.row_idx")
+            c = result.get("grid.col_idx")
+            if r is not None and c is not None:
+                parts.append("grid=(%s,%s)" % (r, c))
+        msg = " ".join(parts)
+        if lvl in ("info", "debug"):
+            sys.stderr.write(msg + "\n")
     return result
 
 
-def _process_with_pygwy(path, processing_mode, mode_def, channel_defaults, manifest):
+def _process_with_pygwy(path, processing_mode, mode_def, channel_defaults, manifest, allow_debug_save=False):
     """
     Implement APPLY_MODE_PIPELINE per the spec:
     - modulus_basic
@@ -779,6 +882,8 @@ def _process_with_pygwy(path, processing_mode, mode_def, channel_defaults, manif
         raise RuntimeError("Failed to load file with pygwy: %s" % path)
 
     field_id, field = _select_data_field(container, mode_def, channel_defaults)
+    debug_artifacts = {}
+    debug_notes = {}
     did_line_correct = False
     line_cfg = mode_def.get("line_correct") if mode_def else None
     if line_cfg:
@@ -803,6 +908,8 @@ def _process_with_pygwy(path, processing_mode, mode_def, channel_defaults, manif
     if did_line_correct:
         try:
             field = container.get_object_by_name(field_id)
+            if allow_debug_save:
+                debug_artifacts["aligned"] = field.duplicate()
         except Exception:
             pass
 
@@ -818,12 +925,16 @@ def _process_with_pygwy(path, processing_mode, mode_def, channel_defaults, manif
             try:
                 pa, pbx, pby = f.fit_plane()
                 f.plane_level(pa, pbx, pby)
+                if allow_debug_save:
+                    debug_artifacts["leveled"] = f.duplicate()
             except Exception as exc:
                 sys.stderr.write("WARN: plane_level failed for %s: %s\n" % (path, exc))
         median_size = mode_def.get("median_size")
         if median_size:
             try:
                 f.filter_median(int(median_size))
+                if allow_debug_save:
+                    debug_artifacts["filtered"] = f.duplicate()
             except Exception as exc:
                 sys.stderr.write("WARN: median filter failed for %s: %s\n" % (path, exc))
         if mode_def.get("line_level_x"):
@@ -836,6 +947,8 @@ def _process_with_pygwy(path, processing_mode, mode_def, channel_defaults, manif
             try:
                 low, high = float(clip[0]), float(clip[1])
                 _field_clip_percentiles(f, low, high)
+                if allow_debug_save:
+                    debug_artifacts["filtered"] = f.duplicate()
             except Exception as exc:
                 sys.stderr.write("WARN: clip_percentiles failed for %s: %s\n" % (path, exc))
         mask_cfg = mode_def.get("mask") if mode_def else None
@@ -855,6 +968,13 @@ def _process_with_pygwy(path, processing_mode, mode_def, channel_defaults, manif
                     else:
                         raise RuntimeError(msg)
                 mask_counts = (total, kept)
+                if allow_debug_save:
+                    try:
+                        mask_field = _mask_field_from_bool(f, mask)
+                        if mask_field:
+                            debug_artifacts["mask"] = mask_field
+                    except Exception:
+                        pass
         detected_unit = _get_field_units(f)
         result = _to_mode_result(f, mode_def, mode, path, mask=mask, mask_counts=mask_counts)
         result["channel.key"] = field_id
@@ -862,7 +982,22 @@ def _process_with_pygwy(path, processing_mode, mode_def, channel_defaults, manif
             result["channel.title"] = field_title
         if detected_unit:
             result["channel.z_units"] = detected_unit
-        return _apply_units(result, processing_mode, mode_def, manifest, detected_unit)
+            result["_debug.detected_unit"] = detected_unit
+        applied = _apply_units(result, processing_mode, mode_def, manifest, detected_unit)
+        if allow_debug_save and _debug_enabled(manifest):
+            try:
+                out_dir = _debug_out_dir(manifest)
+                if not os.path.isdir(out_dir):
+                    os.makedirs(out_dir)
+                base = os.path.splitext(os.path.basename(path))[0]
+                for key, df in debug_artifacts.items():
+                    if df is None:
+                        continue
+                    out_path = os.path.join(out_dir, "%s_%s.tiff" % (base, key))
+                    _save_field(out_path, df)
+            except Exception as exc:
+                sys.stderr.write("WARN: debug artifact save failed for %s: %s\n" % (path, exc))
+        return applied
 
     if mode == "particle_count_basic":
         f = field.duplicate()
@@ -1083,6 +1218,8 @@ def process_manifest(manifest, dry_run=False):
     print("Output dir: %s" % out_dir)
     print("Output CSV: %s" % output_csv)
 
+    dbg_cfg = _debug_cfg(manifest)
+
     if dry_run:
         print("Dry run: no processing executed.")
         return
@@ -1094,9 +1231,11 @@ def process_manifest(manifest, dry_run=False):
             "and rerun. No fallback will be used to avoid producing invalid data."
         )
     rows = []
+    global _DEBUG_SAVED
     for path in files:
         try:
-            mode_result = process_file(path, manifest, use_pygwy)
+            allow_debug_save = _debug_should_save(manifest)
+            mode_result = process_file(path, manifest, use_pygwy, allow_debug_save=allow_debug_save)
             if mode_result is None:
                 sys.stderr.write("INFO: Skipped %s due to unit mismatch policy.\n" % path)
                 continue
@@ -1105,6 +1244,8 @@ def process_manifest(manifest, dry_run=False):
                 rows.append(row)
             else:
                 print("Skipped row for %s" % path)
+            if allow_debug_save and _debug_enabled(manifest):
+                _DEBUG_SAVED += 1
         except Exception as exc:
             sys.stderr.write("ERROR processing %s: %s\n" % (path, exc))
     write_summary_csv(rows, csv_def, output_csv, processing_mode, csv_mode)

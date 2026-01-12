@@ -100,6 +100,17 @@ grid:
 summarize:
   recursive: false   # if true, search TIFFs recursively
 
+# Debug/diagnostics options
+debug:
+  enable: false           # set true to enable debug logging/artifacts
+  level: "info"           # info|debug
+  artifacts: []           # ["mask", "leveled", "aligned", "filtered"]
+  sample_limit: 3         # number of files to save artifacts for (<=0 means all)
+  out_dir: "out/debug"    # where to write debug TIFFs
+  log_fields: ["units", "mask_counts", "stats_counts"]
+  raise_on_warn: false    # if true, treat WARN as errors
+  echo_config: false      # if true, log the active mode/csv config snippet
+
 # Optional input filtering (applied during manifest generation).
 # Useful for excluding duplicate Forward/Backward or repeated scans without changing code.
 # input_filters:

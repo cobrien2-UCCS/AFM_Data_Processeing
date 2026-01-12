@@ -20,6 +20,7 @@ This guide explains how to configure and extend the AFM TIFF -> summary CSV -> p
   `python scripts/make_job_manifest.py --config config.yaml --input-root scans/ --output-dir out/ --processing-mode modulus_basic --csv-mode default_scalar --out out/job_manifest.json`
   - Patterns: defaults to `*.tif;*.tiff`. Use `--pattern "**/*.tif;**/*.tiff"` to recurse.
   - If you have Forward/Backward duplicates, set `input_filters` in config to include/exclude by filename.
+  - Config files can live anywhere; always pass `--config <path>` to the scripts.
 - Run pygwy processing (Py2, PowerShell example):
   `& "C:\Python27\python.exe" scripts\run_pygwy_job.py --manifest out/job_manifest.json`
 - Plot from CSV (Py3):
@@ -44,6 +45,7 @@ Top-level sections (see `config.example.yaml`):
 - `profiles`: presets tying together processing_mode, csv_mode, plotting_modes.
 - `unit_conversions`: per-mode unit conversions `{ source_unit: {target, factor} }`.
 - `input_filters` (optional): include/exclude regex filters applied during manifest generation (useful for Forward/Backward duplicates).
+- `debug` (optional): enable debug logging/artifacts. Keys: `enable`, `level` (`info|debug`), `artifacts` (`mask|leveled|aligned|filtered`), `sample_limit`, `out_dir`, `log_fields` (e.g., `units|mask_counts|stats_counts|grid`), `raise_on_warn`, `echo_config`.
 
 ## 3) Adding a new processing mode
 1. Add a config block under `modes` (channel_family, filters, metric_type, units, expected_units, on_unit_mismatch, etc.).

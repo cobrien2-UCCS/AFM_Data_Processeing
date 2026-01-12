@@ -20,6 +20,9 @@ See `config.example.yaml` for a concrete example.
 - `plotting_modes`: schema + recipe + labels/bins/colorbar/title. For `heatmap_grid`, `duplicate_policy` controls how duplicate (row_idx,col_idx) cells are handled.
 - `profiles`: presets tying processing_mode, csv_mode, plotting_modes.
 - `unit_conversions`: per-mode unit conversions `{source: {target, factor}}`.
+- `debug` (optional): diagnostics/logging/artifacts:
+  - `enable` (bool), `level` (`info|debug`), `artifacts` (`["mask","leveled","aligned","filtered"]`), `sample_limit`, `out_dir`.
+  - `log_fields` (`units|mask_counts|stats_counts`), `raise_on_warn` (treat WARN as errors), `echo_config` (log active mode/csv config snippet).
 
 ## Patterns and recursion
 - Summarize defaults: `*.tif;*.tiff` (non-recursive). Set `summarize.recursive: true` to recurse.

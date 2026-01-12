@@ -1,5 +1,5 @@
 # AFM-Data-Management Pipeline
-Config-driven AFM TIFF processing (pygwy/Gwyddion), CSV summarization, and plotting. Support material for Conor O'Brien's thesis project.
+Config-driven AFM TIFF processing (pygwy/Gwyddion), CSV summarization, and plotting. Support material for Conor O'Brien's thesis project. Defaults normalize modulus to MPa.
 
 ## Quick start (Windows / PowerShell)
 Run the full pipeline (Py3 -> Py2/pygwy -> Py3) from the repo root:
@@ -86,7 +86,7 @@ python scripts/check_env.py
   ```
 - Summarization/plotting stay in Python 3.x and consume the outputs written by the Py2 run.
 - The Py2 runner writes `summary.csv` (or `--output-csv`) using the `csv_mode_definition` embedded in the manifest. pygwy is required; no fallback is executed to avoid producing invalid data. Implement real pygwy logic in `scripts/run_pygwy_job.py` where indicated.
-- Units: the pygwy runner reads field units, applies optional conversions from `unit_conversions`, and enforces per-mode `expected_units` with `on_unit_mismatch` (`error|warn|skip_row`).
+- Units: the pygwy runner reads field units, applies per-mode conversions from `unit_conversions`, and enforces `expected_units` with `on_unit_mismatch` (`error|warn|skip_row`). Modulus configs normalize everything to MPa (conversions for GPa/kPa/Pa included).
 - Grid indices: if `grid.filename_regex` changes, regenerate the manifest (otherwise `row_idx/col_idx` will remain `-1`).
 
 ### Py3 helpers
@@ -109,4 +109,9 @@ python -m unittest discover -s tests -p "test_*.py"
 ```
 
 ### User guide
-See `docs/USER_GUIDE.md` for how to create configs, add modes/plots/CSV rules, unit handling, and expected outputs.
+See `docs/USER_GUIDE.md` for how to create configs, add modes/plots/CSV rules, unit handling, debug artifacts/logging, and expected outputs.
+
+### Debug (optional)
+- Enable via `debug.enable: true` in your config (can be stored anywhere; pass `--config <path>`).
+- Choose artifacts: `mask|leveled|aligned|filtered`, set `sample_limit`, and `out_dir` (defaults to `out/debug`).
+- Debug logs include units (detected and converted), mask/stats counts, and grid indices when enabled.

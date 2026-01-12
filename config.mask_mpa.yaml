@@ -79,6 +79,17 @@ grid:
 summarize:
   recursive: false
 
+# Debug/diagnostics options
+debug:
+  enable: false
+  level: "info"
+  artifacts: []
+  sample_limit: 3
+  out_dir: "out/debug"
+  log_fields: ["units", "mask_counts", "stats_counts"]
+  raise_on_warn: false
+  echo_config: false
+
 # Optional input filtering for manifest generation.
 # input_filters:
 #   include_regex: ["Backward"]
