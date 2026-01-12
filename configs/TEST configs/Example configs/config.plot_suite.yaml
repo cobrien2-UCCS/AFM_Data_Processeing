@@ -25,12 +25,12 @@ summarize:
   recursive: false
 
 debug:
-  enable: false
+  enable: true
   level: "info"
-  artifacts: []
-  sample_limit: 2
+  artifacts: ["leveled", "aligned", "filtered"]
+  sample_limit: 3
   out_dir: "out/debug"
-  log_fields: ["units", "grid"]
+  log_fields: ["units", "grid", "stats_counts"]
   raise_on_warn: false
   echo_config: false
 

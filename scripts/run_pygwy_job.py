@@ -208,7 +208,13 @@ def _save_field(path, field):
         sys.stderr.write("WARN: debug save skipped (cannot import gwy): %s\n" % exc)
         return False
     try:
-        container = gwy.gwy_container_new()
+        container = None
+        if hasattr(gwy, "gwy_container_new"):
+            container = gwy.gwy_container_new()
+        elif hasattr(gwy, "Container"):
+            container = gwy.Container()
+        if container is None:
+            raise AttributeError("gwy container constructor not available")
         container.set_object_by_name("/0/data", field)
         gwy.gwy_file_save(container, path)
         return True
