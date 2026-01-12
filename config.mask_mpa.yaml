@@ -33,7 +33,7 @@ modes:
       on_empty: "warn"             # warn if all pixels are removed
     metric_type: "modulus"
     units: "MPa"
-    expected_units: "GPa"          # validate after conversion
+    expected_units: "MPa"          # validate in MPa
     on_unit_mismatch: "error"
 
   topography_flat:
@@ -191,4 +191,7 @@ profiles:
 # Unit conversions
 unit_conversions:
   modulus_basic:
-    MPa: { target: "GPa", factor: 0.001 }
+    MPa: { target: "MPa", factor: 1.0 }
+    GPa: { target: "MPa", factor: 1000.0 }
+    kPa: { target: "MPa", factor: 0.001 }
+    Pa:  { target: "MPa", factor: 1e-6 }
