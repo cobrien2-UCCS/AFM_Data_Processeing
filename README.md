@@ -111,6 +111,13 @@ python -m unittest discover -s tests -p "test_*.py"
 ### User guide
 See `docs/USER_GUIDE.md` for how to create configs, add modes/plots/CSV rules, unit handling, debug artifacts/logging, and expected outputs.
 
+### Batch-run configs (optional helper)
+Use `scripts/run_config_suite.py` to iterate over multiple configs, writing each to its own output folder:
+```powershell
+py -3 scripts/run_config_suite.py --configs configs\*.yaml --input-root scans\ --output-root out\suite --py2-exe "C:\Python27\python.exe" --profile modulus_grid
+```
+Each config gets its own `out\suite\<config-stem>\` with manifest, summary.csv, and plots.
+
 ### Debug (optional)
 - Enable via `debug.enable: true` in your config (can be stored anywhere; pass `--config <path>`).
 - Choose artifacts: `mask|leveled|aligned|filtered`, set `sample_limit`, and `out_dir` (defaults to `out/debug`).
