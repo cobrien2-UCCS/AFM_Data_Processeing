@@ -13,8 +13,13 @@ modes:
     channel_family: "modulus"      # pick modulus-like channel
     plane_level: true              # apply plane leveling
     median_size: null              # optional median filter size (odd int), null to skip
-    line_level_x: false            # optional line flatten in X
-    line_level_y: false            # optional line flatten in Y
+    # Line correction using Gwyddion Align Rows (scan line artefacts)
+    # line_correct:
+    #   enable: true
+    #   method: "median"            # median|polynomial|matching|...
+    #   direction: "horizontal"     # horizontal|vertical
+    line_level_x: false            # legacy flag (maps to line_correct horizontal)
+    line_level_y: false            # legacy flag (maps to line_correct vertical)
     clip_percentiles: null         # e.g., [5, 95] to clip extremes; null to skip
     # Optional stats filtering (Python-side) to exclude invalid/saturated pixels from avg/std.
     # Leave null/omit to use Gwyddion's field.get_avg() and field.get_rms().
@@ -29,6 +34,10 @@ modes:
     channel_family: "height"
     plane_level: true
     median_size: null
+    # line_correct:
+    #   enable: true
+    #   method: "median"
+    #   direction: "horizontal"
     line_level_x: false
     line_level_y: false
     clip_percentiles: null

@@ -6,8 +6,13 @@ Reference for the pygwy/Gwyddion functions used by the pipeline (Py2 runner).
 - Plane level (preferred): `gwy.gwy_process_func_run("level", {"data": field, "method": 0})`
 - Plane level (fallback): `gwy.gwy_process_func_run("plane-level", {"data": field})`
 - Median filter: `gwy.gwy_process_func_run("median", {"data": field, "size": N})` (N odd int)
-- Line flatten (X): `gwy.gwy_process_func_run("level-line", {"data": field, "direction": 0})`
-- Line flatten (Y): `gwy.gwy_process_func_run("level-line", {"data": field, "direction": 1})`
+- Line correction (Align Rows): `gwy.gwy_process_func_run("align_rows", container, gwy.RUN_IMMEDIATE)`
+  - Settings (app settings keys):
+    - `/module/linematch/direction` (horizontal/vertical)
+    - `/module/linematch/method` (median, polynomial, matching, etc.)
+    - `/module/linematch/do_extract` (false)
+    - `/module/linematch/do_plot` (false)
+- Line flatten (legacy flags): `line_level_x` / `line_level_y` map to Align Rows with median method.
 - Optional Python-side clipping: percentile clip after filters (config `clip_percentiles`).
 
 ## Grain / particle

@@ -6,6 +6,7 @@ See `config.example.yaml` for a concrete example.
 - `channel_defaults`: hints to pick channels (e.g., modulus_family, topography_family).
 - `modes`: processing modes (Gwyddion-first). Common keys:
   - `channel_family`, `plane_level`, `median_size`, `line_level_x`, `line_level_y`, `clip_percentiles`
+  - `line_correct` (optional): Gwyddion Align Rows settings for scan-line artefacts (`method`, `direction`, `method_id`)
   - `stats_filter` (optional): exclude invalid/saturated pixels from stats (Python-side)
   - `metric_type`, `units`, `expected_units`, `on_unit_mismatch`
   - mode-specific (e.g., `threshold` for particle mode)

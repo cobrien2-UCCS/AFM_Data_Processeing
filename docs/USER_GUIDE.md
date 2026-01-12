@@ -31,7 +31,7 @@ Top-level sections (see `config.example.yaml`):
 - `channel_defaults`: hints to pick channels (e.g., `modulus_family`, `topography_family`).
 - `modes`: processing modes (Gwyddion-first). Keys:
   - `channel_family`: which channel to select.
-  - `plane_level`, `median_size`, `line_level_x`, `line_level_y`, `clip_percentiles` (optional post-processing).
+  - `plane_level`, `line_correct` (Align Rows), `median_size`, `line_level_x`, `line_level_y`, `clip_percentiles`.
   - `metric_type`, `units`, `expected_units`, `on_unit_mismatch` (`error|warn|skip_row`).
   - `threshold` (particle mode), other mode-specific params.
 - `grid`: filename regex with named groups `row`/`col` to add grid indices. Optional `index_base: 1` converts SmartScan-style `RC001001` to zero-based indices stored in the CSV.
@@ -73,6 +73,11 @@ Top-level sections (see `config.example.yaml`):
 - Requires 32-bit Python 2.7 and 32-bit Gwyddion/pygwy on Windows.
 - No fallback processing if pygwy is missing; errors are raised.
 - If `import gwy` fails, set `GWY_BIN` to your Gwyddion `bin` folder (e.g. `C:\Program Files (x86)\Gwyddion\bin`).
+- Recommended preprocessing order (per Gwyddion user guide):
+  1) Plane level (or polynomial/facet if needed)
+  2) Align Rows (line correction) for scan-line artefacts
+  3) Noise filters (median/denoise)
+  4) Mask creation and masked statistics
 
 ## 9) Troubleshooting
 - pygwy not found: run `scripts/check_env.py --require-pygwy` under Python 2.7 and ensure `GWY_BIN` is set (or Gwyddion `bin` is on PATH).

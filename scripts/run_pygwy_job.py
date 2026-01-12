@@ -23,6 +23,16 @@ import sys
 _GRID_REGEX_MISS_WARNED = set()
 _GRID_INDEX_BASE_WARNED = False
 _STATS_WARNED = False
+_LINE_MATCH_METHODS = {
+    "median": 0,
+    "modus": 1,
+    "polynomial": 2,
+    "median_difference": 3,
+    "matching": 4,
+    "facet_level_tilt": 5,
+    "trimmed_mean": 6,
+    "trimmed_mean_difference": 7,
+}
 
 
 def _is_finite(x):
@@ -125,6 +135,103 @@ def _parse_filename_basic_metadata(path):
         out["file.date_code"] = m.group("date_code")
 
     return out
+
+
+def _normalize_method_name(name):
+    if not name:
+        return ""
+    return str(name).strip().lower().replace("-", "_").replace(" ", "_")
+
+
+def _apply_line_correction(container, field_key, line_cfg, fallback_direction=None):
+    """
+    Apply scan-line correction using Gwyddion's Align Rows (linematch) module.
+
+    Uses app settings keys documented in the Gwyddion user guide:
+      /module/linematch/direction
+      /module/linematch/method
+      /module/linematch/do_extract
+      /module/linematch/do_plot
+    """
+    if not line_cfg:
+        return False
+    if isinstance(line_cfg, bool):
+        enabled = line_cfg
+        line_cfg = {}
+    else:
+        enabled = bool(line_cfg.get("enable", True))
+    if not enabled:
+        return False
+
+    try:
+        import gwy  # type: ignore
+    except Exception:
+        return False
+
+    method_id = line_cfg.get("method_id")
+    if method_id is None:
+        name = _normalize_method_name(line_cfg.get("method"))
+        if name:
+            method_id = _LINE_MATCH_METHODS.get(name)
+
+    direction = line_cfg.get("direction") or fallback_direction
+    dir_val = None
+    if direction is not None:
+        if isinstance(direction, (int, long)):
+            dir_val = int(direction)
+        else:
+            d = str(direction).strip().lower()
+            if d.startswith("h"):
+                dir_val = int(gwy.ORIENTATION_HORIZONTAL)
+            elif d.startswith("v"):
+                dir_val = int(gwy.ORIENTATION_VERTICAL)
+
+    try:
+        gwy.gwy_app_data_browser_add(container)
+        ids = gwy.gwy_app_data_browser_get_data_ids(container)
+        target_id = None
+        for i in ids:
+            gwy.gwy_app_data_browser_select_data_field(container, i)
+            try:
+                key = gwy.gwy_app_data_browser_get_current(gwy.APP_DATA_FIELD_KEY)
+            except Exception:
+                key = None
+            if key and str(key) == str(field_key):
+                target_id = i
+                break
+        if target_id is None and ids:
+            target_id = ids[0]
+        if target_id is None:
+            return False
+        gwy.gwy_app_data_browser_select_data_field(container, target_id)
+
+        settings = gwy.gwy_app_settings_get()
+        try:
+            settings.set_boolean_by_name("/module/linematch/do_extract", False)
+            settings.set_boolean_by_name("/module/linematch/do_plot", False)
+        except Exception:
+            pass
+        if dir_val is not None:
+            try:
+                settings.set_int32_by_name("/module/linematch/direction", int(dir_val))
+            except Exception:
+                pass
+        if method_id is not None:
+            try:
+                settings.set_int32_by_name("/module/linematch/method", int(method_id))
+            except Exception:
+                pass
+
+        gwy.gwy_process_func_run("align_rows", container, gwy.RUN_IMMEDIATE)
+        return True
+    except Exception as exc:
+        sys.stderr.write("WARN: align_rows failed: %s\n" % exc)
+        return False
+    finally:
+        try:
+            gwy.gwy_app_data_browser_remove(container)
+        except Exception:
+            pass
 
 def load_manifest(path):
     with open(path, "r") as f:
@@ -471,6 +578,33 @@ def _process_with_pygwy(path, processing_mode, mode_def, channel_defaults, manif
         raise RuntimeError("Failed to load file with pygwy: %s" % path)
 
     field_id, field = _select_data_field(container, mode_def, channel_defaults)
+    did_line_correct = False
+    line_cfg = mode_def.get("line_correct") if mode_def else None
+    if line_cfg:
+        did_line_correct = _apply_line_correction(container, field_id, line_cfg)
+    else:
+        # Backwards-compat mapping for older configs
+        if mode_def.get("line_level_x"):
+            did_line_correct = _apply_line_correction(
+                container,
+                field_id,
+                {"enable": True, "method": "median", "direction": "horizontal"},
+                fallback_direction="horizontal",
+            ) or did_line_correct
+        if mode_def.get("line_level_y"):
+            did_line_correct = _apply_line_correction(
+                container,
+                field_id,
+                {"enable": True, "method": "median", "direction": "vertical"},
+                fallback_direction="vertical",
+            ) or did_line_correct
+
+    if did_line_correct:
+        try:
+            field = container.get_object_by_name(field_id)
+        except Exception:
+            pass
+
     try:
         field_title = container.get_string_by_name(field_id + "/title") or ""
     except Exception:
