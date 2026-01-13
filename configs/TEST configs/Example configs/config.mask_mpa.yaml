@@ -17,23 +17,23 @@ modes:
     line_level_x: false
     line_level_y: false
     clip_percentiles: null
-    # Mask applied before stats (units: raw data, typically MPa pre-conversion).
+    # Mask applied before stats (units: raw data, typically kPa pre-conversion).
     mask:
       enable: true
       method: "threshold"
-      threshold: 0.1               # keep values >= 0.1 MPa (adjust as needed)
+      threshold: 0.1               # keep values >= 0.1 kPa (adjust as needed)
       direction: "above"
       invert: false
       on_empty: "error"
-    # Value include/exclude for stats (still in raw units, typically MPa).
+    # Value include/exclude for stats (still in raw units, typically kPa).
     stats_filter:
-      min_value: 0.5               # exclude below 0.5 MPa
-      max_value: 70.0              # exclude above 70 MPa
+      min_value: 0.5               # exclude below 0.5 kPa
+      max_value: 70.0              # exclude above 70 kPa
       exclude_nonpositive: true
       on_empty: "warn"             # warn if all pixels are removed
     metric_type: "modulus"
-    units: "MPa"
-    expected_units: "MPa"          # validate in MPa
+    units: "kPa"
+    expected_units: "kPa"          # validate in kPa
     on_unit_mismatch: "error"
 
   topography_flat:
@@ -202,7 +202,7 @@ profiles:
 # Unit conversions
 unit_conversions:
   modulus_basic:
-    MPa: { target: "MPa", factor: 1.0 }
-    GPa: { target: "MPa", factor: 1000.0 }
-    kPa: { target: "MPa", factor: 0.001 }
-    Pa:  { target: "MPa", factor: 1e-6 }
+    kPa: { target: "kPa", factor: 1.0 }
+    MPa: { target: "kPa", factor: 1000.0 }
+    GPa: { target: "kPa", factor: 1e6 }
+    Pa:  { target: "kPa", factor: 0.001 }

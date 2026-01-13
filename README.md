@@ -120,5 +120,5 @@ Each config gets its own `out\suite\<config-stem>\` with manifest, summary.csv, 
 
 ### Debug (optional)
 - Enable via `debug.enable: true` in your config (can be stored anywhere; pass `--config <path>`).
-- Choose artifacts: `mask|leveled|aligned|filtered`, set `sample_limit`, and `out_dir` (defaults to `out/debug`).
-- Debug logs include units (detected and converted), mask/stats counts, and grid indices when enabled.
+- Choose artifacts: `mask|leveled|aligned|filtered`, set `sample_limit`, and `out_dir` (defaults to `out/debug`); a Pillow/NumPy fallback writes TIFFs if pygwy export isn’t available.
+- Debug logs include units (detected or mode fallback), mask/stats counts, and grid indices when enabled.

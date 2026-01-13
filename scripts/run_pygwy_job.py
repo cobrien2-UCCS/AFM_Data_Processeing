@@ -208,6 +208,9 @@ def _save_field(path, field):
         sys.stderr.write("WARN: debug save skipped (cannot import gwy): %s\n" % exc)
         return False
     try:
+        out_dir = os.path.dirname(path)
+        if out_dir and not os.path.isdir(out_dir):
+            os.makedirs(out_dir)
         container = None
         if hasattr(gwy, "gwy_container_new"):
             container = gwy.gwy_container_new()
@@ -219,8 +222,32 @@ def _save_field(path, field):
         gwy.gwy_file_save(container, path)
         return True
     except Exception as exc:
-        sys.stderr.write("WARN: debug save failed for %s: %s\n" % (path, exc))
-        return False
+        sys.stderr.write("WARN: debug save failed for %s (pygwy): %s\n" % (path, exc))
+        # Fallback: save via Pillow/NumPy
+        try:
+            import numpy as np
+            from PIL import Image
+        except Exception as exc2:
+            sys.stderr.write("WARN: debug save fallback unavailable (Pillow/NumPy missing): %s\n" % exc2)
+            return False
+        try:
+            nx = int(field.get_xres())
+            ny = int(field.get_yres())
+            data = field.get_data()
+            arr = np.array([float(x) for x in data], dtype=float).reshape((ny, nx))
+            vmin = float(np.nanmin(arr)) if arr.size else 0.0
+            vmax = float(np.nanmax(arr)) if arr.size else 1.0
+            if vmax == vmin:
+                vmax = vmin + 1.0
+            norm = (arr - vmin) / (vmax - vmin)
+            norm = np.clip(norm, 0.0, 1.0)
+            img = Image.fromarray(np.uint8(norm * 255.0), mode="L")
+            out_path = path
+            img.save(out_path)
+            return True
+        except Exception as exc3:
+            sys.stderr.write("WARN: debug save fallback (Pillow) failed for %s: %s\n" % (path, exc3))
+            return False
 
 
 def _mask_field_from_bool(field, mask):
@@ -982,6 +1009,8 @@ def _process_with_pygwy(path, processing_mode, mode_def, channel_defaults, manif
                     except Exception:
                         pass
         detected_unit = _get_field_units(f)
+        if not detected_unit:
+            detected_unit = mode_def.get("units") or None
         result = _to_mode_result(f, mode_def, mode, path, mask=mask, mask_counts=mask_counts)
         result["channel.key"] = field_id
         if field_title:
@@ -989,6 +1018,8 @@ def _process_with_pygwy(path, processing_mode, mode_def, channel_defaults, manif
         if detected_unit:
             result["channel.z_units"] = detected_unit
             result["_debug.detected_unit"] = detected_unit
+        elif mode_def.get("units"):
+            result["_debug.detected_unit"] = mode_def.get("units")
         applied = _apply_units(result, processing_mode, mode_def, manifest, detected_unit)
         if allow_debug_save and _debug_enabled(manifest):
             try:

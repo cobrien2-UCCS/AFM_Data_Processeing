@@ -12,6 +12,8 @@ modes:
     line_level_x: false
     line_level_y: false
     clip_percentiles: null
+    mask: null
+    stats_filter: null
     metric_type: "modulus"
     units: "MPa"
     expected_units: "MPa"
@@ -23,6 +25,8 @@ modes:
     line_level_x: false
     line_level_y: false
     clip_percentiles: null
+    mask: null
+    stats_filter: null
     metric_type: "topography_height"
     units: "nm"
     expected_units: "nm"

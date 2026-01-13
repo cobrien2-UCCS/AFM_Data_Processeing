@@ -46,6 +46,7 @@ Top-level sections (see `config.example.yaml`):
 - `unit_conversions`: per-mode unit conversions `{ source_unit: {target, factor} }`.
 - `input_filters` (optional): include/exclude regex filters applied during manifest generation (useful for Forward/Backward duplicates).
 - `debug` (optional): enable debug logging/artifacts. Keys: `enable`, `level` (`info|debug`), `artifacts` (`mask|leveled|aligned|filtered`), `sample_limit`, `out_dir`, `log_fields` (e.g., `units|mask_counts|stats_counts|grid`), `raise_on_warn`, `echo_config`.
+- If units are missing from the file, the runner falls back to mode units (e.g., MPa) and logs that as detected. When pygwy export fails, a Pillow/NumPy fallback writes debug TIFFs to `debug.out_dir`.
 
 ## 3) Adding a new processing mode
 1. Add a config block under `modes` (channel_family, filters, metric_type, units, expected_units, on_unit_mismatch, etc.).

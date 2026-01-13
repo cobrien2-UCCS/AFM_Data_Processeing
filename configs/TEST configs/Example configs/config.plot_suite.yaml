@@ -12,6 +12,17 @@ modes:
     line_level_x: false
     line_level_y: false
     clip_percentiles: null
+    mask:
+      enable: true
+      method: "threshold"
+      threshold: -1000000.0
+      direction: "above"
+      on_empty: "warn"
+    stats_filter:
+      min_value: null
+      max_value: null
+      exclude_nonpositive: false
+      on_empty: "warn"
     metric_type: "modulus"
     units: "MPa"
     expected_units: "MPa"

@@ -39,14 +39,14 @@
     "mask": {
       "enable": true,
       "method": "threshold",
-      "threshold": 0.1,
+      "threshold": -1000000.0,
       "direction": "above",
       "on_empty": "warn"
     },
     "stats_filter": {
-      "min_value": 0.5,
-      "max_value": 70.0,
-      "exclude_nonpositive": true,
+      "min_value": null,
+      "max_value": null,
+      "exclude_nonpositive": false,
       "on_empty": "warn"
     },
     "metric_type": "modulus",
