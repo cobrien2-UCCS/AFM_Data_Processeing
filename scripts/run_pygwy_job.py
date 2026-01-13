@@ -201,38 +201,13 @@ def _debug_out_dir(manifest):
 
 
 def _save_field(path, field):
-    """Save a DataField to a file via gwy file save."""
+    """Save a DataField to a file using Pillow/NumPy (skip pygwy export to reduce noise)."""
     # Ensure output directory exists
     out_dir = os.path.dirname(path)
     if out_dir and not os.path.isdir(out_dir):
         os.makedirs(out_dir)
 
-    saved = False
-    # First try pygwy export
-    try:
-        import gwy  # type: ignore
-    except Exception as exc:
-        sys.stderr.write("WARN: debug save skipped pygwy (cannot import gwy): %s\n" % exc)
-    else:
-        try:
-            container = None
-            if hasattr(gwy, "gwy_container_new"):
-                container = gwy.gwy_container_new()
-            elif hasattr(gwy, "Container"):
-                container = gwy.Container()
-            if container is None:
-                raise AttributeError("gwy container constructor not available")
-            container.set_object_by_name("/0/data", field)
-            try:
-                container.set_string_by_name("/0/data/title", os.path.basename(path))
-            except Exception:
-                pass
-            gwy.gwy_file_save(container, path)
-            saved = True
-        except Exception as exc:
-            sys.stderr.write("WARN: debug save failed for %s (pygwy): %s\n" % (path, exc))
-
-    # Always attempt Pillow/NumPy fallback to guarantee an artifact
+    # Pillow/NumPy export (avoids pygwy "no exportable channel" noise)
     try:
         import numpy as np
         from PIL import Image

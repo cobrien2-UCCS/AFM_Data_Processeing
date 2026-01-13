@@ -19,6 +19,9 @@ See `config.example.yaml` for a concrete example.
 - `file.*` keys (provided by runner): best-effort filename metadata such as `file.channel`, `file.direction`, `file.grid_id`, `file.date_code` (include via `csv_modes` if needed).
 - `result_schemas`: casting CSV columns to typed fields for plotting/analysis.
 - `plotting_modes`: schema + recipe + labels/bins/colorbar/title. For `heatmap_grid`, `duplicate_policy` controls how duplicate (row_idx,col_idx) cells are handled.
+  - Variants supported: `value_field` can be derived (`avg_value`, `std_value`, `cv_value = std/avg`, `range_value = max-min` if provided).
+  - Overlays: `overlay_std` (sigma-colored text), `overlay_alpha` (alpha driven by a field), `overlay_hatch` (flag cells above/below a threshold with hatching), `overlay_bubbles` (bubble size/color by sigma bins), `overlay_std.legend: true|false`.
+  - Recipes: `heatmap_grid` (base), `heatmap_grid_bubbles` (mean background + bubble overlay), `heatmap_two_panel` (side-by-side mean/std).
 - `profiles`: presets tying processing_mode, csv_mode, plotting_modes.
 - `unit_conversions`: per-mode unit conversions `{source: {target, factor}}`.
 - `debug` (optional): diagnostics/logging/artifacts:
