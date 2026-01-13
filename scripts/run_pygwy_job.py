@@ -207,6 +207,7 @@ def _save_field(path, field):
     if out_dir and not os.path.isdir(out_dir):
         os.makedirs(out_dir)
 
+    saved = False
     # First try pygwy export
     try:
         import gwy  # type: ignore
@@ -227,11 +228,14 @@ def _save_field(path, field):
             except Exception:
                 pass
             gwy.gwy_file_save(container, path)
-            return True
+            saved = True
         except Exception as exc:
             sys.stderr.write("WARN: debug save failed for %s (pygwy): %s\n" % (path, exc))
 
-    # Fallback: save via Pillow/NumPy
+    if saved:
+        return True
+
+    # Fallback: save via Pillow/NumPy regardless of pygwy outcome
     try:
         import numpy as np
         from PIL import Image

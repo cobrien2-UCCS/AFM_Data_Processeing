@@ -78,10 +78,11 @@ def run_cmd(cmd: List[str], dry_run: bool):
 def parse_args():
     ap = argparse.ArgumentParser(description="Run a suite of configs through manifest -> pygwy -> plotting.")
     ap.add_argument("--configs", nargs="+", required=True, help="Config paths or globs, or directories containing *.yaml.")
+    ap.add_argument("--profiles", nargs="*", help="Optional per-config profiles (aligned to --configs list). If omitted, --profile applies to all.")
     ap.add_argument("--input-root", required=True, help="Input TIFF folder.")
     ap.add_argument("--output-root", default="out/suite", help="Root for outputs (per-config subfolders).")
     ap.add_argument("--py2-exe", default="C:\\Python27\\python.exe", help="Python 2.7 executable for pygwy step.")
-    ap.add_argument("--profile", help="Profile name to use from each config.")
+    ap.add_argument("--profile", help="Profile name to use for all configs (ignored when --profiles is given).")
     ap.add_argument("--processing-mode", help="Processing mode (overrides profile).")
     ap.add_argument("--csv-mode", help="CSV mode (overrides profile).")
     ap.add_argument("--plotting-modes", nargs="*", help="Plotting modes to render (overrides profile plotting_modes).")
@@ -95,9 +96,18 @@ def main():
     cfg_paths = collect_configs(args.configs)
     print("Configs to run: %d" % len(cfg_paths))
 
+    profiles_for_configs: List[str] = []
+    if args.profiles:
+        if len(args.profiles) != len(cfg_paths):
+            raise ValueError("If --profiles is provided, it must have the same length as --configs.")
+        profiles_for_configs = args.profiles
+    else:
+        profiles_for_configs = [args.profile] * len(cfg_paths)
+
     for cfg_path in cfg_paths:
         cfg = load_config(cfg_path)
-        pm, cm, plotting = resolve_modes(cfg, args.profile, args.processing_mode, args.csv_mode)
+        profile_for_cfg = profiles_for_configs[cfg_paths.index(cfg_path)]
+        pm, cm, plotting = resolve_modes(cfg, profile_for_cfg, args.processing_mode, args.csv_mode)
         if args.plotting_modes is not None:
             plotting = args.plotting_modes
 
