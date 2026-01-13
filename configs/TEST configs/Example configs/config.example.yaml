@@ -42,6 +42,17 @@ modes:
     #   max_value: 1e12             # exclude values above
     #   exclude_nonpositive: true   # drop <= 0
     #   on_empty: "error"           # error|warn|skip_row if all pixels are excluded
+    # Optional python_data_filtering: post-Gwyddion value filters + CSV exports.
+    # python_data_filtering:
+    #   enable: true
+    #   export_raw_csv: true        # save (row,col,value,kept) before filters
+    #   export_filtered_csv: true   # save after filters
+    #   export_dir: "out/debug/pyfilter"
+    #   on_empty: "warn"            # warn|skip_row|error when filters drop everything
+    #   filters:
+    #     - { type: "three_sigma", sigma: 3.0 }
+    #     - { type: "chauvenet" }
+    #     - { type: "min_max", min_value: 0.1, max_value: 50000.0 }
     metric_type: "modulus"         # core.metric_type value
     units: "kPa"
     expected_units: "kPa"          # optional validation target

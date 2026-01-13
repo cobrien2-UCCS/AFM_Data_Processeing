@@ -23,6 +23,16 @@ modes:
       max_value: 5000.0         # 5 MPa expressed in kPa (trim high rough pixels)
       exclude_nonpositive: true
       on_empty: "warn"
+    python_data_filtering:
+      enable: true
+      export_raw_csv: true           # Dump pre-filtered pixel values (row,col,value,kept)
+      export_filtered_csv: true      # Dump post-filter values for inspection/tuning
+      export_dir: "out/debug/pyfilter"
+      on_empty: "warn"               # warn|skip_row|error when filters remove everything
+      filters:
+        - { type: "three_sigma", sigma: 3.0 }
+        - { type: "chauvenet" }
+        - { type: "min_max", min_value: 0.1, max_value: 50000.0 }
     metric_type: "modulus"
     units: "kPa"
     expected_units: "kPa"

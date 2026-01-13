@@ -9,6 +9,7 @@ See `config.example.yaml` for a concrete example.
   - `line_correct` (optional): Gwyddion Align Rows settings for scan-line artefacts (`method`, `direction`, `method_id`)
   - `mask` (optional): config-driven mask (threshold/range/percentile); supports multi-step `steps` with `combine: and|or`; `on_empty: error|warn|skip_row`
   - `stats_filter` (optional): exclude invalid/saturated pixels from stats (Python-side value rules); `on_empty: error|warn|skip_row`
+  - `python_data_filtering` (optional): post-Gwyddion value filtering + CSV export; `filters` list supports `three_sigma (sigma)`, `chauvenet`, `min_max (min_value/max_value)`; `export_raw_csv|export_filtered_csv`, `export_dir`, `on_empty: error|warn|skip_row`
   - `metric_type`, `units`, `expected_units`, `on_unit_mismatch`
   - mode-specific (e.g., `threshold` for particle mode)
 - `grid`: `filename_regex` with named groups `row`/`col` to set grid indices. Optional `index_base` (0 or 1) converts filename indices to zero-based values stored in `grid.row_idx`/`grid.col_idx`.

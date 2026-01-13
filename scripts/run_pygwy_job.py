@@ -270,6 +270,154 @@ def _mask_field_from_bool(field, mask):
         return None
 
 
+def _export_field_csv(field, mask, path):
+    """Export the DataField values to a CSV (row, col, value, kept)."""
+    out_dir = os.path.dirname(path)
+    if out_dir and not os.path.isdir(out_dir):
+        os.makedirs(out_dir)
+
+    nx = int(field.get_xres())
+    ny = int(field.get_yres())
+    data = field.get_data()
+    total = len(data)
+    with open(path, "w") as f:
+        writer = csv.writer(f)
+        writer.writerow(["row", "col", "value", "kept"])
+        for j in range(ny):
+            for i in range(nx):
+                idx = j * nx + i
+                if idx >= total:
+                    continue
+                val = data[idx]
+                keep = 1 if (mask is None or (idx < len(mask) and mask[idx])) else 0
+                writer.writerow([j, i, val, keep])
+
+
+def _apply_python_filters(field, base_mask, filter_cfg):
+    """
+    Apply optional Python-side value filters after Gwyddion preprocessing.
+
+    Supported filters (applied in order):
+      - three_sigma: keep values within mean ± sigma*std of current kept set
+      - chauvenet: Chauvenet criterion (two-sided) against current kept set
+      - min_max: keep values within [min_value, max_value]
+    """
+    if not filter_cfg or not filter_cfg.get("enable"):
+        return base_mask, None, {}
+
+    filters = filter_cfg.get("filters") or []
+    if isinstance(filters, dict):
+        filters = [filters]
+    if not filters:
+        return base_mask, None, {}
+
+    data = field.get_data()
+    n = len(data)
+    if not n:
+        return base_mask, None, {}
+
+    mask = list(base_mask) if base_mask is not None else [True] * n
+    total = len(mask)
+    debug_notes = []
+
+    def _kept_values(current_mask):
+        vals = []
+        for idx in range(min(len(data), len(current_mask))):
+            if not current_mask[idx]:
+                continue
+            v = float(data[idx])
+            if _is_finite(v):
+                vals.append(v)
+        return vals
+
+    for filt in filters:
+        ftype = _normalize_method_name(filt.get("type") or filt.get("name") or "")
+        if not ftype:
+            continue
+
+        kept_before = sum(1 for m in mask if m)
+        if kept_before == 0:
+            break
+
+        vals = _kept_values(mask)
+        if not vals:
+            break
+
+        new_mask = list(mask)
+        if ftype == "three_sigma":
+            try:
+                sigma = float(filt.get("sigma", 3.0))
+            except Exception:
+                sigma = 3.0
+            m = _mean(vals)
+            s = _std(vals)
+            if s <= 0.0:
+                debug_notes.append("three_sigma skipped (std<=0)")
+            else:
+                lo = m - sigma * s
+                hi = m + sigma * s
+                for idx in range(len(new_mask)):
+                    if not new_mask[idx]:
+                        continue
+                    v = float(data[idx])
+                    if not _is_finite(v):
+                        new_mask[idx] = False
+                        continue
+                    if v < lo or v > hi:
+                        new_mask[idx] = False
+                mask = new_mask
+        elif ftype == "chauvenet":
+            m = _mean(vals)
+            s = _std(vals)
+            if s <= 0.0:
+                debug_notes.append("chauvenet skipped (std<=0)")
+            else:
+                thr = 1.0 / (2.0 * float(len(vals)))
+                for idx in range(len(new_mask)):
+                    if not new_mask[idx]:
+                        continue
+                    v = float(data[idx])
+                    if not _is_finite(v):
+                        new_mask[idx] = False
+                        continue
+                    z = abs(v - m) / s if s > 0 else 0.0
+                    prob = math.erfc(z / math.sqrt(2.0))
+                    if prob < thr:
+                        new_mask[idx] = False
+                mask = new_mask
+        elif ftype in ("min_max", "minmax"):
+            try:
+                lo = filt.get("min_value")
+                hi = filt.get("max_value")
+                lo = float(lo) if lo is not None else None
+                hi = float(hi) if hi is not None else None
+            except Exception:
+                lo, hi = None, None
+            for idx in range(len(new_mask)):
+                if not new_mask[idx]:
+                    continue
+                v = float(data[idx])
+                if not _is_finite(v):
+                    new_mask[idx] = False
+                    continue
+                if lo is not None and v < lo:
+                    new_mask[idx] = False
+                if hi is not None and v > hi:
+                    new_mask[idx] = False
+            mask = new_mask
+
+        kept_after = sum(1 for m in mask if m)
+        debug_notes.append("%s %s/%s" % (ftype, kept_after, kept_before))
+
+    kept_final = sum(1 for m in mask if m)
+    debug_info = {
+        "pyfilter.n_total": int(total),
+        "pyfilter.n_kept": int(kept_final),
+        "_debug.pyfilter_steps": "; ".join(debug_notes),
+    }
+    return mask, (total, kept_final), debug_info
+
+
 def _debug_log_fields(manifest):
     dbg = _debug_cfg(manifest)
     fields = dbg.get("log_fields") or []
@@ -897,7 +1045,7 @@ def process_file(path, manifest, use_pygwy, allow_debug_save=False):
         log_fields = _debug_log_fields(manifest)
         # Default fields if none specified
         if not log_fields:
-            log_fields = set(["units", "mask_counts", "stats_counts", "grid", "raw_stats"])
+            log_fields = set(["units", "mask_counts", "stats_counts", "grid", "raw_stats", "pyfilter"])
         detected_unit = result.get("_debug.detected_unit")
         final_unit = result.get("core.units")
         parts = ["[DEBUG] %s" % os.path.basename(path)]
@@ -909,6 +1057,10 @@ def process_file(path, manifest, use_pygwy, allow_debug_save=False):
             parts.append("n_valid=%s" % result.get("core.n_valid"))
         if "mask_counts" in log_fields and "mask.n_kept" in result and "mask.n_total" in result:
             parts.append("mask=%s/%s" % (result.get("mask.n_kept"), result.get("mask.n_total")))
+        if "pyfilter" in log_fields and "pyfilter.n_kept" in result and "pyfilter.n_total" in result:
+            parts.append("pyfilter=%s/%s" % (result.get("pyfilter.n_kept"), result.get("pyfilter.n_total")))
+        if "pyfilter_steps" in log_fields and "_debug.pyfilter_steps" in result:
+            parts.append("pfsteps=%s" % result.get("_debug.pyfilter_steps"))
         if "grid" in log_fields:
             r = result.get("grid.row_idx")
             c = result.get("grid.col_idx")
@@ -1019,6 +1171,7 @@ def _process_with_pygwy(path, processing_mode, mode_def, channel_defaults, manif
         mask_cfg = mode_def.get("mask") if mode_def else None
         mask = None
         mask_counts = None
+        pyfilter_debug = {}
         if mask_cfg:
             mask, kept, total = _build_mask(f, mask_cfg)
             if mask is not None:
@@ -1040,6 +1193,21 @@ def _process_with_pygwy(path, processing_mode, mode_def, channel_defaults, manif
                             debug_artifacts["mask"] = mask_field
                     except Exception:
                         pass
+        py_filter_cfg = (mode_def.get("python_data_filtering") or mode_def.get("python_filtering") or {})
+        base_name = os.path.splitext(os.path.basename(path))[0]
+        pyfilter_export_dir = py_filter_cfg.get("export_dir") or os.path.join(_debug_out_dir(manifest), "pyfilter")
+        if py_filter_cfg.get("export_raw_csv"):
+            try:
+                _export_field_csv(f, mask, os.path.join(pyfilter_export_dir, "%s_raw.csv" % base_name))
+            except Exception as exc:
+                sys.stderr.write("WARN: raw CSV export failed for %s: %s\n" % (path, exc))
+        if py_filter_cfg.get("enable"):
+            mask, mask_counts, pyfilter_debug = _apply_python_filters(f, mask, py_filter_cfg)
+            if py_filter_cfg.get("export_filtered_csv"):
+                try:
+                    _export_field_csv(f, mask, os.path.join(pyfilter_export_dir, "%s_filtered.csv" % base_name))
+                except Exception as exc:
+                    sys.stderr.write("WARN: filtered CSV export failed for %s: %s\n" % (path, exc))
         detected_unit = _get_field_units(f)
         if not detected_unit:
             detected_unit = mode_def.get("units") or None
@@ -1058,6 +1226,8 @@ def _process_with_pygwy(path, processing_mode, mode_def, channel_defaults, manif
             result["_debug.raw_p5"] = raw_stats[2]
             result["_debug.raw_p50"] = raw_stats[3]
             result["_debug.raw_p95"] = raw_stats[4]
+        if pyfilter_debug:
+            result.update(pyfilter_debug)
         applied = _apply_units(result, processing_mode, mode_def, manifest, detected_unit)
         if allow_debug_save and _debug_enabled(manifest):
             try:
