@@ -1,4 +1,4 @@
-# Plot-focused config to exercise multiple plotting modes for modulus_basic.
+# Mixed profiles config (modulus in kPa + topography) for batch runs.
 
 channel_defaults:
   modulus_family: "modulus"
@@ -28,6 +28,35 @@ modes:
     expected_units: "kPa"
     on_unit_mismatch: "warn"
 
+  topography_flat:
+    channel_family: "height"
+    plane_level: true
+    median_size: 3
+    line_level_x: false
+    line_level_y: false
+    clip_percentiles: null
+    mask: null
+    stats_filter: null
+    metric_type: "topography_height"
+    units: "nm"
+    expected_units: "nm"
+    on_unit_mismatch: "error"
+
+  particle_count_basic:
+    channel_family: "height"
+    plane_level: false
+    metric_type: "particle_count"
+    threshold: null
+    units: "count"
+    expected_units: "count"
+    on_unit_mismatch: "error"
+
+  raw_noop:
+    channel_family: null
+    plane_level: false
+    metric_type: "raw"
+    units: "a.u."
+
 grid:
   index_base: 1
   filename_regex: "LOC_RC(?P<row>\\d{3})(?P<col>\\d{3})"
@@ -38,10 +67,10 @@ summarize:
 debug:
   enable: true
   level: "info"
-  artifacts: ["leveled", "aligned", "filtered"]
-  sample_limit: 3
+  artifacts: ["mask", "leveled", "aligned", "filtered"]
+  sample_limit: 2
   out_dir: "out/debug"
-  log_fields: ["units", "grid", "stats_counts"]
+  log_fields: ["units", "mask_counts", "stats_counts", "grid"]
   raise_on_warn: false
   echo_config: false
 
@@ -89,6 +118,12 @@ plotting_modes:
     recipe: "sample_bar_with_error"
     title: "Sample Means (kPa)"
     ylabel: "Modulus (kPa)"
+  heatmap_grid:
+    result_schema: "default_scalar"
+    recipe: "heatmap_grid"
+    title: "Grid Heatmap (kPa)"
+    colorbar_label: "avg_value"
+    duplicate_policy: "warn_mean"
   histogram_avg:
     result_schema: "default_scalar"
     recipe: "histogram_avg"
@@ -98,22 +133,16 @@ plotting_modes:
     result_schema: "default_scalar"
     recipe: "scatter_avg_vs_std"
     title: "Avg vs Std"
-  mode_comparison_bar:
-    result_schema: "default_scalar"
-    recipe: "mode_comparison_bar"
-    title: "Mode Comparison"
-  heatmap_grid:
-    result_schema: "default_scalar"
-    recipe: "heatmap_grid"
-    title: "Grid Heatmap (kPa)"
-    colorbar_label: "avg_value"
-    duplicate_policy: "warn_mean"
 
 profiles:
-  modulus_plot_suite:
+  modulus_full:
     processing_mode: "modulus_basic"
     csv_mode: "default_scalar"
-    plotting_modes: ["sample_bar_with_error", "histogram_avg", "scatter_avg_vs_std", "mode_comparison_bar", "heatmap_grid"]
+    plotting_modes: ["sample_bar_with_error", "heatmap_grid", "histogram_avg", "scatter_avg_vs_std"]
+  topography_full:
+    processing_mode: "topography_flat"
+    csv_mode: "default_scalar"
+    plotting_modes: ["heatmap_grid", "scatter_avg_vs_std", "histogram_avg"]
 
 unit_conversions:
   modulus_basic:

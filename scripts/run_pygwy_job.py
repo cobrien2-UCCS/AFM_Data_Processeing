@@ -202,52 +202,59 @@ def _debug_out_dir(manifest):
 
 def _save_field(path, field):
     """Save a DataField to a file via gwy file save."""
+    # Ensure output directory exists
+    out_dir = os.path.dirname(path)
+    if out_dir and not os.path.isdir(out_dir):
+        os.makedirs(out_dir)
+
+    # First try pygwy export
     try:
         import gwy  # type: ignore
     except Exception as exc:
-        sys.stderr.write("WARN: debug save skipped (cannot import gwy): %s\n" % exc)
+        sys.stderr.write("WARN: debug save skipped pygwy (cannot import gwy): %s\n" % exc)
+    else:
+        try:
+            container = None
+            if hasattr(gwy, "gwy_container_new"):
+                container = gwy.gwy_container_new()
+            elif hasattr(gwy, "Container"):
+                container = gwy.Container()
+            if container is None:
+                raise AttributeError("gwy container constructor not available")
+            container.set_object_by_name("/0/data", field)
+            try:
+                container.set_string_by_name("/0/data/title", os.path.basename(path))
+            except Exception:
+                pass
+            gwy.gwy_file_save(container, path)
+            return True
+        except Exception as exc:
+            sys.stderr.write("WARN: debug save failed for %s (pygwy): %s\n" % (path, exc))
+
+    # Fallback: save via Pillow/NumPy
+    try:
+        import numpy as np
+        from PIL import Image
+    except Exception as exc2:
+        sys.stderr.write("WARN: debug save fallback unavailable (Pillow/NumPy missing): %s\n" % exc2)
         return False
     try:
-        out_dir = os.path.dirname(path)
-        if out_dir and not os.path.isdir(out_dir):
-            os.makedirs(out_dir)
-        container = None
-        if hasattr(gwy, "gwy_container_new"):
-            container = gwy.gwy_container_new()
-        elif hasattr(gwy, "Container"):
-            container = gwy.Container()
-        if container is None:
-            raise AttributeError("gwy container constructor not available")
-        container.set_object_by_name("/0/data", field)
-        gwy.gwy_file_save(container, path)
+        nx = int(field.get_xres())
+        ny = int(field.get_yres())
+        data = field.get_data()
+        arr = np.array([float(x) for x in data], dtype=float).reshape((ny, nx))
+        vmin = float(np.nanmin(arr)) if arr.size else 0.0
+        vmax = float(np.nanmax(arr)) if arr.size else 1.0
+        if vmax == vmin:
+            vmax = vmin + 1.0
+        norm = (arr - vmin) / (vmax - vmin)
+        norm = np.clip(norm, 0.0, 1.0)
+        img = Image.fromarray(np.uint8(norm * 255.0), mode="L")
+        img.save(path)
         return True
-    except Exception as exc:
-        sys.stderr.write("WARN: debug save failed for %s (pygwy): %s\n" % (path, exc))
-        # Fallback: save via Pillow/NumPy
-        try:
-            import numpy as np
-            from PIL import Image
-        except Exception as exc2:
-            sys.stderr.write("WARN: debug save fallback unavailable (Pillow/NumPy missing): %s\n" % exc2)
-            return False
-        try:
-            nx = int(field.get_xres())
-            ny = int(field.get_yres())
-            data = field.get_data()
-            arr = np.array([float(x) for x in data], dtype=float).reshape((ny, nx))
-            vmin = float(np.nanmin(arr)) if arr.size else 0.0
-            vmax = float(np.nanmax(arr)) if arr.size else 1.0
-            if vmax == vmin:
-                vmax = vmin + 1.0
-            norm = (arr - vmin) / (vmax - vmin)
-            norm = np.clip(norm, 0.0, 1.0)
-            img = Image.fromarray(np.uint8(norm * 255.0), mode="L")
-            out_path = path
-            img.save(out_path)
-            return True
-        except Exception as exc3:
-            sys.stderr.write("WARN: debug save fallback (Pillow) failed for %s: %s\n" % (path, exc3))
-            return False
+    except Exception as exc3:
+        sys.stderr.write("WARN: debug save fallback (Pillow) failed for %s: %s\n" % (path, exc3))
+        return False
 
 
 def _mask_field_from_bool(field, mask):

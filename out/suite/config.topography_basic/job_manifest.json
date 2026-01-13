@@ -112,21 +112,21 @@
   },
   "unit_conversions": {
     "modulus_basic": {
-      "MPa": {
-        "target": "MPa",
+      "kPa": {
+        "target": "kPa",
         "factor": 1.0
       },
-      "GPa": {
-        "target": "MPa",
+      "MPa": {
+        "target": "kPa",
         "factor": 1000.0
       },
-      "kPa": {
-        "target": "MPa",
-        "factor": 0.001
+      "GPa": {
+        "target": "kPa",
+        "factor": "1e6"
       },
       "Pa": {
-        "target": "MPa",
-        "factor": "1e-6"
+        "target": "kPa",
+        "factor": 0.001
       }
     }
   },

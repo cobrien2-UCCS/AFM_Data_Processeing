@@ -44,14 +44,14 @@
       "on_empty": "warn"
     },
     "stats_filter": {
-      "min_value": null,
-      "max_value": null,
-      "exclude_nonpositive": false,
+      "min_value": 0.1,
+      "max_value": 60.0,
+      "exclude_nonpositive": true,
       "on_empty": "warn"
     },
     "metric_type": "modulus",
-    "units": "MPa",
-    "expected_units": "MPa",
+    "units": "kPa",
+    "expected_units": "kPa",
     "on_unit_mismatch": "warn"
   },
   "csv_mode_definition": {
@@ -123,21 +123,21 @@
   },
   "unit_conversions": {
     "modulus_basic": {
-      "MPa": {
-        "target": "MPa",
+      "kPa": {
+        "target": "kPa",
         "factor": 1.0
       },
-      "GPa": {
-        "target": "MPa",
+      "MPa": {
+        "target": "kPa",
         "factor": 1000.0
       },
-      "kPa": {
-        "target": "MPa",
-        "factor": 0.001
+      "GPa": {
+        "target": "kPa",
+        "factor": "1e6"
       },
       "Pa": {
-        "target": "MPa",
-        "factor": "1e-6"
+        "target": "kPa",
+        "factor": 0.001
       }
     }
   },
