@@ -24,8 +24,8 @@ modes:
       exclude_nonpositive: false
       on_empty: "warn"
     metric_type: "modulus"
-    units: "MPa"
-    expected_units: "MPa"
+    units: "kPa"
+    expected_units: "kPa"
     on_unit_mismatch: "warn"
 
 grid:
@@ -87,8 +87,8 @@ plotting_modes:
   sample_bar_with_error:
     result_schema: "default_scalar"
     recipe: "sample_bar_with_error"
-    title: "Sample Means"
-    ylabel: "Modulus (MPa)"
+    title: "Sample Means (kPa)"
+    ylabel: "Modulus (kPa)"
   histogram_avg:
     result_schema: "default_scalar"
     recipe: "histogram_avg"
@@ -105,7 +105,7 @@ plotting_modes:
   heatmap_grid:
     result_schema: "default_scalar"
     recipe: "heatmap_grid"
-    title: "Grid Heatmap"
+    title: "Grid Heatmap (kPa)"
     colorbar_label: "avg_value"
     duplicate_policy: "warn_mean"
 
@@ -117,7 +117,7 @@ profiles:
 
 unit_conversions:
   modulus_basic:
-    MPa: { target: "MPa", factor: 1.0 }
-    GPa: { target: "MPa", factor: 1000.0 }
-    kPa: { target: "MPa", factor: 0.001 }
-    Pa:  { target: "MPa", factor: 1e-6 }
+    kPa: { target: "kPa", factor: 1.0 }
+    MPa: { target: "kPa", factor: 1000.0 }
+    GPa: { target: "kPa", factor: 1e6 }
+    Pa:  { target: "kPa", factor: 0.001 }

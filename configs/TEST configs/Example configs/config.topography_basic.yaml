@@ -15,8 +15,8 @@ modes:
     mask: null
     stats_filter: null
     metric_type: "modulus"
-    units: "MPa"
-    expected_units: "MPa"
+    units: "kPa"
+    expected_units: "kPa"
     on_unit_mismatch: "warn"
   topography_flat:
     channel_family: "height"
@@ -112,7 +112,7 @@ profiles:
 
 unit_conversions:
   modulus_basic:
-    MPa: { target: "MPa", factor: 1.0 }
-    GPa: { target: "MPa", factor: 1000.0 }
-    kPa: { target: "MPa", factor: 0.001 }
-    Pa:  { target: "MPa", factor: 1e-6 }
+    kPa: { target: "kPa", factor: 1.0 }
+    MPa: { target: "kPa", factor: 1000.0 }
+    GPa: { target: "kPa", factor: 1e6 }
+    Pa:  { target: "kPa", factor: 0.001 }

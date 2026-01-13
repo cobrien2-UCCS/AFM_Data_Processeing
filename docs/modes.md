@@ -16,7 +16,7 @@ Config-driven modes (see `modes` in `config.example.yaml`). Philosophy: use Gwyd
 - `on_unit_mismatch`: `error | warn | skip_row`.
 
 ## Built-in modes
-- `modulus_basic`: channel_family=modulus, plane_level=true, optional median/line/clip/mask, metric_type="modulus", units/expected_units="MPa" (conversions for GPa/kPa/Pa provided).
+- `modulus_basic`: channel_family=modulus, plane_level=true, optional median/line/clip/mask, metric_type="modulus", units/expected_units="kPa" (conversions for MPa/GPa/Pa provided).
 - `topography_flat`: channel_family=height, plane_level=true, optional median/line/clip/mask, metric_type="topography_height", units/expected_units="nm".
 - `particle_count_basic`: channel_family=height, plane_level=false, threshold (default: mean), uses pygwy grain stats (count, density, equivalent diameter, optional circularity), units/expected_units="count".
 - `raw_noop`: duplicate field; metric_type="raw", units="a.u.".
@@ -27,4 +27,4 @@ Config-driven modes (see `modes` in `config.example.yaml`). Philosophy: use Gwyd
 3) For new processing behavior, add a branch in `scripts/run_pygwy_job.py` APPLY_MODE_PIPELINE using pygwy ops first; only small Python math as supplement.
 
 ## Unit conversions
-- Define under `unit_conversions`: per-mode map of source unit → `{target, factor}`. Applied in the runner before unit mismatch policy. Defaults include MPa/GPa/kPa/Pa → MPa for modulus.
+- Define under `unit_conversions`: per-mode map of source unit → `{target, factor}`. Applied in the runner before unit mismatch policy. Defaults include kPa/MPa/GPa/Pa → kPa for modulus.
