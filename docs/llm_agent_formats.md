@@ -40,7 +40,7 @@ Add to result_schemas:
 Add to plotting_modes:
   <plot_mode>:
     result_schema: "<schema>"
-    recipe: "sample_bar_with_error|histogram_avg|scatter_avg_vs_std|mode_comparison_bar|heatmap_grid"
+    recipe: "sample_bar_with_error|histogram_avg|scatter_avg_vs_std|mode_comparison_bar|heatmap_grid|heatmap_grid_bubbles|heatmap_two_panel"
     title: "..."
     xlabel/ylabel/colorbar_label: "..."   # optional, defaults include units
     bins/point_size/alpha/cmap/show_colorbar: <as needed>

@@ -56,7 +56,12 @@ Top-level sections (see `config.example.yaml`):
 ## 4) Adding CSV/plotting rules
 - New CSV layout: add a block under `csv_modes` with `columns` and `on_missing_field`.
 - New result schema: add under `result_schemas` with `fields` mapping columns -> typed fields.
-- New plotting mode: add under `plotting_modes` with `result_schema`, `recipe` (e.g., `sample_bar_with_error`, `histogram_avg`, `scatter_avg_vs_std`, `mode_comparison_bar`, `heatmap_grid`), plus labels/bins/colorbar as needed.
+- New plotting mode: add under `plotting_modes` with `result_schema`, `recipe`, and labels/bins/colorbar as needed. Supported recipes now include:
+  - `sample_bar_with_error`, `histogram_avg`, `scatter_avg_vs_std`, `mode_comparison_bar`
+  - `heatmap_grid` (supports `value_field`: `avg_value`, `std_value`, `cv_value = std/avg`, `range_value = max-min` when min/max present)
+    - Optional overlays: `overlay_std` (sigma-colored text with legend), `overlay_alpha` (alpha driven by another field), `overlay_hatch` (flag cells above/below a threshold).
+  - `heatmap_grid_bubbles` (mean background + bubble overlay sized/colored by sigma bins of another field, e.g., std)
+  - `heatmap_two_panel` (side-by-side heatmaps, e.g., mean vs std)
 - Use `profiles` to bundle processing_mode + csv_mode + plotting_modes for easy CLI use.
 
 ## 5) Unit handling

@@ -89,6 +89,7 @@ python scripts/check_env.py
 - Units: the pygwy runner reads field units, applies per-mode conversions from `unit_conversions`, and enforces `expected_units` with `on_unit_mismatch` (`error|warn|skip_row`). Modulus configs normalize everything to kPa (conversions for MPa/GPa/Pa included).
 - Optional Python-side filtering/export: set `modes.<mode>.python_data_filtering` to export per-image CSVs (row,col,value,kept) after pygwy preprocessing and run `three_sigma`, `chauvenet`, and/or `min_max` filters before stats are computed.
 - Grid indices: if `grid.filename_regex` changes, regenerate the manifest (otherwise `row_idx/col_idx` will remain `-1`).
+- Plotting recipes: bar/hist/scatter, plus multiple heatmap variants (mean/std/CV/range), overlays (sigma-colored text, alpha/hatch), bubble overlay, and two-panel mean+std. Select via `plotting_modes`/profiles without changing code.
 
 ### Py3 helpers
 - Plot from CSV (uses config.plotting_modes/result_schemas):
@@ -108,6 +109,9 @@ Run Py3 unit tests (covers summarize/plot helpers):
 ```bash
 python -m unittest discover -s tests -p "test_*.py"
 ```
+
+### Spec alignment / gaps
+See `docs/SPEC_GAP_LIST.md` for a working checklist of spec alignment, gaps to shore up, and upcoming topography testing notes.
 
 ### User guide
 See `docs/USER_GUIDE.md` for how to create configs, add modes/plots/CSV rules, unit handling, debug artifacts/logging, and expected outputs.
