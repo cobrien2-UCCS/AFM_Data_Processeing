@@ -11,7 +11,7 @@ modes:
     median_size: 3
     line_level_x: false
     line_level_y: false
-    clip_percentiles: null
+    clip_percentiles: [0.5, 99.5]
     mask:
       enable: true
       method: "threshold"
