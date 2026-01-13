@@ -232,10 +232,7 @@ def _save_field(path, field):
         except Exception as exc:
             sys.stderr.write("WARN: debug save failed for %s (pygwy): %s\n" % (path, exc))
 
-    if saved:
-        return True
-
-    # Fallback: save via Pillow/NumPy regardless of pygwy outcome
+    # Always attempt Pillow/NumPy fallback to guarantee an artifact
     try:
         import numpy as np
         from PIL import Image
@@ -279,6 +276,21 @@ def _debug_log_fields(manifest):
     if isinstance(fields, str):
         fields = [fields]
     return set([str(f).strip().lower() for f in fields if f])
+
+
+def _quick_stats(field):
+    """Return (min, max, p5, p50, p95) using Python-side data."""
+    data = field.get_data()
+    if not data:
+        return None
+    vals = [float(v) for v in data if _is_finite(v)]
+    if not vals:
+        return None
+    vals_sorted = sorted(vals)
+    n = len(vals_sorted)
+    def pct(p):
+        return _percentile_sorted(vals_sorted, p)
+    return (min(vals_sorted), max(vals_sorted), pct(5), pct(50), pct(95))
 
 
 def _build_single_mask(field, mask_cfg):
@@ -885,7 +897,7 @@ def process_file(path, manifest, use_pygwy, allow_debug_save=False):
         log_fields = _debug_log_fields(manifest)
         # Default fields if none specified
         if not log_fields:
-            log_fields = set(["units", "mask_counts", "stats_counts", "grid"])
+            log_fields = set(["units", "mask_counts", "stats_counts", "grid", "raw_stats"])
         detected_unit = result.get("_debug.detected_unit")
         final_unit = result.get("core.units")
         parts = ["[DEBUG] %s" % os.path.basename(path)]
@@ -902,6 +914,14 @@ def process_file(path, manifest, use_pygwy, allow_debug_save=False):
             c = result.get("grid.col_idx")
             if r is not None and c is not None:
                 parts.append("grid=(%s,%s)" % (r, c))
+        if "raw_stats" in log_fields:
+            raw_min = result.get("_debug.raw_min")
+            raw_max = result.get("_debug.raw_max")
+            raw_p5 = result.get("_debug.raw_p5")
+            raw_p50 = result.get("_debug.raw_p50")
+            raw_p95 = result.get("_debug.raw_p95")
+            if raw_min is not None and raw_max is not None:
+                parts.append("raw[min=%.3g max=%.3g p5=%.3g p50=%.3g p95=%.3g]" % (raw_min, raw_max, raw_p5, raw_p50, raw_p95))
         msg = " ".join(parts)
         if lvl in ("info", "debug"):
             sys.stderr.write(msg + "\n")
@@ -965,6 +985,7 @@ def _process_with_pygwy(path, processing_mode, mode_def, channel_defaults, manif
 
     if mode in ("modulus_basic", "topography_flat"):
         f = field.duplicate()
+        raw_stats = _quick_stats(f)
         if mode_def.get("plane_level", True):
             try:
                 pa, pbx, pby = f.fit_plane()
@@ -1031,6 +1052,12 @@ def _process_with_pygwy(path, processing_mode, mode_def, channel_defaults, manif
             result["_debug.detected_unit"] = detected_unit
         elif mode_def.get("units"):
             result["_debug.detected_unit"] = mode_def.get("units")
+        if raw_stats:
+            result["_debug.raw_min"] = raw_stats[0]
+            result["_debug.raw_max"] = raw_stats[1]
+            result["_debug.raw_p5"] = raw_stats[2]
+            result["_debug.raw_p50"] = raw_stats[3]
+            result["_debug.raw_p95"] = raw_stats[4]
         applied = _apply_units(result, processing_mode, mode_def, manifest, detected_unit)
         if allow_debug_save and _debug_enabled(manifest):
             try:
