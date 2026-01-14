@@ -34,6 +34,7 @@ _LINE_MATCH_METHODS = {
     "trimmed_mean": 6,
     "trimmed_mean_difference": 7,
 }
+manifest_global_cfg = {}
 
 
 def _is_finite(x):
@@ -245,6 +246,66 @@ def _mask_field_from_bool(field, mask):
         return None
 
 
+def _apply_ops_sequence(container, field_key, field, ops, debug_artifacts, trace=None):
+    """
+    Apply a config-driven ordered list of pygwy/Gwyddion operations.
+    Supported ops (name -> params):
+      - plane_level: {method: fit_plane}
+      - align_rows: {direction: horizontal|vertical, method: median|polynomial|matching|...}
+      - median: {size: int}
+      - clip_percentiles: {low: float, high: float}
+    """
+    f = field
+    for op in ops:
+        if not isinstance(op, dict):
+            continue
+        name = _normalize_method_name(op.get("op") or op.get("name"))
+        params = op.get("params") or {}
+        if name == "plane_level":
+            try:
+                pa, pbx, pby = f.fit_plane()
+                f.plane_level(pa, pbx, pby)
+                _trace_append(trace, "plane_level", True)
+                if debug_artifacts is not None:
+                    debug_artifacts["leveled"] = f.duplicate()
+            except Exception as exc:
+                _trace_append(trace, "plane_level", False, str(exc))
+        elif name in ("align_rows", "line_correct", "line_match"):
+            try:
+                ok = _apply_line_correction(container, field_key, params)
+                _trace_append(trace, "align_rows", ok, params)
+                if ok and debug_artifacts is not None:
+                    try:
+                        f = container.get_object_by_name(field_key)
+                        debug_artifacts["aligned"] = f.duplicate()
+                    except Exception:
+                        pass
+            except Exception as exc:
+                _trace_append(trace, "align_rows", False, str(exc))
+        elif name == "median":
+            try:
+                size = int(params.get("size", 3))
+                f.filter_median(size)
+                _trace_append(trace, "median", True, {"size": size})
+                if debug_artifacts is not None:
+                    debug_artifacts["filtered"] = f.duplicate()
+            except Exception as exc:
+                _trace_append(trace, "median", False, str(exc))
+        elif name == "clip_percentiles":
+            try:
+                low = float(params.get("low", 0.0))
+                high = float(params.get("high", 100.0))
+                _field_clip_percentiles(f, low, high)
+                _trace_append(trace, "clip_percentiles", True, {"low": low, "high": high})
+                if debug_artifacts is not None:
+                    debug_artifacts["filtered"] = f.duplicate()
+            except Exception as exc:
+                _trace_append(trace, "clip_percentiles", False, str(exc))
+        else:
+            _trace_append(trace, "op_ignored", False, {"op": name})
+    return f
+
+
 def _export_field_csv(field, mask, path):
     """Export the DataField values to a CSV (row, col, value, kept)."""
     out_dir = os.path.dirname(path)
@@ -399,6 +460,33 @@ def _debug_log_fields(manifest):
     if isinstance(fields, str):
         fields = [fields]
     return set([str(f).strip().lower() for f in fields if f])
+
+
+def _trace_append(trace, step, ok=True, info=None):
+    if trace is None:
+        return
+    rec = {"step": step, "ok": bool(ok)}
+    if info is not None:
+        rec["info"] = info
+    trace.append(rec)
+
+
+def _write_trace_file(manifest, path, trace):
+    if not trace:
+        return
+    dbg = manifest.get("debug") or {}
+    if not dbg.get("enable"):
+        return
+    trace_dir = dbg.get("trace_dir") or dbg.get("out_dir") or os.path.join(manifest.get("output_dir", "."), "debug")
+    try:
+        if not os.path.isdir(trace_dir):
+            os.makedirs(trace_dir)
+        base = os.path.splitext(os.path.basename(path))[0]
+        out_path = os.path.join(trace_dir, "%s.trace.json" % base)
+        with open(out_path, "w") as f:
+            json.dump(trace, f, indent=2)
+    except Exception:
+        pass
 
 
 def _quick_stats(field):
@@ -765,6 +853,26 @@ def _get_field_units(field):
     return None
 
 
+def _normalize_unit_name(u):
+    if not u:
+        return None
+    s = str(u).strip()
+    s = s.replace(" ", "").replace("²", "2").replace("�", "")
+    s_lower = s.lower()
+    # Common variants
+    aliases = {
+        "pa": "Pa",
+        "n/m2": "Pa",
+        "nm-2": "Pa",
+        "kpa": "kPa",
+        "mpa": "MPa",
+        "gpa": "GPa",
+    }
+    if s_lower in aliases:
+        return aliases[s_lower]
+    return s
+
+
 def _field_get_avg(field):
     """Average value from gwy.DataField."""
     try:
@@ -935,72 +1043,122 @@ def build_csv_row(mode_result, csv_def, processing_mode, csv_mode):
     return row
 
 
-def derive_grid_indices(path, grid_cfg):
+def _set_meta_key(meta, key_path, value):
+    """Set a dotted key_path in the meta dict."""
+    if meta is None:
+        return
+    parts = key_path.split(".")
+    cur = meta
+    for i, p in enumerate(parts):
+        if i == len(parts) - 1:
+            cur[p] = value
+        else:
+            if p not in cur or not isinstance(cur[p], dict):
+                cur[p] = {}
+            cur = cur[p]
+
+
+def derive_grid_indices(path, grid_cfg, filename_parsing=None, meta=None):
     """
-    Derive grid row/col from filename using a regex with named groups row/col.
-    Example grid_cfg:
-    {
-      "filename_regex": "r(?P<row>\\d+)_c(?P<col>\\d+)"
-    }
+    Derive grid row/col from filename using config-driven parsing.
+    Supports:
+      - filename_parsing.patterns: list of {regex, map: {group->meta_key}}
+      - legacy grid.filename_regex with row/col named groups.
     """
     global _GRID_REGEX_MISS_WARNED
     global _GRID_INDEX_BASE_WARNED
-    pattern = None
-    if grid_cfg:
-        pattern = grid_cfg.get("filename_regex")
-    if not pattern:
-        return None, None
-    try:
-        regex = re.compile(pattern)
-        m = regex.search(os.path.basename(path))
-        if m:
-            row = m.groupdict().get("row")
-            col = m.groupdict().get("col")
-            row_val = int(row) if row is not None else None
-            col_val = int(col) if col is not None else None
+    base = os.path.basename(path)
+    row_idx = None
+    col_idx = None
 
-            # Spec expects grid indices to be zero-based.
-            # Filenames are commonly 1-based (e.g. RC001001). Allow explicit config,
-            # and warn if we have to assume the base.
-            index_base = None
-            if grid_cfg:
-                index_base = grid_cfg.get("index_base", None)
-            if index_base is None:
-                index_base = 1
-                if not _GRID_INDEX_BASE_WARNED:
-                    sys.stderr.write(
-                        "WARN: grid.index_base not set; assuming filenames are 1-based and converting to zero-based indices. "
-                        "Set grid.index_base explicitly (0 or 1) to silence this.\n"
-                    )
-                    _GRID_INDEX_BASE_WARNED = True
+    # Config-driven patterns
+    patterns = (filename_parsing or {}).get("patterns") or []
+    if patterns:
+        for pat in patterns:
+            rx = pat.get("regex")
+            mapping = pat.get("map") or {}
+            if not rx:
+                continue
             try:
-                index_base = int(index_base)
+                m = re.search(rx, base)
             except Exception:
-                index_base = 1
+                continue
+            if not m:
+                continue
+            gd = m.groupdict()
+            if "row" in gd and "col" in gd and row_idx is None and col_idx is None:
+                try:
+                    rv = int(gd.get("row"))
+                    cv = int(gd.get("col"))
+                except Exception:
+                    rv, cv = None, None
+                else:
+                    idx_base = int((grid_cfg or {}).get("index_base", 0))
+                    if idx_base == 1:
+                        rv -= 1
+                        cv -= 1
+                    row_idx, col_idx = rv, cv
+            for k, key_path in mapping.items():
+                if k in gd:
+                    _set_meta_key(meta, key_path, gd.get(k))
 
-            if row_val is not None:
-                row_val = row_val - index_base
-            if col_val is not None:
-                col_val = col_val - index_base
-            return row_val, col_val
-        if pattern not in _GRID_REGEX_MISS_WARNED:
-            sys.stderr.write(
-                "WARN: grid.filename_regex did not match '%s' (pattern=%s). "
-                "row_idx/col_idx will be -1. Update config and regenerate the manifest.\n"
-                % (os.path.basename(path), pattern)
-            )
-            _GRID_REGEX_MISS_WARNED.add(pattern)
-    except Exception:
-        return None, None
-    return None, None
+    # Legacy fallback
+    if row_idx is None or col_idx is None:
+        pattern = None
+        if grid_cfg:
+            pattern = grid_cfg.get("filename_regex")
+        if pattern:
+            try:
+                regex = re.compile(pattern)
+                m = regex.search(base)
+                if m:
+                    row = m.groupdict().get("row")
+                    col = m.groupdict().get("col")
+                    row_val = int(row) if row is not None else None
+                    col_val = int(col) if col is not None else None
+
+                    index_base = None
+                    if grid_cfg:
+                        index_base = grid_cfg.get("index_base", None)
+                    if index_base is None:
+                        index_base = 1
+                        if not _GRID_INDEX_BASE_WARNED:
+                            sys.stderr.write(
+                                "WARN: grid.index_base not set; assuming filenames are 1-based and converting to zero-based indices. "
+                                "Set grid.index_base explicitly (0 or 1) to silence this.\n"
+                            )
+                            _GRID_INDEX_BASE_WARNED = True
+                    try:
+                        index_base = int(index_base)
+                    except Exception:
+                        index_base = 1
+
+                    if row_val is not None:
+                        row_val = row_val - index_base
+                    if col_val is not None:
+                        col_val = col_val - index_base
+                    row_idx, col_idx = row_val, col_val
+                elif pattern not in _GRID_REGEX_MISS_WARNED:
+                    sys.stderr.write(
+                        "WARN: grid.filename_regex did not match '%s' (pattern=%s). "
+                        "row_idx/col_idx will be -1. Update config and regenerate the manifest.\n"
+                        % (base, pattern)
+                    )
+                    _GRID_REGEX_MISS_WARNED.add(pattern)
+            except Exception:
+                pass
+
+    return row_idx, col_idx
 
 
 def process_file(path, manifest, use_pygwy, allow_debug_save=False):
     mode_def = manifest.get("mode_definition", {}) or {}
     grid_cfg = manifest.get("grid", {}) or {}
+    filename_parsing = manifest.get("filename_parsing", {}) or {}
     channel_defaults = manifest.get("channel_defaults", {}) or {}
     processing_mode = manifest.get("processing_mode")
-    row_idx, col_idx = derive_grid_indices(path, grid_cfg)
+    meta = {}
+    row_idx, col_idx = derive_grid_indices(path, grid_cfg, filename_parsing=filename_parsing, meta=meta)
 
     if not use_pygwy:
         raise RuntimeError("pygwy required for processing; no fallback is executed.")
@@ -1009,6 +1167,9 @@ def process_file(path, manifest, use_pygwy, allow_debug_save=False):
         return None
 
     result.update(_parse_filename_basic_metadata(path))
+    # Add parsed meta if present
+    for k, v in meta.items():
+        result[k] = v
 
     if row_idx is not None:
         result["grid.row_idx"] = row_idx
@@ -1110,39 +1271,50 @@ def _process_with_pygwy(path, processing_mode, mode_def, channel_defaults, manif
         field_title = ""
     mode = processing_mode or "raw_noop"
 
-    if mode in ("modulus_basic", "topography_flat"):
+    if mode in ("modulus_basic", "modulus_simple", "modulus_complex", "topography_flat"):
         f = field.duplicate()
+        trace = []
         raw_stats = _quick_stats(f)
-        if mode_def.get("plane_level", True):
-            try:
-                pa, pbx, pby = f.fit_plane()
-                f.plane_level(pa, pbx, pby)
-                if allow_debug_save:
-                    debug_artifacts["leveled"] = f.duplicate()
-            except Exception as exc:
-                sys.stderr.write("WARN: plane_level failed for %s: %s\n" % (path, exc))
-        median_size = mode_def.get("median_size")
-        if median_size:
-            try:
-                f.filter_median(int(median_size))
-                if allow_debug_save:
-                    debug_artifacts["filtered"] = f.duplicate()
-            except Exception as exc:
-                sys.stderr.write("WARN: median filter failed for %s: %s\n" % (path, exc))
-        if mode_def.get("line_level_x"):
-            sys.stderr.write("WARN: line_level_x requested for %s but is not implemented in this runner.\n" % path)
-        if mode_def.get("line_level_y"):
-            sys.stderr.write("WARN: line_level_y requested for %s but is not implemented in this runner.\n" % path)
-        # Python-side clipping is optional and used only when Gwyddion lacks a direct op.
-        clip = mode_def.get("clip_percentiles")
-        if clip and isinstance(clip, (list, tuple)) and len(clip) == 2:
-            try:
-                low, high = float(clip[0]), float(clip[1])
-                _field_clip_percentiles(f, low, high)
-                if allow_debug_save:
-                    debug_artifacts["filtered"] = f.duplicate()
-            except Exception as exc:
-                sys.stderr.write("WARN: clip_percentiles failed for %s: %s\n" % (path, exc))
+        ops = mode_def.get("gwyddion_ops")
+        if ops:
+            f = _apply_ops_sequence(container, field_id, f, ops, debug_artifacts, trace)
+        else:
+            # Legacy behavior
+            if mode_def.get("plane_level", True):
+                try:
+                    pa, pbx, pby = f.fit_plane()
+                    f.plane_level(pa, pbx, pby)
+                    _trace_append(trace, "plane_level", True)
+                    if allow_debug_save:
+                        debug_artifacts["leveled"] = f.duplicate()
+                except Exception as exc:
+                    _trace_append(trace, "plane_level", False, str(exc))
+                    sys.stderr.write("WARN: plane_level failed for %s: %s\n" % (path, exc))
+            median_size = mode_def.get("median_size")
+            if median_size:
+                try:
+                    f.filter_median(int(median_size))
+                    _trace_append(trace, "median", True, {"size": median_size})
+                    if allow_debug_save:
+                        debug_artifacts["filtered"] = f.duplicate()
+                except Exception as exc:
+                    _trace_append(trace, "median", False, str(exc))
+                    sys.stderr.write("WARN: median filter failed for %s: %s\n" % (path, exc))
+            if mode_def.get("line_level_x"):
+                sys.stderr.write("WARN: line_level_x requested for %s but is not implemented in this runner.\n" % path)
+            if mode_def.get("line_level_y"):
+                sys.stderr.write("WARN: line_level_y requested for %s but is not implemented in this runner.\n" % path)
+            clip = mode_def.get("clip_percentiles")
+            if clip and isinstance(clip, (list, tuple)) and len(clip) == 2:
+                try:
+                    low, high = float(clip[0]), float(clip[1])
+                    _field_clip_percentiles(f, low, high)
+                    _trace_append(trace, "clip_percentiles", True, {"low": low, "high": high})
+                    if allow_debug_save:
+                        debug_artifacts["filtered"] = f.duplicate()
+                except Exception as exc:
+                    _trace_append(trace, "clip_percentiles", False, str(exc))
+                    sys.stderr.write("WARN: clip_percentiles failed for %s: %s\n" % (path, exc))
         mask_cfg = mode_def.get("mask") if mode_def else None
         mask = None
         mask_counts = None
@@ -1166,6 +1338,10 @@ def _process_with_pygwy(path, processing_mode, mode_def, channel_defaults, manif
                         mask_field = _mask_field_from_bool(f, mask)
                         if mask_field:
                             debug_artifacts["mask"] = mask_field
+                            if mask_cfg.get("gwyddion_export"):
+                                out_dir = _debug_out_dir(manifest)
+                                out_path = os.path.join(out_dir, "%s_mask.tiff" % os.path.splitext(os.path.basename(path))[0])
+                                _save_field(out_path, mask_field)
                     except Exception:
                         pass
         py_filter_cfg = (mode_def.get("python_data_filtering") or mode_def.get("python_filtering") or {})
@@ -1217,6 +1393,7 @@ def _process_with_pygwy(path, processing_mode, mode_def, channel_defaults, manif
                     _save_field(out_path, df)
             except Exception as exc:
                 sys.stderr.write("WARN: debug artifact save failed for %s: %s\n" % (path, exc))
+        _write_trace_file(manifest, path, trace)
         return applied
 
     if mode == "particle_count_basic":
@@ -1377,8 +1554,15 @@ def _to_mode_result(field, mode_def, processing_mode, src_path, mask=None, mask_
 
 def _apply_units(result, processing_mode, mode_def, manifest, detected_unit):
     """Apply unit detection, conversion, and mismatch policy."""
-    current_unit = detected_unit or result.get("core.units") or mode_def.get("units")
+    detected_unit = _normalize_unit_name(detected_unit)
+    current_unit = detected_unit or _normalize_unit_name(result.get("core.units")) or _normalize_unit_name(mode_def.get("units"))
     conversions = (manifest.get("unit_conversions") or {}).get(processing_mode, {})
+    # Normalize conversion keys for robustness
+    conversions_norm = {}
+    for k, v in conversions.items():
+        nk = _normalize_unit_name(k)
+        conversions_norm[nk or k] = v
+    conversions = conversions_norm
     if current_unit in conversions:
         conv = conversions.get(current_unit) or {}
         try:
@@ -1420,6 +1604,8 @@ def write_summary_csv(rows, csv_def, output_csv, processing_mode, csv_mode):
 
 
 def process_manifest(manifest, dry_run=False):
+    global manifest_global_cfg
+    manifest_global_cfg = manifest or {}
     files = manifest.get("files", [])
     out_dir = manifest.get("output_dir")
     output_csv = manifest.get("output_csv") or os.path.join(out_dir, "summary.csv")

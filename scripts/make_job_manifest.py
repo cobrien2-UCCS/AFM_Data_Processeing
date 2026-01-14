@@ -140,6 +140,7 @@ def build_manifest(cfg: Dict[str, Any], args: argparse.Namespace) -> Dict[str, A
         "mode_definition": cfg.get("modes", {}).get(mode_sel["processing_mode"], {}),
         "csv_mode_definition": cfg.get("csv_modes", {}).get(mode_sel["csv_mode"], {}),
         "unit_conversions": cfg.get("unit_conversions", {}),
+        "filename_parsing": cfg.get("filename_parsing", {}),
         "debug": cfg.get("debug", {}),
     }
     return manifest
