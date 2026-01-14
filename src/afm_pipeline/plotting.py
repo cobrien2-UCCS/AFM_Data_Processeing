@@ -323,7 +323,8 @@ def plot_heatmap_grid(rows: List[Dict[str, Any]], plotting_def: Dict[str, Any], 
             if overlay_cfg.get("legend", True):
                 handles = _sigma_legend_handles(list(sigma_bins), list(colors), marker="s")
                 if handles:
-                    ax.legend(handles=handles, title=f"{ov_field} σ-bins", loc="upper right", fontsize=7, title_fontsize=8, framealpha=0.8)
+                    loc = overlay_cfg.get("legend_loc", "upper right")
+                    ax.legend(handles=handles, title=f"{ov_field} σ-bins", loc=loc, fontsize=7, title_fontsize=8, framealpha=0.8)
 
     # Optional alpha overlay driven by another field (e.g., std_value)
     alpha_cfg = plotting_def.get("overlay_alpha") or {}
@@ -616,7 +617,8 @@ def plot_heatmap_grid_bubbles(rows: List[Dict[str, Any]], plotting_def: Dict[str
     if overlay_cfg.get("legend", True):
         handles = _sigma_legend_handles(list(sigma_bins), list(colors), marker="o")
         if handles:
-            ax.legend(handles=handles, title=f"{ov_field} σ-bins", loc="upper right", fontsize=7, title_fontsize=8, framealpha=0.8)
+            loc = overlay_cfg.get("legend_loc", "upper right")
+            ax.legend(handles=handles, title=f"{ov_field} σ-bins", loc=loc, fontsize=7, title_fontsize=8, framealpha=0.8)
 
     ax.set_xlabel("col_idx")
     ax.set_ylabel("row_idx")

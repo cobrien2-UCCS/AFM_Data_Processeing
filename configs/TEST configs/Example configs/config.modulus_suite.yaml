@@ -11,8 +11,8 @@ modes:
     median_size: null
     mask: null
     stats_filter:
-      min_value: 0.0
-      max_value: 1000000.0    # very loose
+      min_value: 2000.0
+      max_value: 45000.0
       exclude_nonpositive: true
       on_empty: "warn"
     metric_type: "modulus"
@@ -30,8 +30,8 @@ modes:
       - { op: "clip_percentiles", params: { low: 0.5, high: 99.5 } }
     mask: null
     stats_filter:
-      min_value: 3000.0       # 3 MPa
-      max_value: 40000.0      # 40 MPa
+      min_value: 1000.0
+      max_value: 45000.0
       exclude_nonpositive: true
       on_empty: "warn"
     python_data_filtering:
@@ -40,7 +40,7 @@ modes:
       filters:
         - { type: "three_sigma", sigma: 3.0 }
         - { type: "chauvenet" }
-        - { type: "min_max", min_value: 3000.0, max_value: 40000.0 }
+        - { type: "min_max", min_value: 1000.0, max_value: 45000.0 }
     metric_type: "modulus"
     units: "kPa"
     expected_units: "kPa"
@@ -126,6 +126,7 @@ plotting_modes:
       sigma_bins: [1.0, 2.0, 3.0, 5.0]
       colors: ["#006400", "#ffa500", "#ff4500", "#8b0000", "#000000"]
       legend: true
+      legend_loc: "upper left"
   heatmap_grid_avg_with_std_bubbles:
     result_schema: "default_scalar"
     recipe: "heatmap_grid_bubbles"
@@ -144,6 +145,7 @@ plotting_modes:
       alpha: 0.85
       edgecolor: "#000000"
       legend: true
+      legend_loc: "upper right"
   heatmap_grid_std:
     result_schema: "default_scalar"
     recipe: "heatmap_grid"
