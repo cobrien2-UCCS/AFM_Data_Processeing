@@ -34,7 +34,7 @@
     "mask": null,
     "stats_filter": {
       "min_value": 2000.0,
-      "max_value": 60000.0,
+      "max_value": 50000.0,
       "exclude_nonpositive": true,
       "on_empty": "warn"
     },

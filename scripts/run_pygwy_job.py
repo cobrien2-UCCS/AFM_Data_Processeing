@@ -1504,7 +1504,11 @@ def _to_mode_result(field, mode_def, processing_mode, src_path, mask=None, mask_
             if policy == "skip_row":
                 sys.stderr.write("WARN: Stats filter removed all pixels; skipping row for %s\n" % src_path)
                 return None
-            if policy == "warn":
+            if policy == "blank":
+                sys.stderr.write("WARN: Stats filter removed all pixels; marking row blank for %s\n" % src_path)
+                mean_val = float("nan")
+                std_val = float("nan")
+            elif policy == "warn":
                 sys.stderr.write("WARN: Stats filter removed all pixels; writing zeros for %s\n" % src_path)
             else:
                 raise RuntimeError("Stats filter removed all pixels for %s" % src_path)
