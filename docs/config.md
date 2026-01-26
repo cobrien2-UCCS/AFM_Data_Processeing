@@ -12,7 +12,7 @@ See `config.example.yaml` for a concrete example.
     - `gwyddion_export: true` to write the mask as a TIFF artifact.
   - `stats_filter` (optional): exclude invalid/saturated pixels from stats (Python-side value rules); `on_empty: error|warn|skip_row`
   - `python_data_filtering` (optional): post-Gwyddion value filtering + CSV export; `filters` list supports `three_sigma (sigma)`, `chauvenet`, `min_max (min_value/max_value)`; `export_raw_csv|export_filtered_csv`, `export_dir`, `on_empty: error|warn|skip_row`
-  - `metric_type`, `units`, `expected_units`, `on_unit_mismatch`
+  - `metric_type`, `units`, `expected_units`, `on_unit_mismatch`, `on_missing_units` (`error|warn|skip_row`), `assume_units` (optional: force a unit when the file has none)
   - mode-specific (e.g., `threshold` for particle mode)
 - `grid`: `filename_regex` with named groups `row`/`col` to set grid indices. Optional `index_base` (0 or 1) converts filename indices to zero-based values stored in `grid.row_idx`/`grid.col_idx`.
 - `filename_parsing` (optional): list of regex → key maps for filename metadata (e.g., `patterns: [{ regex: "LOC_RC(?P<row>\\d{3})(?P<col>\\d{3})", map: {row: "grid.row_idx", col: "grid.col_idx"} }, ...]`). Falls back to `grid.filename_regex`.
@@ -26,10 +26,10 @@ See `config.example.yaml` for a concrete example.
   - Overlays: `overlay_std` (sigma-colored text), `overlay_alpha` (alpha driven by a field), `overlay_hatch` (flag cells above/below a threshold with hatching), `overlay_bubbles` (bubble size/color by sigma bins), `overlay_std.legend: true|false`.
   - Recipes: `heatmap_grid` (base), `heatmap_grid_bubbles` (mean background + bubble overlay), `heatmap_two_panel` (side-by-side mean/std).
 - `profiles`: presets tying processing_mode, csv_mode, plotting_modes.
-- `unit_conversions`: per-mode unit conversions `{source: {target, factor}}`.
+- `unit_conversions`: per-mode unit conversions `{source: {target, factor}}`. When a conversion applies, the DataField is scaled before `stats_filter`/`python_data_filtering`, so thresholds are interpreted in normalized units.
 - `debug` (optional): diagnostics/logging/artifacts:
   - `enable` (bool), `level` (`info|debug`), `artifacts` (`["mask","leveled","aligned","filtered"]`), `sample_limit`, `out_dir`.
-  - `log_fields` (`units|mask_counts|stats_counts`), `raise_on_warn` (treat WARN as errors), `echo_config` (log active mode/csv config snippet).
+  - `log_fields` (e.g., `units|unit_conversion|mask_counts|stats_counts|stats_reasons|pyfilter|pyfilter_steps|grid|raw_stats`; units logging also includes `unit_source` when available), `raise_on_warn` (treat WARN as errors), `echo_config` (log active mode/csv config snippet).
   - `trace_dir` (optional): where to write per-file step traces (JSON) when debug is enabled.
 
 ## Patterns and recursion

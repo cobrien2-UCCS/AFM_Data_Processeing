@@ -35,7 +35,7 @@ Top-level sections (see `config.example.yaml`):
   - `plane_level`, `line_correct` (Align Rows), `median_size`, `line_level_x`, `line_level_y`, `clip_percentiles`.
   - `mask` (optional): apply a config-driven mask and compute stats only on masked pixels (supports multi-step AND/OR combine).
   - `stats_filter` (optional): include/exclude pixel values from stats without altering the image; `on_empty: error|warn|skip_row`.
-  - `metric_type`, `units`, `expected_units`, `on_unit_mismatch` (`error|warn|skip_row`).
+  - `metric_type`, `units`, `expected_units`, `on_unit_mismatch` (`error|warn|skip_row`), `on_missing_units` (`error|warn|skip_row`), `assume_units` (force a unit when the file has none).
   - `threshold` (particle mode), other mode-specific params.
 - `grid`: filename regex with named groups `row`/`col` to add grid indices. Optional `index_base: 1` converts SmartScan-style `RC001001` to zero-based indices stored in the CSV.
 - `summarize`: `recursive: false|true` to control recursive search for TIFFs.
@@ -43,9 +43,9 @@ Top-level sections (see `config.example.yaml`):
 - `result_schemas`: casting rules from CSV columns to typed fields for plotting.
 - `plotting_modes`: schema + recipe + labels/bins/etc.
 - `profiles`: presets tying together processing_mode, csv_mode, plotting_modes.
-- `unit_conversions`: per-mode unit conversions `{ source_unit: {target, factor} }`.
+- `unit_conversions`: per-mode unit conversions `{ source_unit: {target, factor} }` (applied to the DataField before `stats_filter`/`python_data_filtering`, so thresholds are in normalized units).
 - `input_filters` (optional): include/exclude regex filters applied during manifest generation (useful for Forward/Backward duplicates).
-- `debug` (optional): enable debug logging/artifacts. Keys: `enable`, `level` (`info|debug`), `artifacts` (`mask|leveled|aligned|filtered`), `sample_limit`, `out_dir`, `log_fields` (e.g., `units|mask_counts|stats_counts|grid`), `raise_on_warn`, `echo_config`.
+- `debug` (optional): enable debug logging/artifacts. Keys: `enable`, `level` (`info|debug`), `artifacts` (`mask|leveled|aligned|filtered`), `sample_limit`, `out_dir`, `log_fields` (e.g., `units|unit_conversion|mask_counts|stats_counts|stats_reasons|pyfilter|pyfilter_steps|grid|raw_stats`; units logging also includes `unit_source`), `raise_on_warn`, `echo_config`.
 - If units are missing from the file, the runner falls back to mode units (e.g., kPa for modulus) and logs that as detected. When pygwy export fails, a Pillow/NumPy fallback writes debug TIFFs to `debug.out_dir`.
 
 ## 3) Adding a new processing mode
@@ -65,7 +65,8 @@ Top-level sections (see `config.example.yaml`):
 - Use `profiles` to bundle processing_mode + csv_mode + plotting_modes for easy CLI use.
 
 ## 5) Unit handling
-- Runner reads field units from pygwy, applies `unit_conversions[mode]` when the detected unit matches a key, and enforces `expected_units` with `on_unit_mismatch` (`error|warn|skip_row`).
+- Runner reads field units from pygwy, applies `unit_conversions[mode]` when the detected unit matches a key (normalizing the data before filters), and enforces `expected_units` with `on_unit_mismatch` (`error|warn|skip_row`).
+- If a file has no unit metadata, `on_missing_units` controls whether to skip, warn + continue, or error. Use `skip_row` for strict pipelines.
 - Include `units` column in CSV modes so plots can infer axis labels.
 
 ## 6) Patterns and recursion

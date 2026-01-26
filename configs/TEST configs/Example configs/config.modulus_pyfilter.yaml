@@ -34,6 +34,7 @@ modes:
     units: "kPa"
     expected_units: "kPa"
     on_unit_mismatch: "warn"
+    on_missing_units: "skip_row"
 
 grid:
   index_base: 1
@@ -201,6 +202,11 @@ profiles:
 
 unit_conversions:
   modulus_basic:
+    kPa: { target: "kPa", factor: 1.0 }
+    MPa: { target: "kPa", factor: 1000.0 }
+    GPa: { target: "kPa", factor: 1e6 }
+    Pa:  { target: "kPa", factor: 0.001 }
+  modulus_pyfilter:
     kPa: { target: "kPa", factor: 1.0 }
     MPa: { target: "kPa", factor: 1000.0 }
     GPa: { target: "kPa", factor: 1e6 }

@@ -9,6 +9,18 @@ This document maps the current repo implementation to the design intents in `AFM
 
 ## Gaps / weak areas to shore up
 
+### 0) Plotting bugs (low priority)
+- Current state: plotting works and is config-driven; some layout warnings (tight_layout with extra axes) and legend placement ergonomics remain.
+- Next: treat as low priority; address once processing/stats validity is confirmed.
+
+### 0.5) Validate Gwyddion stats correctness (highest priority)
+- Goal: confirm pygwy/Gwyddion-derived values (avg/std) are meaningful **before** applying Python-side filters or using results for conclusions.
+- Rationale: if preprocessing or units are wrong, downstream filtering/plotting “looks” plausible but is not valid.
+- Actions:
+  - Add an explicit “stats provenance” debug report per file: raw stats (min/max/pct), post-op stats, n_valid after each filter step.
+  - Compare against a ground-truth run in Gwyddion GUI for a small sample set (same ops + same mask).
+  - Confirm unit detection/conversion matches the GUI-reported units for those samples.
+
 ### 1) Filename parsing + metadata (spec 5.7 intent)
 - Current state: Py2 runner does “best-effort” filename metadata parsing (channel/date_code/grid_id/direction).
 - Risk: “hidden assumptions” creep into code and may not match all datasets.
@@ -46,4 +58,3 @@ This document maps the current repo implementation to the design intents in `AFM
 
 ## Out-of-scope note (per spec 1.7)
 The spec lists “file manifest utilities” as out-of-scope for the *core* API. This repo includes optional helpers (`scripts/make_job_manifest.py`, `scripts/run_config_suite.py`) as wrappers; they should remain optional and not change the core data model.
-

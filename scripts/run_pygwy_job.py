@@ -116,6 +116,89 @@ def _field_stats_masked(field, mask, filter_cfg):
     return float(mean_val), float(std_val), float(vmin), float(vmax), int(count)
 
 
+def _field_stats_masked_debug(field, mask, filter_cfg):
+    """Like _field_stats_masked, but also returns reason counters for exclusions."""
+    data = field.get_data()
+    n = len(data)
+    reasons = {
+        "n_total": int(n),
+        "excluded_mask": 0,
+        "excluded_nonfinite": 0,
+        "excluded_zero": 0,
+        "excluded_nonpositive": 0,
+        "excluded_min": 0,
+        "excluded_max": 0,
+        "excluded_max_abs": 0,
+        "kept": 0,
+    }
+    if not n:
+        return 0.0, 0.0, 0.0, 0.0, 0, reasons
+
+    min_value = filter_cfg.get("min_value") if filter_cfg else None
+    max_value = filter_cfg.get("max_value") if filter_cfg else None
+    max_abs_value = filter_cfg.get("max_abs_value") if filter_cfg else None
+    exclude_zero = bool(filter_cfg.get("exclude_zero")) if filter_cfg else False
+    exclude_nonpositive = bool(filter_cfg.get("exclude_nonpositive")) if filter_cfg else False
+
+    try:
+        min_value = float(min_value) if min_value is not None else None
+    except Exception:
+        min_value = None
+    try:
+        max_value = float(max_value) if max_value is not None else None
+    except Exception:
+        max_value = None
+    try:
+        max_abs_value = float(max_abs_value) if max_abs_value is not None else None
+    except Exception:
+        max_abs_value = None
+
+    count = 0
+    mean_val = 0.0
+    m2 = 0.0
+    vmin = None
+    vmax = None
+    for i in range(n):
+        if mask is not None and not mask[i]:
+            reasons["excluded_mask"] += 1
+            continue
+        v = float(data[i])
+        if not _is_finite(v):
+            reasons["excluded_nonfinite"] += 1
+            continue
+        if exclude_zero and v == 0.0:
+            reasons["excluded_zero"] += 1
+            continue
+        if exclude_nonpositive and v <= 0.0:
+            reasons["excluded_nonpositive"] += 1
+            continue
+        if min_value is not None and v < min_value:
+            reasons["excluded_min"] += 1
+            continue
+        if max_value is not None and v > max_value:
+            reasons["excluded_max"] += 1
+            continue
+        if max_abs_value is not None and abs(v) > max_abs_value:
+            reasons["excluded_max_abs"] += 1
+            continue
+
+        count += 1
+        reasons["kept"] += 1
+        if vmin is None or v < vmin:
+            vmin = v
+        if vmax is None or v > vmax:
+            vmax = v
+        delta = v - mean_val
+        mean_val += delta / float(count)
+        m2 += delta * (v - mean_val)
+
+    if not count:
+        return 0.0, 0.0, 0.0, 0.0, 0, reasons
+
+    std_val = math.sqrt(m2 / float(count))
+    return float(mean_val), float(std_val), float(vmin), float(vmax), int(count), reasons
+
+
 def _field_stats_filtered(field, filter_cfg):
     return _field_stats_masked(field, None, filter_cfg or {})
 
@@ -246,7 +329,7 @@ def _mask_field_from_bool(field, mask):
         return None
 
 
-def _apply_ops_sequence(container, field_key, field, ops, debug_artifacts, trace=None):
+def _apply_ops_sequence(container, field_key, field, ops, debug_artifacts, trace=None, trace_stats=False):
     """
     Apply a config-driven ordered list of pygwy/Gwyddion operations.
     Supported ops (name -> params):
@@ -268,6 +351,8 @@ def _apply_ops_sequence(container, field_key, field, ops, debug_artifacts, trace
                 _trace_append(trace, "plane_level", True)
                 if debug_artifacts is not None:
                     debug_artifacts["leveled"] = f.duplicate()
+                if trace_stats:
+                    _trace_stats(trace, f, "after_plane_level")
             except Exception as exc:
                 _trace_append(trace, "plane_level", False, str(exc))
         elif name in ("align_rows", "line_correct", "line_match"):
@@ -280,6 +365,8 @@ def _apply_ops_sequence(container, field_key, field, ops, debug_artifacts, trace
                         debug_artifacts["aligned"] = f.duplicate()
                     except Exception:
                         pass
+                if ok and trace_stats:
+                    _trace_stats(trace, f, "after_align_rows")
             except Exception as exc:
                 _trace_append(trace, "align_rows", False, str(exc))
         elif name == "median":
@@ -289,6 +376,8 @@ def _apply_ops_sequence(container, field_key, field, ops, debug_artifacts, trace
                 _trace_append(trace, "median", True, {"size": size})
                 if debug_artifacts is not None:
                     debug_artifacts["filtered"] = f.duplicate()
+                if trace_stats:
+                    _trace_stats(trace, f, "after_median")
             except Exception as exc:
                 _trace_append(trace, "median", False, str(exc))
         elif name == "clip_percentiles":
@@ -299,6 +388,8 @@ def _apply_ops_sequence(container, field_key, field, ops, debug_artifacts, trace
                 _trace_append(trace, "clip_percentiles", True, {"low": low, "high": high})
                 if debug_artifacts is not None:
                     debug_artifacts["filtered"] = f.duplicate()
+                if trace_stats:
+                    _trace_stats(trace, f, "after_clip_percentiles")
             except Exception as exc:
                 _trace_append(trace, "clip_percentiles", False, str(exc))
         else:
@@ -502,6 +593,52 @@ def _quick_stats(field):
     def pct(p):
         return _percentile_sorted(vals_sorted, p)
     return (min(vals_sorted), max(vals_sorted), pct(5), pct(50), pct(95))
+
+
+def _trace_stats(trace, field, label):
+    if trace is None:
+        return
+    info = {"label": label}
+    try:
+        info["avg"] = float(_field_get_avg(field))
+    except Exception:
+        info["avg"] = None
+    try:
+        info["rms"] = float(_field_get_rms(field))
+    except Exception:
+        info["rms"] = None
+    stats = _quick_stats(field)
+    if stats:
+        info["min"] = float(stats[0])
+        info["max"] = float(stats[1])
+        info["p5"] = float(stats[2])
+        info["p50"] = float(stats[3])
+        info["p95"] = float(stats[4])
+    _trace_append(trace, "stats_snapshot", True, info)
+
+
+def _apply_unit_conversion_to_field(field, detected_unit, processing_mode, manifest):
+    if not detected_unit:
+        return field, detected_unit, None
+    conversions = (manifest.get("unit_conversions") or {}).get(processing_mode, {})
+    conversions = _normalize_unit_conversions(conversions)
+    detected_unit = _normalize_unit_name(detected_unit)
+    if not conversions or not detected_unit:
+        return field, detected_unit, None
+    conv = conversions.get(detected_unit)
+    if not conv:
+        return field, detected_unit, None
+    try:
+        factor = float(conv.get("factor", 1.0))
+    except Exception:
+        factor = 1.0
+    target = conv.get("target", detected_unit)
+    target = _normalize_unit_name(target) or target
+    if factor != 1.0:
+        data = field.get_data()
+        for i in range(len(data)):
+            data[i] = float(data[i]) * factor
+    return field, target, {"source": detected_unit, "target": target, "factor": factor}
 
 
 def _build_single_mask(field, mask_cfg):
@@ -873,6 +1010,14 @@ def _normalize_unit_name(u):
     return s
 
 
+def _normalize_unit_conversions(conversions):
+    out = {}
+    for k, v in (conversions or {}).items():
+        nk = _normalize_unit_name(k) or k
+        out[nk] = v
+    return out
+
+
 def _field_get_avg(field):
     """Average value from gwy.DataField."""
     try:
@@ -1181,14 +1326,26 @@ def process_file(path, manifest, use_pygwy, allow_debug_save=False):
         log_fields = _debug_log_fields(manifest)
         # Default fields if none specified
         if not log_fields:
-            log_fields = set(["units", "mask_counts", "stats_counts", "grid", "raw_stats", "pyfilter"])
+            log_fields = set(["units", "mask_counts", "stats_counts", "stats_reasons", "grid", "raw_stats", "pyfilter"])
         detected_unit = result.get("_debug.detected_unit")
+        detected_unit_raw = result.get("_debug.detected_unit_raw")
+        unit_source = result.get("_debug.unit_source")
+        unit_conv = result.get("_debug.unit_conversion")
         final_unit = result.get("core.units")
         parts = ["[DEBUG] %s" % os.path.basename(path)]
         if "units" in log_fields:
+            if detected_unit_raw:
+                parts.append("unit_raw=%s" % detected_unit_raw)
             parts.append("unit=%s" % (detected_unit or "n/a"))
+            if unit_source:
+                parts.append("unit_source=%s" % unit_source)
             if detected_unit and final_unit and detected_unit != final_unit:
-                parts.append("->%s" % final_unit)
+                parts.append("unit_out=%s" % final_unit)
+        if "unit_conversion" in log_fields and unit_conv:
+            try:
+                parts.append("unit_conv=%s->%s x%s" % (unit_conv.get("source"), unit_conv.get("target"), unit_conv.get("factor")))
+            except Exception:
+                parts.append("unit_conv=%s" % str(unit_conv))
         if "stats_counts" in log_fields and "core.n_valid" in result:
             parts.append("n_valid=%s" % result.get("core.n_valid"))
         if "mask_counts" in log_fields and "mask.n_kept" in result and "mask.n_total" in result:
@@ -1197,6 +1354,11 @@ def process_file(path, manifest, use_pygwy, allow_debug_save=False):
             parts.append("pyfilter=%s/%s" % (result.get("pyfilter.n_kept"), result.get("pyfilter.n_total")))
         if "pyfilter_steps" in log_fields and "_debug.pyfilter_steps" in result:
             parts.append("pfsteps=%s" % result.get("_debug.pyfilter_steps"))
+        if "stats_reasons" in log_fields and "_debug.stats_reasons" in result:
+            try:
+                parts.append("stats_reasons=%s" % json.dumps(result.get("_debug.stats_reasons")))
+            except Exception:
+                parts.append("stats_reasons=%s" % str(result.get("_debug.stats_reasons")))
         if "grid" in log_fields:
             r = result.get("grid.row_idx")
             c = result.get("grid.col_idx")
@@ -1274,10 +1436,13 @@ def _process_with_pygwy(path, processing_mode, mode_def, channel_defaults, manif
     if mode in ("modulus_basic", "modulus_simple", "modulus_complex", "topography_flat"):
         f = field.duplicate()
         trace = []
+        stats_debug = _debug_enabled(manifest) and (manifest.get("debug") or {}).get("stats_provenance")
         raw_stats = _quick_stats(f)
+        if stats_debug:
+            _trace_stats(trace, f, "initial")
         ops = mode_def.get("gwyddion_ops")
         if ops:
-            f = _apply_ops_sequence(container, field_id, f, ops, debug_artifacts, trace)
+            f = _apply_ops_sequence(container, field_id, f, ops, debug_artifacts, trace, trace_stats=stats_debug)
         else:
             # Legacy behavior
             if mode_def.get("plane_level", True):
@@ -1287,6 +1452,8 @@ def _process_with_pygwy(path, processing_mode, mode_def, channel_defaults, manif
                     _trace_append(trace, "plane_level", True)
                     if allow_debug_save:
                         debug_artifacts["leveled"] = f.duplicate()
+                    if stats_debug:
+                        _trace_stats(trace, f, "after_plane_level")
                 except Exception as exc:
                     _trace_append(trace, "plane_level", False, str(exc))
                     sys.stderr.write("WARN: plane_level failed for %s: %s\n" % (path, exc))
@@ -1297,6 +1464,8 @@ def _process_with_pygwy(path, processing_mode, mode_def, channel_defaults, manif
                     _trace_append(trace, "median", True, {"size": median_size})
                     if allow_debug_save:
                         debug_artifacts["filtered"] = f.duplicate()
+                    if stats_debug:
+                        _trace_stats(trace, f, "after_median")
                 except Exception as exc:
                     _trace_append(trace, "median", False, str(exc))
                     sys.stderr.write("WARN: median filter failed for %s: %s\n" % (path, exc))
@@ -1312,6 +1481,8 @@ def _process_with_pygwy(path, processing_mode, mode_def, channel_defaults, manif
                     _trace_append(trace, "clip_percentiles", True, {"low": low, "high": high})
                     if allow_debug_save:
                         debug_artifacts["filtered"] = f.duplicate()
+                    if stats_debug:
+                        _trace_stats(trace, f, "after_clip_percentiles")
                 except Exception as exc:
                     _trace_append(trace, "clip_percentiles", False, str(exc))
                     sys.stderr.write("WARN: clip_percentiles failed for %s: %s\n" % (path, exc))
@@ -1354,23 +1525,62 @@ def _process_with_pygwy(path, processing_mode, mode_def, channel_defaults, manif
                 sys.stderr.write("WARN: raw CSV export failed for %s: %s\n" % (path, exc))
         if py_filter_cfg.get("enable"):
             mask, mask_counts, pyfilter_debug = _apply_python_filters(f, mask, py_filter_cfg)
+            if stats_debug and pyfilter_debug:
+                _trace_append(trace, "pyfilter_summary", True, {
+                    "filters": py_filter_cfg.get("filters"),
+                    "kept": pyfilter_debug.get("pyfilter.n_kept"),
+                    "total": pyfilter_debug.get("pyfilter.n_total"),
+                    "steps": pyfilter_debug.get("_debug.pyfilter_steps"),
+                })
             if py_filter_cfg.get("export_filtered_csv"):
                 try:
                     _export_field_csv(f, mask, os.path.join(pyfilter_export_dir, "%s_filtered.csv" % base_name))
                 except Exception as exc:
                     sys.stderr.write("WARN: filtered CSV export failed for %s: %s\n" % (path, exc))
-        detected_unit = _get_field_units(f)
-        if not detected_unit:
-            detected_unit = mode_def.get("units") or None
+        detected_unit_raw = _get_field_units(f)
+        unit_source = "file" if detected_unit_raw else "default"
+        assume_units = mode_def.get("assume_units") if mode_def else None
+        missing_units_policy = "warn"
+        if mode_def:
+            missing_units_policy = mode_def.get("on_missing_units", "warn")
+        if not detected_unit_raw:
+            if assume_units:
+                detected_unit_raw = assume_units
+                unit_source = "assumed"
+            else:
+                msg = "No units detected for %s" % path
+                if missing_units_policy == "skip_row":
+                    sys.stderr.write("WARN: %s; skipping row.\n" % msg)
+                    return None
+                if missing_units_policy == "error":
+                    raise RuntimeError(msg)
+                if missing_units_policy == "warn":
+                    sys.stderr.write("WARN: %s; using mode units.\n" % msg)
+        detected_unit = detected_unit_raw or mode_def.get("units") or None
+        unit_conv = None
+        if detected_unit_raw:
+            f, detected_unit_norm, unit_conv = _apply_unit_conversion_to_field(f, detected_unit_raw, processing_mode, manifest)
+            if detected_unit_norm:
+                detected_unit = detected_unit_norm
+            if unit_conv and stats_debug:
+                _trace_append(trace, "unit_normalization", True, unit_conv)
+                _trace_stats(trace, f, "after_unit_normalization")
         result = _to_mode_result(f, mode_def, mode, path, mask=mask, mask_counts=mask_counts)
         result["channel.key"] = field_id
         if field_title:
             result["channel.title"] = field_title
-        if detected_unit:
+        if detected_unit_raw:
+            result["channel.z_units"] = detected_unit_raw
+            result["_debug.detected_unit_raw"] = detected_unit_raw
+        elif detected_unit:
             result["channel.z_units"] = detected_unit
+        if detected_unit:
             result["_debug.detected_unit"] = detected_unit
         elif mode_def.get("units"):
             result["_debug.detected_unit"] = mode_def.get("units")
+        result["_debug.unit_source"] = unit_source
+        if unit_conv:
+            result["_debug.unit_conversion"] = unit_conv
         if raw_stats:
             result["_debug.raw_min"] = raw_stats[0]
             result["_debug.raw_max"] = raw_stats[1]
@@ -1380,6 +1590,15 @@ def _process_with_pygwy(path, processing_mode, mode_def, channel_defaults, manif
         if pyfilter_debug:
             result.update(pyfilter_debug)
         applied = _apply_units(result, processing_mode, mode_def, manifest, detected_unit)
+        if stats_debug and applied is not None:
+            _trace_append(trace, "stats_final", True, {
+                "avg": applied.get("core.avg_value"),
+                "std": applied.get("core.std_value"),
+                "n_valid": applied.get("core.n_valid"),
+                "units": applied.get("core.units"),
+            })
+            if applied.get("_debug.stats_reasons") is not None:
+                _trace_append(trace, "stats_reasons", True, applied.get("_debug.stats_reasons"))
         if allow_debug_save and _debug_enabled(manifest):
             try:
                 out_dir = _debug_out_dir(manifest)
@@ -1496,7 +1715,11 @@ def _to_mode_result(field, mode_def, processing_mode, src_path, mask=None, mask_
     global _STATS_WARNED
     stats_filter = mode_def.get("stats_filter") if mode_def else None
     if mask is not None or stats_filter:
-        mean_val, std_val, vmin, vmax, n_valid = _field_stats_masked(field, mask, stats_filter or {})
+        if _debug_enabled(manifest_global_cfg) and (manifest_global_cfg.get("debug") or {}).get("stats_provenance"):
+            mean_val, std_val, vmin, vmax, n_valid, reasons = _field_stats_masked_debug(field, mask, stats_filter or {})
+        else:
+            reasons = None
+            mean_val, std_val, vmin, vmax, n_valid = _field_stats_masked(field, mask, stats_filter or {})
         if n_valid == 0:
             policy = "error"
             if stats_filter and isinstance(stats_filter, dict):
@@ -1547,6 +1770,8 @@ def _to_mode_result(field, mode_def, processing_mode, src_path, mask=None, mask_
         out["core.max_value"] = float(vmax)
     if n_valid is not None:
         out["core.n_valid"] = int(n_valid)
+    if reasons:
+        out["_debug.stats_reasons"] = reasons
     if mask_counts:
         total, kept = mask_counts
         out["mask.n_total"] = int(total)
@@ -1561,12 +1786,7 @@ def _apply_units(result, processing_mode, mode_def, manifest, detected_unit):
     detected_unit = _normalize_unit_name(detected_unit)
     current_unit = detected_unit or _normalize_unit_name(result.get("core.units")) or _normalize_unit_name(mode_def.get("units"))
     conversions = (manifest.get("unit_conversions") or {}).get(processing_mode, {})
-    # Normalize conversion keys for robustness
-    conversions_norm = {}
-    for k, v in conversions.items():
-        nk = _normalize_unit_name(k)
-        conversions_norm[nk or k] = v
-    conversions = conversions_norm
+    conversions = _normalize_unit_conversions(conversions)
     if current_unit in conversions:
         conv = conversions.get(current_unit) or {}
         try:
@@ -1647,7 +1867,7 @@ def process_manifest(manifest, dry_run=False):
             allow_debug_save = _debug_should_save(manifest)
             mode_result = process_file(path, manifest, use_pygwy, allow_debug_save=allow_debug_save)
             if mode_result is None:
-                sys.stderr.write("INFO: Skipped %s due to unit mismatch policy.\n" % path)
+                sys.stderr.write("INFO: Skipped %s due to policy.\n" % path)
                 continue
             row = build_csv_row(mode_result, csv_def, processing_mode, csv_mode)
             if row is not None:

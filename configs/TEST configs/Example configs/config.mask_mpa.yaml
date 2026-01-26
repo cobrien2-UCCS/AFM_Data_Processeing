@@ -17,7 +17,7 @@ modes:
     line_level_x: false
     line_level_y: false
     clip_percentiles: null
-    # Mask applied before stats (units: raw data, typically kPa pre-conversion).
+    # Mask applied before stats (units: normalized data after unit conversion).
     mask:
       enable: true
       method: "threshold"
@@ -25,7 +25,7 @@ modes:
       direction: "above"
       invert: false
       on_empty: "error"
-    # Value include/exclude for stats (still in raw units, typically kPa).
+    # Value include/exclude for stats (normalized units after unit conversion).
     stats_filter:
       min_value: 0.5               # exclude below 0.5 kPa
       max_value: 70.0              # exclude above 70 kPa

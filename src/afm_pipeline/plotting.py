@@ -91,6 +91,18 @@ def _sigma_legend_handles(sigma_bins: List[float], colors: List[str], marker: st
     return handles
 
 
+def _save_separate_legend(out_dir: Path, name: str, handles: List[Line2D], title: str, loc: str = "upper left"):
+    """Save a standalone legend figure to <out_dir>/<name>_legend.png."""
+    try:
+        fig, ax = plt.subplots(figsize=(2.5, 2.5))
+        ax.axis("off")
+        ax.legend(handles=handles, title=title, loc=loc, fontsize=7, title_fontsize=8, framealpha=0.8)
+        fig.savefig(out_dir / f"{name}_legend.png", dpi=300, bbox_inches="tight")
+        plt.close(fig)
+    except Exception:
+        pass
+
+
 def _extract_value(row: Dict[str, Any], field: str) -> float:
     """Pull a value from row, supporting a few derived fields."""
     try:
@@ -301,10 +313,7 @@ def plot_heatmap_grid(rows: List[Dict[str, Any]], plotting_def: Dict[str, Any], 
         for r in valid_rows:
             ri = int(r.get("row_idx", 0))
             ci = int(r.get("col_idx", 0))
-            try:
-                v = float(r.get(ov_field, float("nan")))
-            except Exception:
-                v = float("nan")
+            v = _extract_value(r, ov_field)
             if v == v:
                 ov_cells[(ri, ci)] = v
                 ov_vals.append(v)
@@ -314,10 +323,12 @@ def plot_heatmap_grid(rows: List[Dict[str, Any]], plotting_def: Dict[str, Any], 
             if sigma_v <= 0.0:
                 sigma_v = None
             for (ri, ci), v in ov_cells.items():
+                if v != v:
+                    ax.text(ci, ri, "NA", ha="center", va="center", color="#ff0000", fontsize=8, fontweight="bold")
+                    continue
                 z = 0.0
                 if sigma_v:
                     z = abs(v - mean_v) / sigma_v
-                # pick color based on sigma_bins thresholds
                 color = _sigma_color(z, sigma_bins, colors)
                 ax.text(ci, ri, text_fmt.format(val=v, z=z), ha="center", va="center", color=color, fontsize=8)
             if overlay_cfg.get("legend", True):
@@ -325,7 +336,16 @@ def plot_heatmap_grid(rows: List[Dict[str, Any]], plotting_def: Dict[str, Any], 
                 if handles:
                     loc = overlay_cfg.get("legend_loc", "upper right")
                     bbox = overlay_cfg.get("legend_bbox")  # e.g., [1.05, 1] to place outside
-                    if bbox:
+                    if overlay_cfg.get("legend_separate"):
+                        _save_separate_legend(out_dir, f"{name}_sigma", handles, f"{ov_field} σ-bins", loc="upper left")
+                    elif overlay_cfg.get("legend_panel"):
+                        box = ax.get_position()
+                        pad = float(overlay_cfg.get("legend_panel_pad", 0.02))
+                        width = float(overlay_cfg.get("legend_panel_width", 0.08))
+                        leg_ax = ax.figure.add_axes([box.x1 + pad, box.y0, width, box.height])
+                        leg_ax.axis("off")
+                        leg_ax.legend(handles=handles, title=f"{ov_field} σ-bins", loc="upper left", fontsize=7, title_fontsize=8, framealpha=0.8)
+                    elif bbox:
                         ax.legend(handles=handles, title=f"{ov_field} σ-bins", loc=loc, bbox_to_anchor=tuple(bbox), fontsize=7, title_fontsize=8, framealpha=0.8)
                     else:
                         ax.legend(handles=handles, title=f"{ov_field} σ-bins", loc=loc, fontsize=7, title_fontsize=8, framealpha=0.8)
@@ -623,7 +643,16 @@ def plot_heatmap_grid_bubbles(rows: List[Dict[str, Any]], plotting_def: Dict[str
         if handles:
             loc = overlay_cfg.get("legend_loc", "upper right")
             bbox = overlay_cfg.get("legend_bbox")
-            if bbox:
+            if overlay_cfg.get("legend_separate"):
+                _save_separate_legend(out_dir, f"{name}_sigma", handles, f"{ov_field} σ-bins", loc="upper left")
+            elif overlay_cfg.get("legend_panel"):
+                box = ax.get_position()
+                pad = float(overlay_cfg.get("legend_panel_pad", 0.02))
+                width = float(overlay_cfg.get("legend_panel_width", 0.08))
+                leg_ax = ax.figure.add_axes([box.x1 + pad, box.y0, width, box.height])
+                leg_ax.axis("off")
+                leg_ax.legend(handles=handles, title=f"{ov_field} σ-bins", loc="upper left", fontsize=7, title_fontsize=8, framealpha=0.8)
+            elif bbox:
                 ax.legend(handles=handles, title=f"{ov_field} σ-bins", loc=loc, bbox_to_anchor=tuple(bbox), fontsize=7, title_fontsize=8, framealpha=0.8)
             else:
                 ax.legend(handles=handles, title=f"{ov_field} σ-bins", loc=loc, fontsize=7, title_fontsize=8, framealpha=0.8)

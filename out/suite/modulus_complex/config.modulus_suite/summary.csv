@@ -1,8 +1,8 @@
 source_file,channel,direction,grid_id,date_code,mode,metric_type,avg_value,std_value,units,nx,ny,row_idx,col_idx
-PEGDA01TPO000SiNP_Sam01_S1_P__GrID000_LOC_RC001001-5.00x5.00-Modulus_Backward-251021-CRO.tiff,Modulus,Backward,0,251021,modulus_complex,modulus,31416.590247243643,0.0,kPa,512,512,0,0
+PEGDA01TPO000SiNP_Sam01_S1_P__GrID000_LOC_RC001001-5.00x5.00-Modulus_Backward-251021-CRO.tiff,Modulus,Backward,0,251021,modulus_complex,modulus,74060.11185753345,24620.248680894445,kPa,512,512,0,0
 PEGDA01TPO000SiNP_Sam01_S1_P__GrID001_LOC_RC001002-5.00x5.00-Modulus_Backward-251021-CRO.tiff,Modulus,Backward,1,251021,modulus_complex,modulus,43902.3068529889,19807.692655153573,kPa,512,512,0,1
-PEGDA01TPO000SiNP_Sam01_S1_P__GrID002_LOC_RC001001-5.00x5.00-Modulus_Backward-251020-CRO.tiff,Modulus,Backward,2,251020,modulus_complex,modulus,0.0,0.0,kPa,512,512,0,0
-PEGDA01TPO000SiNP_Sam01_S1_P__GrID002_LOC_RC001005-5.00x5.00-Modulus_Backward-251022-CRO.tiff,Modulus,Backward,2,251022,modulus_complex,modulus,24088.379493350698,16627.949893758756,kPa,512,512,0,4
-PEGDA01TPO000SiNP_Sam01_S1_P__GrID003_LOC_RC001006-5.00x5.00-Modulus_Backward-251022-CRO.tiff,Modulus,Backward,3,251022,modulus_complex,modulus,0.0,0.0,kPa,512,512,0,5
-PEGDA01TPO000SiNP_Sam01_S1_P__GrID005_LOC_RC001010-5.00x5.00-Modulus_Backward-251027-CRO.tiff,Modulus,Backward,5,251027,modulus_complex,modulus,0.0,0.0,kPa,512,512,0,9
-PEGDA01TPO000SiNP_Sam01_S1_P__GrID006_LOC_RC001011-5.00x5.00-Modulus_Backward-251027-CRO.tiff,Modulus,Backward,6,251027,modulus_complex,modulus,0.0,0.0,kPa,512,512,0,10
+PEGDA01TPO000SiNP_Sam01_S1_P__GrID002_LOC_RC001001-5.00x5.00-Modulus_Backward-251020-CRO.tiff,Modulus,Backward,2,251020,modulus_complex,modulus,nan,nan,kPa,512,512,0,0
+PEGDA01TPO000SiNP_Sam01_S1_P__GrID002_LOC_RC001005-5.00x5.00-Modulus_Backward-251022-CRO.tiff,Modulus,Backward,2,251022,modulus_complex,modulus,37423.29462686864,28962.029460099617,kPa,512,512,0,4
+PEGDA01TPO000SiNP_Sam01_S1_P__GrID003_LOC_RC001006-5.00x5.00-Modulus_Backward-251022-CRO.tiff,Modulus,Backward,3,251022,modulus_complex,modulus,nan,nan,kPa,512,512,0,5
+PEGDA01TPO000SiNP_Sam01_S1_P__GrID005_LOC_RC001010-5.00x5.00-Modulus_Backward-251027-CRO.tiff,Modulus,Backward,5,251027,modulus_complex,modulus,nan,nan,kPa,512,512,0,9
+PEGDA01TPO000SiNP_Sam01_S1_P__GrID006_LOC_RC001011-5.00x5.00-Modulus_Backward-251027-CRO.tiff,Modulus,Backward,6,251027,modulus_complex,modulus,nan,nan,kPa,512,512,0,10

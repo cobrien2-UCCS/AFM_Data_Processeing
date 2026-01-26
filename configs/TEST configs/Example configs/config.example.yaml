@@ -57,6 +57,7 @@ modes:
     units: "kPa"
     expected_units: "kPa"          # optional validation target
     on_unit_mismatch: "error"      # "error" | "warn" | "skip_row"
+    on_missing_units: "skip_row"   # "error" | "warn" | "skip_row"
   topography_flat:
     channel_family: "height"
     plane_level: true
