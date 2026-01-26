@@ -659,6 +659,54 @@ def _build_single_mask(field, mask_cfg):
     include_equal = mask_cfg.get("include_equal", True)
     inclusive = bool(mask_cfg.get("inclusive", True))
 
+    # Gwyddion-native mask helpers (via DataField methods), returned as a boolean list.
+    # These operate on the (already preprocessed) DataField but do not depend on unit metadata.
+    if method in ("gwy_outliers", "gwy_mask_outliers", "mask_outliers", "outliers"):
+        try:
+            thresh = float(mask_cfg.get("thresh"))
+        except Exception:
+            thresh = None
+        if thresh is None:
+            raise ValueError("mask_outliers requires 'thresh' (float)")
+        try:
+            mask_field = field.create_full_mask()
+            field.mask_outliers(mask_field, float(thresh))
+            data = mask_field.get_data()
+            # Gwyddion mask convention is "1 == masked (excluded)".  Our mask convention is
+            # "True == kept (included)", so we invert by default.
+            base_mask = [not (float(v) > 0.5) for v in data]
+        except Exception as exc:
+            raise RuntimeError("gwyddion mask_outliers failed: %s" % exc)
+        if invert:
+            base_mask = [not m for m in base_mask]
+        kept = sum(1 for m in base_mask if m)
+        return base_mask, kept, len(base_mask)
+
+    if method in ("gwy_outliers2", "gwy_mask_outliers2", "mask_outliers2", "outliers2"):
+        try:
+            thresh_low = float(mask_cfg.get("thresh_low"))
+        except Exception:
+            thresh_low = None
+        try:
+            thresh_high = float(mask_cfg.get("thresh_high"))
+        except Exception:
+            thresh_high = None
+        if thresh_low is None or thresh_high is None:
+            raise ValueError("mask_outliers2 requires 'thresh_low' and 'thresh_high' (float)")
+        try:
+            mask_field = field.create_full_mask()
+            field.mask_outliers2(mask_field, float(thresh_low), float(thresh_high))
+            data = mask_field.get_data()
+            # Gwyddion mask convention is "1 == masked (excluded)".  Our mask convention is
+            # "True == kept (included)", so we invert by default.
+            base_mask = [not (float(v) > 0.5) for v in data]
+        except Exception as exc:
+            raise RuntimeError("gwyddion mask_outliers2 failed: %s" % exc)
+        if invert:
+            base_mask = [not m for m in base_mask]
+        kept = sum(1 for m in base_mask if m)
+        return base_mask, kept, len(base_mask)
+
     data = field.get_data()
     n = len(data)
     if not n:

@@ -222,6 +222,81 @@ class PipelineTestCase(unittest.TestCase):
         skipped = run_pygwy_job._apply_units(base.copy(), "modulus_basic", mode_def_skip, manifest, "kPa")
         self.assertIsNone(skipped)
 
+    def test_mask_outliers_builds_keep_mask(self):
+        class FakeMaskField:
+            def __init__(self, n):
+                self._data = [0.0] * n
+
+            def get_data(self):
+                return self._data
+
+        class FakeField:
+            def __init__(self, data):
+                self._data = list(data)
+
+            def get_data(self):
+                return self._data
+
+            def create_full_mask(self):
+                return FakeMaskField(len(self._data))
+
+            def mask_outliers(self, mask_field, thresh):
+                import math
+
+                mean = sum(self._data) / float(len(self._data))
+                sigma = math.sqrt(sum((v - mean) ** 2 for v in self._data) / float(len(self._data)))
+                limit = float(thresh) * float(sigma)
+                data = mask_field.get_data()
+                for i, v in enumerate(self._data):
+                    data[i] = 1.0 if abs(v - mean) > limit else 0.0
+
+        field = FakeField([0.0, 0.0, 0.0, 0.0, 100.0])
+
+        mask, kept, total = run_pygwy_job._build_single_mask(field, {"method": "outliers", "thresh": 1.5})
+        self.assertEqual(total, 5)
+        self.assertEqual(kept, 4)
+        self.assertEqual(mask, [True, True, True, True, False])
+
+        mask, kept, total = run_pygwy_job._build_single_mask(field, {"method": "outliers", "thresh": 1.5, "invert": True})
+        self.assertEqual(total, 5)
+        self.assertEqual(kept, 1)
+        self.assertEqual(mask, [False, False, False, False, True])
+
+    def test_mask_outliers2_builds_keep_mask(self):
+        class FakeMaskField:
+            def __init__(self, n):
+                self._data = [0.0] * n
+
+            def get_data(self):
+                return self._data
+
+        class FakeField:
+            def __init__(self, data):
+                self._data = list(data)
+
+            def get_data(self):
+                return self._data
+
+            def create_full_mask(self):
+                return FakeMaskField(len(self._data))
+
+            def mask_outliers2(self, mask_field, thresh_low, thresh_high):
+                import math
+
+                mean = sum(self._data) / float(len(self._data))
+                sigma = math.sqrt(sum((v - mean) ** 2 for v in self._data) / float(len(self._data)))
+                lo = mean - float(thresh_low) * float(sigma)
+                hi = mean + float(thresh_high) * float(sigma)
+                data = mask_field.get_data()
+                for i, v in enumerate(self._data):
+                    data[i] = 1.0 if (v < lo or v > hi) else 0.0
+
+        field = FakeField([0.0, 0.0, 0.0, 0.0, 100.0])
+        mask, kept, total = run_pygwy_job._build_single_mask(field, {"method": "outliers2", "thresh_low": 1.5, "thresh_high": 1.5})
+        self.assertEqual(total, 5)
+        self.assertEqual(kept, 4)
+        self.assertEqual(mask, [True, True, True, True, False])
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -33,8 +33,9 @@ Top-level sections (see `config.example.yaml`):
 - `modes`: processing modes (Gwyddion-first). Keys:
   - `channel_family`: which channel to select.
   - `plane_level`, `line_correct` (Align Rows), `median_size`, `line_level_x`, `line_level_y`, `clip_percentiles`.
-  - `mask` (optional): apply a config-driven mask and compute stats only on masked pixels (supports multi-step AND/OR combine).
-  - `stats_filter` (optional): include/exclude pixel values from stats without altering the image; `on_empty: error|warn|skip_row`.
+  - `gwyddion_ops` (optional): explicit ordered list of pygwy/Gwyddion operations (preferred for complex pipelines). See `docs/gwyddion_ops.md`.
+  - `mask` (optional): apply a config-driven mask and compute stats only on masked pixels (threshold/range/percentile/outliers/outliers2; supports multi-step AND/OR combine).
+  - `stats_filter` (optional): include/exclude pixel values from stats without altering the image; `on_empty: error|warn|blank|skip_row`.
   - `metric_type`, `units`, `expected_units`, `on_unit_mismatch` (`error|warn|skip_row`), `on_missing_units` (`error|warn|skip_row`), `assume_units` (force a unit when the file has none).
   - `threshold` (particle mode), other mode-specific params.
 - `grid`: filename regex with named groups `row`/`col` to add grid indices. Optional `index_base: 1` converts SmartScan-style `RC001001` to zero-based indices stored in the CSV.
@@ -92,7 +93,7 @@ Top-level sections (see `config.example.yaml`):
 
 ## 8.1) Masking and stats_filter (include/exclude)
 Two different mechanisms affect summary stats:
-- `mask`: builds a boolean mask over the field; only pixels where `mask[i] == True` are included in avg/std. This is a Gwyddion-first step in the Py2 runner and is intended for ROI selection (e.g., threshold/range/percentile).
+- `mask`: builds a boolean mask over the field; only pixels where `mask[i] == True` are included in avg/std. This is a Gwyddion-first step in the Py2 runner and is intended for ROI selection (e.g., threshold/range/percentile/outliers/outliers2).
 - `stats_filter`: excludes values from stats based on value rules (min/max, nonpositive, zero). This does not change the image; it only affects the computed stats.
 
 Example mask (threshold):
@@ -128,7 +129,7 @@ modes:
       max_value: 1e12      # exclude values above 1e12
       exclude_zero: true   # exclude exact zeros
       exclude_nonpositive: true
-      on_empty: "warn"     # error|warn|skip_row if all pixels are excluded
+      on_empty: "warn"     # error|warn|blank|skip_row if all pixels are excluded
 ```
 
 ## 9) Troubleshooting

@@ -7,11 +7,11 @@ See `config.example.yaml` for a concrete example.
 - `modes`: processing modes (Gwyddion-first). Common keys:
   - `channel_family`, `plane_level`, `median_size`, `line_level_x`, `line_level_y`, `clip_percentiles`
   - `line_correct` (optional): Gwyddion Align Rows settings for scan-line artefacts (`method`, `direction`, `method_id`)
-  - `gwyddion_ops` (optional ordered list): e.g., `[{op: plane_level}, {op: align_rows, params: {direction: horizontal, method: median}}, {op: median, params: {size: 3}}, {op: clip_percentiles, params: {low: 0.5, high: 99.5}}]`. If absent, legacy plane_level/median/clip flags are used.
-  - `mask` (optional): config-driven mask (threshold/range/percentile); supports multi-step `steps` with `combine: and|or`; `on_empty: error|warn|skip_row`
+  - `gwyddion_ops` (optional ordered list): e.g., `[{op: plane_level}, {op: align_rows, params: {direction: horizontal, method: median}}, {op: median, params: {size: 3}}, {op: clip_percentiles, params: {low: 0.5, high: 99.5}}]`. If absent, legacy plane_level/median/clip flags are used. See `docs/gwyddion_ops.md` for supported ops, args, and GUI equivalents.
+  - `mask` (optional): config-driven mask (threshold/range/percentile/outliers/outliers2); supports multi-step `steps` with `combine: and|or`; `on_empty: error|warn|skip_row`
     - `gwyddion_export: true` to write the mask as a TIFF artifact.
-  - `stats_filter` (optional): exclude invalid/saturated pixels from stats (Python-side value rules); `on_empty: error|warn|skip_row`
-  - `python_data_filtering` (optional): post-Gwyddion value filtering + CSV export; `filters` list supports `three_sigma (sigma)`, `chauvenet`, `min_max (min_value/max_value)`; `export_raw_csv|export_filtered_csv`, `export_dir`, `on_empty: error|warn|skip_row`
+  - `stats_filter` (optional): exclude invalid/saturated pixels from stats (Python-side value rules); `on_empty: error|warn|blank|skip_row`
+  - `python_data_filtering` (optional): post-Gwyddion value filtering + CSV export; `filters` list supports `three_sigma (sigma)`, `chauvenet`, `min_max (min_value/max_value)`; `export_raw_csv|export_filtered_csv`, `export_dir`. If filtering produces 0 kept pixels, final handling is governed by `stats_filter.on_empty` (e.g., `blank`).
   - `metric_type`, `units`, `expected_units`, `on_unit_mismatch`, `on_missing_units` (`error|warn|skip_row`), `assume_units` (optional: force a unit when the file has none)
   - mode-specific (e.g., `threshold` for particle mode)
 - `grid`: `filename_regex` with named groups `row`/`col` to set grid indices. Optional `index_base` (0 or 1) converts filename indices to zero-based values stored in `grid.row_idx`/`grid.col_idx`.
