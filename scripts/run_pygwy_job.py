@@ -23,6 +23,7 @@ import sys
 _GRID_REGEX_MISS_WARNED = set()
 _GRID_INDEX_BASE_WARNED = False
 _STATS_WARNED = False
+_STATS_SOURCE_WARNED = False
 _DEBUG_SAVED = 0
 _LINE_MATCH_METHODS = {
     "median": 0,
@@ -243,6 +244,19 @@ def _normalize_method_name(name):
     if not name:
         return ""
     return str(name).strip().lower().replace("-", "_").replace(" ", "_")
+
+def _normalize_stats_source(name):
+    # Default is explicit and deterministic (no auto switching).
+    if not name:
+        return "python"
+    s = _normalize_method_name(name)
+    if s in ("python", "py"):
+        return "python"
+    if s in ("gwyddion", "gwy", "pygwy"):
+        return "gwyddion"
+    if s in ("auto", "default"):
+        return "python"
+    return "python"
 
 
 def _debug_cfg(manifest):
@@ -1374,7 +1388,7 @@ def process_file(path, manifest, use_pygwy, allow_debug_save=False):
         log_fields = _debug_log_fields(manifest)
         # Default fields if none specified
         if not log_fields:
-            log_fields = set(["units", "mask_counts", "stats_counts", "stats_reasons", "grid", "raw_stats", "pyfilter"])
+            log_fields = set(["units", "stats_source", "mask_counts", "stats_counts", "stats_reasons", "grid", "raw_stats", "pyfilter"])
         detected_unit = result.get("_debug.detected_unit")
         detected_unit_raw = result.get("_debug.detected_unit_raw")
         unit_source = result.get("_debug.unit_source")
@@ -1396,6 +1410,8 @@ def process_file(path, manifest, use_pygwy, allow_debug_save=False):
                 parts.append("unit_conv=%s" % str(unit_conv))
         if "stats_counts" in log_fields and "core.n_valid" in result:
             parts.append("n_valid=%s" % result.get("core.n_valid"))
+        if "stats_source" in log_fields and result.get("_debug.stats_source"):
+            parts.append("stats_source=%s" % result.get("_debug.stats_source"))
         if "mask_counts" in log_fields and "mask.n_kept" in result and "mask.n_total" in result:
             parts.append("mask=%s/%s" % (result.get("mask.n_kept"), result.get("mask.n_total")))
         if "pyfilter" in log_fields and "pyfilter.n_kept" in result and "pyfilter.n_total" in result:
@@ -1534,6 +1550,37 @@ def _process_with_pygwy(path, processing_mode, mode_def, channel_defaults, manif
                 except Exception as exc:
                     _trace_append(trace, "clip_percentiles", False, str(exc))
                     sys.stderr.write("WARN: clip_percentiles failed for %s: %s\n" % (path, exc))
+
+        # Detect units and apply unit normalization *before* masks/filters so any
+        # value-based thresholds are interpreted in normalized units.
+        detected_unit_raw = _get_field_units(f)
+        unit_source = "file" if detected_unit_raw else "default"
+        assume_units = mode_def.get("assume_units") if mode_def else None
+        missing_units_policy = "warn"
+        if mode_def:
+            missing_units_policy = mode_def.get("on_missing_units", "warn")
+        if not detected_unit_raw:
+            if assume_units:
+                detected_unit_raw = assume_units
+                unit_source = "assumed"
+            else:
+                msg = "No units detected for %s" % path
+                if missing_units_policy == "skip_row":
+                    sys.stderr.write("WARN: %s; skipping row.\n" % msg)
+                    return None
+                if missing_units_policy == "error":
+                    raise RuntimeError(msg)
+                if missing_units_policy == "warn":
+                    sys.stderr.write("WARN: %s; using mode units.\n" % msg)
+        detected_unit = detected_unit_raw or mode_def.get("units") or None
+        unit_conv = None
+        if detected_unit_raw:
+            f, detected_unit_norm, unit_conv = _apply_unit_conversion_to_field(f, detected_unit_raw, processing_mode, manifest)
+            if detected_unit_norm:
+                detected_unit = detected_unit_norm
+            if unit_conv and stats_debug:
+                _trace_append(trace, "unit_normalization", True, unit_conv)
+                _trace_stats(trace, f, "after_unit_normalization")
         mask_cfg = mode_def.get("mask") if mode_def else None
         mask = None
         mask_counts = None
@@ -1585,34 +1632,6 @@ def _process_with_pygwy(path, processing_mode, mode_def, channel_defaults, manif
                     _export_field_csv(f, mask, os.path.join(pyfilter_export_dir, "%s_filtered.csv" % base_name))
                 except Exception as exc:
                     sys.stderr.write("WARN: filtered CSV export failed for %s: %s\n" % (path, exc))
-        detected_unit_raw = _get_field_units(f)
-        unit_source = "file" if detected_unit_raw else "default"
-        assume_units = mode_def.get("assume_units") if mode_def else None
-        missing_units_policy = "warn"
-        if mode_def:
-            missing_units_policy = mode_def.get("on_missing_units", "warn")
-        if not detected_unit_raw:
-            if assume_units:
-                detected_unit_raw = assume_units
-                unit_source = "assumed"
-            else:
-                msg = "No units detected for %s" % path
-                if missing_units_policy == "skip_row":
-                    sys.stderr.write("WARN: %s; skipping row.\n" % msg)
-                    return None
-                if missing_units_policy == "error":
-                    raise RuntimeError(msg)
-                if missing_units_policy == "warn":
-                    sys.stderr.write("WARN: %s; using mode units.\n" % msg)
-        detected_unit = detected_unit_raw or mode_def.get("units") or None
-        unit_conv = None
-        if detected_unit_raw:
-            f, detected_unit_norm, unit_conv = _apply_unit_conversion_to_field(f, detected_unit_raw, processing_mode, manifest)
-            if detected_unit_norm:
-                detected_unit = detected_unit_norm
-            if unit_conv and stats_debug:
-                _trace_append(trace, "unit_normalization", True, unit_conv)
-                _trace_stats(trace, f, "after_unit_normalization")
         result = _to_mode_result(f, mode_def, mode, path, mask=mask, mask_counts=mask_counts)
         result["channel.key"] = field_id
         if field_title:
@@ -1761,43 +1780,58 @@ def _process_with_pygwy(path, processing_mode, mode_def, channel_defaults, manif
 def _to_mode_result(field, mode_def, processing_mode, src_path, mask=None, mask_counts=None):
     """Compute avg/std from a DataField."""
     global _STATS_WARNED
+    global _STATS_SOURCE_WARNED
     stats_filter = mode_def.get("stats_filter") if mode_def else None
-    if mask is not None or stats_filter:
+    stats_source_cfg = _normalize_stats_source(mode_def.get("stats_source") if mode_def else None)
+    stats_source_used = "gwyddion"
+
+    if stats_source_cfg == "gwyddion":
+        if (mask is not None or stats_filter) and not _STATS_SOURCE_WARNED:
+            sys.stderr.write("WARN: stats_source=gwyddion ignores mask/stats_filter; set stats_source=python to apply them.\n")
+            _STATS_SOURCE_WARNED = True
+        mean_val = _field_get_avg(field)
+        std_val = _field_get_rms(field)
+        vmin, vmax, n_valid, reasons = None, None, None, None
+        stats_source_used = "gwyddion"
+    elif stats_source_cfg == "python" or (mask is not None or stats_filter):
         if _debug_enabled(manifest_global_cfg) and (manifest_global_cfg.get("debug") or {}).get("stats_provenance"):
             mean_val, std_val, vmin, vmax, n_valid, reasons = _field_stats_masked_debug(field, mask, stats_filter or {})
         else:
             reasons = None
             mean_val, std_val, vmin, vmax, n_valid = _field_stats_masked(field, mask, stats_filter or {})
-        if n_valid == 0:
-            policy = "error"
-            if stats_filter and isinstance(stats_filter, dict):
-                policy = stats_filter.get("on_empty", "error")
-            if policy == "skip_row":
-                sys.stderr.write("WARN: Stats filter removed all pixels; skipping row for %s\n" % src_path)
-                return None
-            if policy == "blank":
-                sys.stderr.write("WARN: Stats filter removed all pixels; marking row blank for %s\n" % src_path)
-                mean_val = float("nan")
-                std_val = float("nan")
-            elif policy == "warn":
-                sys.stderr.write("WARN: Stats filter removed all pixels; writing zeros for %s\n" % src_path)
-            else:
-                raise RuntimeError("Stats filter removed all pixels for %s" % src_path)
-        if not _STATS_WARNED:
-            if mask is not None and stats_filter:
-                msg = "INFO: Using mask + stats_filter for summary statistics (config-driven masking). "
-            elif mask is not None:
-                msg = "INFO: Using mask for summary statistics (config-driven masking). "
-            else:
-                msg = "INFO: Using stats_filter for summary statistics (config-driven masking). "
-            sys.stderr.write(
-                msg + "This affects avg/std values.\n"
-            )
-            _STATS_WARNED = True
+        stats_source_used = "python"
+        if mask is not None or stats_filter:
+            if n_valid == 0:
+                policy = "error"
+                if stats_filter and isinstance(stats_filter, dict):
+                    policy = stats_filter.get("on_empty", "error")
+                if policy == "skip_row":
+                    sys.stderr.write("WARN: Stats filter removed all pixels; skipping row for %s\n" % src_path)
+                    return None
+                if policy == "blank":
+                    sys.stderr.write("WARN: Stats filter removed all pixels; marking row blank for %s\n" % src_path)
+                    mean_val = float("nan")
+                    std_val = float("nan")
+                elif policy == "warn":
+                    sys.stderr.write("WARN: Stats filter removed all pixels; writing zeros for %s\n" % src_path)
+                else:
+                    raise RuntimeError("Stats filter removed all pixels for %s" % src_path)
+            if not _STATS_WARNED:
+                if mask is not None and stats_filter:
+                    msg = "INFO: Using mask + stats_filter for summary statistics (config-driven masking). "
+                elif mask is not None:
+                    msg = "INFO: Using mask for summary statistics (config-driven masking). "
+                else:
+                    msg = "INFO: Using stats_filter for summary statistics (config-driven masking). "
+                sys.stderr.write(
+                    msg + "This affects avg/std values.\n"
+                )
+                _STATS_WARNED = True
     else:
         mean_val = _field_get_avg(field)
         std_val = _field_get_rms(field)
-        vmin, vmax, n_valid = None, None, None
+        vmin, vmax, n_valid, reasons = None, None, None, None
+        stats_source_used = "gwyddion"
 
     metric_type = mode_def.get("metric_type", processing_mode)
     units = mode_def.get("units", "a.u.")
@@ -1812,6 +1846,7 @@ def _to_mode_result(field, mode_def, processing_mode, src_path, mask=None, mask_
         "core.nx": int(field.get_xres()),
         "core.ny": int(field.get_yres()),
     }
+    out["_debug.stats_source"] = stats_source_used
     if vmin is not None:
         out["core.min_value"] = float(vmin)
     if vmax is not None:

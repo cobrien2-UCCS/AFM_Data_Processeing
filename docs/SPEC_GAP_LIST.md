@@ -13,6 +13,15 @@ This document maps the current repo implementation to the design intents in `AFM
 - Current state: plotting works and is config-driven; some layout warnings (tight_layout with extra axes) and legend placement ergonomics remain.
 - Next: treat as low priority; address once processing/stats validity is confirmed.
 
+### 0.4) Base filtering rules (current focus)
+- Goal: lock a conservative, physical-validity filter set (exclude invalid pixels and out-of-range values) before any outlier trimming.
+- Current state:
+  - Agreed baseline for modulus: invalid pixels are `0.0`; valid material range is **500-60,000 kPa** (GPa spikes treated as out-of-range/inclusions).
+  - Runner applies **unit normalization before masks/filters**, so thresholds can be written in normalized units (kPa).
+- Next:
+  - Codify the baseline into a dedicated profile/config (e.g., `config.modulus_validity.yaml`) and run a GUI-parity spot check. (Done: config.modulus_validity.yaml)
+  - Decide whether to keep stats purely validity-based (no outlier trimming) or add a second-stage outlier rule.
+
 ### 0.5) Validate Gwyddion stats correctness (highest priority)
 - Goal: confirm pygwy/Gwyddion-derived values (avg/std) are meaningful **before** applying Python-side filters or using results for conclusions.
 - Rationale: if preprocessing or units are wrong, downstream filtering/plotting “looks” plausible but is not valid.
@@ -48,15 +57,15 @@ This document maps the current repo implementation to the design intents in `AFM
 - Current state: modulus/topography support plane level, Align Rows, median, percentile clipping, plus a config-driven ordered `gwyddion_ops` list (including repeated ops such as horizontal+vertical Align Rows).
 - Risk: real AFM workflows often require more Gwyddion-native steps (multiple leveling/flattening variants, denoise pipelines, scar/line mismatch correction).
 - Next:
-  - Keep `docs/gwyddion_ops.md` as the single source of truth for supported ops + args + closest GUI equivalents.
+  - Keep `docs/gwyddion_ops.md` as the single source of truth for supported ops + args + closest GUI equivalents. (Done)
   - Extend supported ops list (e.g., polynomial leveling, flatten base) once validated against GUI workflows.
   - Add “known good” presets for common workflows (simple vs complex) as profiles.
 
 ### 3) Masking (ROI) semantics
 - Current state:
   - Config-driven masks control which pixels contribute to stats.
-  - Runner supports Gwyddion-native outlier masking (`mask.method: outliers|outliers2`) and can export mask artifacts.
-  - Example “row+col correction + outlier mask” config exists: `configs/TEST configs/Example configs/config.modulus_rowcol_mask.yaml`.
+  - Runner supports Gwyddion-native outlier masking (`mask.method: outliers|outliers2`) and can export mask artifacts. (Done)
+  - Example “row+col correction + outlier mask” config exists: `configs/TEST configs/Example configs/config.modulus_rowcol_mask.yaml`. (Done)
 - Risk: mask semantics and ordering can diverge from interactive Gwyddion ROI workflows.
 - Next:
   - Validate mask semantics vs GUI for representative samples.
@@ -64,7 +73,7 @@ This document maps the current repo implementation to the design intents in `AFM
 
 ### 4) Unit detection/normalization robustness (high impact)
 - Current state:
-  - Unit conversions work for common `Pa/kPa/MPa/GPa` strings; conversion is applied before filter thresholds (normalized units).
+  - Unit conversions work for common `Pa/kPa/MPa/GPa` strings; conversion is applied before mask/filter thresholds (normalized units). (Done)
   - Missing-units behavior is explicit and configurable (`on_missing_units: error|warn|skip_row`).
 - New finding:
   - The current test TIFFs load in pygwy with **no Z-unit metadata** (`field.get_si_unit_z().get_unit_string()` returns empty/None), so strict configs will skip them.

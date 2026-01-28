@@ -36,6 +36,7 @@ Top-level sections (see `config.example.yaml`):
   - `gwyddion_ops` (optional): explicit ordered list of pygwy/Gwyddion operations (preferred for complex pipelines). See `docs/gwyddion_ops.md`.
   - `mask` (optional): apply a config-driven mask and compute stats only on masked pixels (threshold/range/percentile/outliers/outliers2; supports multi-step AND/OR combine).
   - `stats_filter` (optional): include/exclude pixel values from stats without altering the image; `on_empty: error|warn|blank|skip_row`.
+  - `stats_source` (optional): `gwyddion|python` (default: `python`; controls whether avg/std come from Gwyddion or Python; see §8.1).
   - `metric_type`, `units`, `expected_units`, `on_unit_mismatch` (`error|warn|skip_row`), `on_missing_units` (`error|warn|skip_row`), `assume_units` (force a unit when the file has none).
   - `threshold` (particle mode), other mode-specific params.
 - `grid`: filename regex with named groups `row`/`col` to add grid indices. Optional `index_base: 1` converts SmartScan-style `RC001001` to zero-based indices stored in the CSV.
@@ -44,7 +45,7 @@ Top-level sections (see `config.example.yaml`):
 - `result_schemas`: casting rules from CSV columns to typed fields for plotting.
 - `plotting_modes`: schema + recipe + labels/bins/etc.
 - `profiles`: presets tying together processing_mode, csv_mode, plotting_modes.
-- `unit_conversions`: per-mode unit conversions `{ source_unit: {target, factor} }` (applied to the DataField before `stats_filter`/`python_data_filtering`, so thresholds are in normalized units).
+- `unit_conversions`: per-mode unit conversions `{ source_unit: {target, factor} }` (applied to the DataField before `mask`/`stats_filter`/`python_data_filtering`, so thresholds are in normalized units).
 - `input_filters` (optional): include/exclude regex filters applied during manifest generation (useful for Forward/Backward duplicates).
 - `debug` (optional): enable debug logging/artifacts. Keys: `enable`, `level` (`info|debug`), `artifacts` (`mask|leveled|aligned|filtered`), `sample_limit`, `out_dir`, `log_fields` (e.g., `units|unit_conversion|mask_counts|stats_counts|stats_reasons|pyfilter|pyfilter_steps|grid|raw_stats`; units logging also includes `unit_source`), `raise_on_warn`, `echo_config`.
 - If units are missing from the file, the runner falls back to mode units (e.g., kPa for modulus) and logs that as detected. When pygwy export fails, a Pillow/NumPy fallback writes debug TIFFs to `debug.out_dir`.
@@ -66,7 +67,7 @@ Top-level sections (see `config.example.yaml`):
 - Use `profiles` to bundle processing_mode + csv_mode + plotting_modes for easy CLI use.
 
 ## 5) Unit handling
-- Runner reads field units from pygwy, applies `unit_conversions[mode]` when the detected unit matches a key (normalizing the data before filters), and enforces `expected_units` with `on_unit_mismatch` (`error|warn|skip_row`).
+- Runner reads field units from pygwy, applies `unit_conversions[mode]` when the detected unit matches a key (normalizing the data before masks/filters), and enforces `expected_units` with `on_unit_mismatch` (`error|warn|skip_row`).
 - If a file has no unit metadata, `on_missing_units` controls whether to skip, warn + continue, or error. Use `skip_row` for strict pipelines.
 - Include `units` column in CSV modes so plots can infer axis labels.
 
@@ -91,10 +92,13 @@ Top-level sections (see `config.example.yaml`):
   3) Noise filters (median/denoise)
   4) Mask creation and masked statistics
 
-## 8.1) Masking and stats_filter (include/exclude)
+## 8.1) Masking, stats_filter, and stats_source (include/exclude)
 Two different mechanisms affect summary stats:
 - `mask`: builds a boolean mask over the field; only pixels where `mask[i] == True` are included in avg/std. This is a Gwyddion-first step in the Py2 runner and is intended for ROI selection (e.g., threshold/range/percentile/outliers/outliers2).
 - `stats_filter`: excludes values from stats based on value rules (min/max, nonpositive, zero). This does not change the image; it only affects the computed stats.
+- `stats_source`:
+  - `gwyddion`: always use Gwyddion stats; mask/stats_filter are ignored.
+  - `python` (default): always use Python stats; mask/stats_filter are applied if present.
 
 Example mask (threshold):
 ```yaml
