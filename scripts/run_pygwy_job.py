@@ -20,10 +20,16 @@ import os
 import re
 import sys
 
+try:
+    long  # type: ignore  # noqa: F821
+except Exception:
+    long = int
+
 _GRID_REGEX_MISS_WARNED = set()
 _GRID_INDEX_BASE_WARNED = False
 _STATS_WARNED = False
 _STATS_SOURCE_WARNED = False
+_MIXED_PROCESSING_WARNED = False
 _DEBUG_SAVED = 0
 _LINE_MATCH_METHODS = {
     "median": 0,
@@ -257,6 +263,122 @@ def _normalize_stats_source(name):
     if s in ("auto", "default"):
         return "python"
     return "python"
+
+
+def _allow_mixed_processing(mode_def):
+    """
+    Whether to allow mixed processing routes (Gwyddion+Python combos).
+
+    Default is False to avoid ambiguity. When True, mixed routes are allowed but
+    warnings are emitted and the chosen route is recorded in debug fields.
+    """
+    if not mode_def:
+        return False
+    if "allow_mixed_processing" in mode_def:
+        return bool(mode_def.get("allow_mixed_processing"))
+    if "allow_mixed" in mode_def:
+        return bool(mode_def.get("allow_mixed"))
+    pol = mode_def.get("analysis_policy") or mode_def.get("processing_policy") or {}
+    if isinstance(pol, dict):
+        if "allow_mixed_processing" in pol:
+            return bool(pol.get("allow_mixed_processing"))
+        if "allow_mixed" in pol:
+            return bool(pol.get("allow_mixed"))
+    return False
+
+
+def _iter_mask_method_names(mask_cfg):
+    if not mask_cfg:
+        return []
+    if isinstance(mask_cfg, list):
+        steps = mask_cfg
+    elif isinstance(mask_cfg, dict) and "steps" in mask_cfg:
+        steps = mask_cfg.get("steps") or []
+    else:
+        steps = [mask_cfg]
+
+    names = []
+    for step in steps:
+        if not isinstance(step, dict):
+            continue
+        if step.get("enable", True) is False:
+            continue
+        name = _normalize_method_name(step.get("method") or step.get("type") or "")
+        names.append(name or "threshold")
+    return names
+
+
+def _mask_cfg_uses_gwyddion_native(mask_cfg):
+    """
+    Whether the configured mask uses Gwyddion-native helpers (DataField.mask_outliers*).
+
+    This matters for route clarity: using Gwyddion-native mask generation while
+    also using Python stats can be considered a mixed route.
+    """
+    for name in _iter_mask_method_names(mask_cfg):
+        if name in (
+            "gwy_outliers",
+            "gwy_mask_outliers",
+            "mask_outliers",
+            "outliers",
+            "gwy_outliers2",
+            "gwy_mask_outliers2",
+            "mask_outliers2",
+            "outliers2",
+        ):
+            return True
+    return False
+
+
+def _mixed_processing_reasons(mode_def):
+    """
+    Return a list of reasons why the current mode config represents a mixed route.
+
+    Mixed routes are allowed only when `allow_mixed_processing: true`.
+    """
+    if not mode_def:
+        mode_def = {}
+    reasons = []
+    stats_source = _normalize_stats_source(mode_def.get("stats_source"))
+    mask_cfg = mode_def.get("mask")
+    stats_filter = mode_def.get("stats_filter")
+    py_filter_cfg = (mode_def.get("python_data_filtering") or mode_def.get("python_filtering") or {})
+
+    # Mixed case #1: Gwyddion-native masking + Python stats.
+    if stats_source == "python" and _mask_cfg_uses_gwyddion_native(mask_cfg):
+        reasons.append("stats_source=python with Gwyddion-native mask (outliers/outliers2)")
+
+    # Mixed case #2: Python value filters + Gwyddion stats.
+    if stats_source == "gwyddion":
+        if stats_filter:
+            reasons.append("stats_source=gwyddion with stats_filter (Python-side value rules)")
+        if isinstance(py_filter_cfg, dict) and py_filter_cfg.get("enable"):
+            reasons.append("stats_source=gwyddion with python_data_filtering.enable (Python-side filters)")
+
+    return reasons
+
+
+def _enforce_processing_route_policy(processing_mode, mode_def):
+    """
+    Enforce (or warn about) mixed processing routes for a given mode config.
+
+    By default, mixed routes are disallowed to avoid ambiguity.
+    Set `allow_mixed_processing: true` to allow, with warnings.
+    """
+    global _MIXED_PROCESSING_WARNED
+    allow_mixed = _allow_mixed_processing(mode_def)
+    reasons = _mixed_processing_reasons(mode_def)
+    if reasons and not allow_mixed:
+        raise RuntimeError(
+            "Mixed processing route is not allowed for mode '%s': %s. "
+            "Either change the config to use a single route (all-Gwyddion or all-Python), "
+            "or set allow_mixed_processing: true to allow mixed routes with warnings."
+            % (processing_mode, "; ".join(reasons))
+        )
+    if reasons and allow_mixed and not _MIXED_PROCESSING_WARNED:
+        sys.stderr.write("WARN: Mixed processing route enabled for mode '%s': %s\n" % (processing_mode, "; ".join(reasons)))
+        _MIXED_PROCESSING_WARNED = True
+    return allow_mixed, reasons
 
 
 def _debug_cfg(manifest):
@@ -879,7 +1001,7 @@ def _build_mask(field, mask_cfg):
     if kept == 0:
         if on_empty == "skip_row":
             return combined, kept, n
-        if on_empty == "warn":
+        if on_empty in ("warn", "blank"):
             sys.stderr.write("WARN: Mask stage produced 0 included pixels; continuing.\n")
         else:
             raise RuntimeError("Mask stage produced 0 included pixels.")
@@ -1115,6 +1237,140 @@ def _field_get_rms(field):
             dv = float(data[i]) - m
             s2 += dv * dv
         return math.sqrt(s2 / float(n))
+
+
+def _apply_stats_filter_to_mask(field, mask, filter_cfg):
+    """
+    Apply stats_filter rules to an existing keep-mask and return a new keep-mask.
+
+    This is primarily used when stats are computed by Gwyddion but the user has
+    explicitly enabled mixed processing (Python-side value rules + Gwyddion stats).
+    """
+    if not filter_cfg:
+        kept = sum(1 for m in (mask or []) if m) if mask is not None else len(field.get_data())
+        return mask, kept, len(field.get_data())
+
+    data = field.get_data()
+    n = len(data)
+    if not n:
+        return mask, 0, 0
+
+    min_value = filter_cfg.get("min_value")
+    max_value = filter_cfg.get("max_value")
+    max_abs_value = filter_cfg.get("max_abs_value")
+    exclude_zero = bool(filter_cfg.get("exclude_zero"))
+    exclude_nonpositive = bool(filter_cfg.get("exclude_nonpositive"))
+
+    try:
+        min_value = float(min_value) if min_value is not None else None
+    except Exception:
+        min_value = None
+    try:
+        max_value = float(max_value) if max_value is not None else None
+    except Exception:
+        max_value = None
+    try:
+        max_abs_value = float(max_abs_value) if max_abs_value is not None else None
+    except Exception:
+        max_abs_value = None
+
+    if mask is None:
+        out = [True] * n
+    else:
+        out = [bool(m) for m in mask]
+
+    kept = 0
+    for i in range(n):
+        if not out[i]:
+            continue
+        v = float(data[i])
+        if not _is_finite(v):
+            out[i] = False
+            continue
+        if exclude_zero and v == 0.0:
+            out[i] = False
+            continue
+        if exclude_nonpositive and v <= 0.0:
+            out[i] = False
+            continue
+        if min_value is not None and v < min_value:
+            out[i] = False
+            continue
+        if max_value is not None and v > max_value:
+            out[i] = False
+            continue
+        if max_abs_value is not None and abs(v) > max_abs_value:
+            out[i] = False
+            continue
+        kept += 1
+
+    return out, kept, n
+
+
+def _field_stats_gwyddion_masked(field, mask, src_path=None):
+    """
+    Compute mean/std/min/max/n_valid using Gwyddion masked-area functions.
+
+    Requires pygwy DataField methods:
+      - area_get_avg(mask, col, row, width, height)
+      - area_get_rms(mask, col, row, width, height)
+      - area_get_min/area_get_max (optional)
+
+    mask is a boolean "keep" mask (True == included).
+    """
+    nx = int(field.get_xres())
+    ny = int(field.get_yres())
+    total = int(nx * ny)
+
+    if mask is None:
+        # Unmasked stats.
+        mean_val = _field_get_avg(field)
+        std_val = _field_get_rms(field)
+        vmin = None
+        vmax = None
+        try:
+            if hasattr(field, "get_min_max"):
+                mm = field.get_min_max()
+                vmin, vmax = float(mm[0]), float(mm[1])
+            elif hasattr(field, "get_min") and hasattr(field, "get_max"):
+                vmin, vmax = float(field.get_min()), float(field.get_max())
+        except Exception:
+            vmin, vmax = None, None
+        return float(mean_val), float(std_val), vmin, vmax, total
+
+    n_valid = sum(1 for m in mask if m)
+    if n_valid == 0:
+        return float("nan"), float("nan"), None, None, 0
+
+    mask_field = _mask_field_from_bool(field, mask)
+    if mask_field is None:
+        raise RuntimeError("Failed to create mask field for Gwyddion masked stats")
+
+    if not (hasattr(field, "area_get_avg") and hasattr(field, "area_get_rms")):
+        hint = "pygwy DataField missing masked area stats methods; use stats_source=python or upgrade Gwyddion."
+        if src_path:
+            hint = hint + " (file: %s)" % src_path
+        raise RuntimeError(hint)
+
+    try:
+        mean_val = float(field.area_get_avg(mask_field, 0, 0, nx, ny))
+        std_val = float(field.area_get_rms(mask_field, 0, 0, nx, ny))
+    except Exception as exc:
+        raise RuntimeError("Gwyddion masked stats failed: %s" % exc)
+
+    vmin = None
+    vmax = None
+    try:
+        if hasattr(field, "area_get_min") and hasattr(field, "area_get_max"):
+            vmin = float(field.area_get_min(mask_field, 0, 0, nx, ny))
+            vmax = float(field.area_get_max(mask_field, 0, 0, nx, ny))
+        elif hasattr(field, "area_get_min_max"):
+            mm = field.area_get_min_max(mask_field, 0, 0, nx, ny)
+            vmin, vmax = float(mm[0]), float(mm[1])
+    except Exception:
+        vmin, vmax = None, None
+
+    return float(mean_val), float(std_val), vmin, vmax, int(n_valid)
 
 
 def _percentile_sorted(sorted_vals, pct):
@@ -1388,7 +1644,7 @@ def process_file(path, manifest, use_pygwy, allow_debug_save=False):
         log_fields = _debug_log_fields(manifest)
         # Default fields if none specified
         if not log_fields:
-            log_fields = set(["units", "stats_source", "mask_counts", "stats_counts", "stats_reasons", "grid", "raw_stats", "pyfilter"])
+            log_fields = set(["units", "stats_source", "mixed_processing", "mask_counts", "stats_counts", "stats_reasons", "grid", "raw_stats", "pyfilter"])
         detected_unit = result.get("_debug.detected_unit")
         detected_unit_raw = result.get("_debug.detected_unit_raw")
         unit_source = result.get("_debug.unit_source")
@@ -1412,6 +1668,13 @@ def process_file(path, manifest, use_pygwy, allow_debug_save=False):
             parts.append("n_valid=%s" % result.get("core.n_valid"))
         if "stats_source" in log_fields and result.get("_debug.stats_source"):
             parts.append("stats_source=%s" % result.get("_debug.stats_source"))
+        if "mixed_processing" in log_fields and result.get("_debug.mixed_processing") is not None:
+            parts.append("mixed=%s" % ("yes" if result.get("_debug.mixed_processing") else "no"))
+            if result.get("_debug.mixed_processing") and result.get("_debug.mixed_processing_reasons"):
+                try:
+                    parts.append("mixed_reasons=%s" % "; ".join(result.get("_debug.mixed_processing_reasons")))
+                except Exception:
+                    parts.append("mixed_reasons=%s" % str(result.get("_debug.mixed_processing_reasons")))
         if "mask_counts" in log_fields and "mask.n_kept" in result and "mask.n_total" in result:
             parts.append("mask=%s/%s" % (result.get("mask.n_kept"), result.get("mask.n_total")))
         if "pyfilter" in log_fields and "pyfilter.n_kept" in result and "pyfilter.n_total" in result:
@@ -1594,7 +1857,7 @@ def _process_with_pygwy(path, processing_mode, mode_def, channel_defaults, manif
                     if policy == "skip_row":
                         sys.stderr.write("WARN: %s; skipping row.\n" % msg)
                         return None
-                    if policy == "warn":
+                    if policy in ("warn", "blank"):
                         sys.stderr.write("WARN: %s; continuing.\n" % msg)
                     else:
                         raise RuntimeError(msg)
@@ -1782,18 +2045,57 @@ def _to_mode_result(field, mode_def, processing_mode, src_path, mask=None, mask_
     global _STATS_WARNED
     global _STATS_SOURCE_WARNED
     stats_filter = mode_def.get("stats_filter") if mode_def else None
+    mask_cfg = mode_def.get("mask") if mode_def else None
+    py_filter_cfg = (mode_def.get("python_data_filtering") or mode_def.get("python_filtering") or {}) if mode_def else {}
     stats_source_cfg = _normalize_stats_source(mode_def.get("stats_source") if mode_def else None)
+    allow_mixed = _allow_mixed_processing(mode_def or {})
+    mixed_reasons = _mixed_processing_reasons(mode_def or {})
     stats_source_used = "gwyddion"
 
+    # Fail-safe: even if the run-level validator was skipped, don't silently mix.
+    if mixed_reasons and not allow_mixed:
+        raise RuntimeError(
+            "Mixed processing route is not allowed for mode '%s': %s. "
+            "Set allow_mixed_processing: true to allow mixed routes with warnings."
+            % (processing_mode, "; ".join(mixed_reasons))
+        )
+
+    def _empty_policy():
+        if stats_filter and isinstance(stats_filter, dict):
+            return stats_filter.get("on_empty", "error")
+        if mask_cfg and isinstance(mask_cfg, dict):
+            return mask_cfg.get("on_empty", "error")
+        return "error"
+
     if stats_source_cfg == "gwyddion":
-        if (mask is not None or stats_filter) and not _STATS_SOURCE_WARNED:
-            sys.stderr.write("WARN: stats_source=gwyddion ignores mask/stats_filter; set stats_source=python to apply them.\n")
-            _STATS_SOURCE_WARNED = True
-        mean_val = _field_get_avg(field)
-        std_val = _field_get_rms(field)
-        vmin, vmax, n_valid, reasons = None, None, None, None
+        if stats_filter and not allow_mixed:
+            raise RuntimeError("stats_source=gwyddion cannot be combined with stats_filter unless allow_mixed_processing: true")
+        if isinstance(py_filter_cfg, dict) and py_filter_cfg.get("enable") and not allow_mixed:
+            raise RuntimeError("stats_source=gwyddion cannot be combined with python_data_filtering unless allow_mixed_processing: true")
+
+        mask_for_stats = mask
+        if stats_filter and allow_mixed:
+            mask_for_stats, _, _ = _apply_stats_filter_to_mask(field, mask_for_stats, stats_filter or {})
+
+        mean_val, std_val, vmin, vmax, n_valid = _field_stats_gwyddion_masked(field, mask_for_stats, src_path=src_path)
+        if n_valid == 0:
+            policy = _empty_policy()
+            if policy == "skip_row":
+                sys.stderr.write("WARN: Stats selection removed all pixels; skipping row for %s\n" % src_path)
+                return None
+            if policy == "blank":
+                sys.stderr.write("WARN: Stats selection removed all pixels; marking row blank for %s\n" % src_path)
+                mean_val = float("nan")
+                std_val = float("nan")
+            elif policy == "warn":
+                sys.stderr.write("WARN: Stats selection removed all pixels; writing zeros for %s\n" % src_path)
+                mean_val = 0.0
+                std_val = 0.0
+            else:
+                raise RuntimeError("Stats selection removed all pixels for %s" % src_path)
+        reasons = None
         stats_source_used = "gwyddion"
-    elif stats_source_cfg == "python" or (mask is not None or stats_filter):
+    elif stats_source_cfg == "python":
         if _debug_enabled(manifest_global_cfg) and (manifest_global_cfg.get("debug") or {}).get("stats_provenance"):
             mean_val, std_val, vmin, vmax, n_valid, reasons = _field_stats_masked_debug(field, mask, stats_filter or {})
         else:
@@ -1802,20 +2104,20 @@ def _to_mode_result(field, mode_def, processing_mode, src_path, mask=None, mask_
         stats_source_used = "python"
         if mask is not None or stats_filter:
             if n_valid == 0:
-                policy = "error"
-                if stats_filter and isinstance(stats_filter, dict):
-                    policy = stats_filter.get("on_empty", "error")
+                policy = _empty_policy()
                 if policy == "skip_row":
-                    sys.stderr.write("WARN: Stats filter removed all pixels; skipping row for %s\n" % src_path)
+                    sys.stderr.write("WARN: Stats selection removed all pixels; skipping row for %s\n" % src_path)
                     return None
                 if policy == "blank":
-                    sys.stderr.write("WARN: Stats filter removed all pixels; marking row blank for %s\n" % src_path)
+                    sys.stderr.write("WARN: Stats selection removed all pixels; marking row blank for %s\n" % src_path)
                     mean_val = float("nan")
                     std_val = float("nan")
                 elif policy == "warn":
-                    sys.stderr.write("WARN: Stats filter removed all pixels; writing zeros for %s\n" % src_path)
+                    sys.stderr.write("WARN: Stats selection removed all pixels; writing zeros for %s\n" % src_path)
+                    mean_val = 0.0
+                    std_val = 0.0
                 else:
-                    raise RuntimeError("Stats filter removed all pixels for %s" % src_path)
+                    raise RuntimeError("Stats selection removed all pixels for %s" % src_path)
             if not _STATS_WARNED:
                 if mask is not None and stats_filter:
                     msg = "INFO: Using mask + stats_filter for summary statistics (config-driven masking). "
@@ -1823,9 +2125,7 @@ def _to_mode_result(field, mode_def, processing_mode, src_path, mask=None, mask_
                     msg = "INFO: Using mask for summary statistics (config-driven masking). "
                 else:
                     msg = "INFO: Using stats_filter for summary statistics (config-driven masking). "
-                sys.stderr.write(
-                    msg + "This affects avg/std values.\n"
-                )
+                sys.stderr.write(msg + "This affects avg/std values.\n")
                 _STATS_WARNED = True
     else:
         mean_val = _field_get_avg(field)
@@ -1847,6 +2147,10 @@ def _to_mode_result(field, mode_def, processing_mode, src_path, mask=None, mask_
         "core.ny": int(field.get_yres()),
     }
     out["_debug.stats_source"] = stats_source_used
+    out["_debug.allow_mixed_processing"] = bool(allow_mixed)
+    out["_debug.mixed_processing"] = bool(mixed_reasons)
+    if mixed_reasons:
+        out["_debug.mixed_processing_reasons"] = mixed_reasons
     if vmin is not None:
         out["core.min_value"] = float(vmin)
     if vmax is not None:
@@ -1924,6 +2228,7 @@ def process_manifest(manifest, dry_run=False):
     csv_def = manifest.get("csv_mode_definition") or {}
     processing_mode = manifest.get("processing_mode")
     csv_mode = manifest.get("csv_mode")
+    mode_def = manifest.get("mode_definition", {}) or {}
 
     print("Processing_mode: %s" % processing_mode)
     print("CSV_mode: %s" % csv_mode)
@@ -1936,6 +2241,9 @@ def process_manifest(manifest, dry_run=False):
     if dry_run:
         print("Dry run: no processing executed.")
         return
+
+    # Validate that the chosen route is unambiguous (or explicitly allowed).
+    _enforce_processing_route_policy(processing_mode, mode_def)
 
     use_pygwy = try_import_pygwy()
     if not use_pygwy:

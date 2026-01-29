@@ -97,8 +97,14 @@ Two different mechanisms affect summary stats:
 - `mask`: builds a boolean mask over the field; only pixels where `mask[i] == True` are included in avg/std. This is a Gwyddion-first step in the Py2 runner and is intended for ROI selection (e.g., threshold/range/percentile/outliers/outliers2).
 - `stats_filter`: excludes values from stats based on value rules (min/max, nonpositive, zero). This does not change the image; it only affects the computed stats.
 - `stats_source`:
-  - `gwyddion`: always use Gwyddion stats; mask/stats_filter are ignored.
-  - `python` (default): always use Python stats; mask/stats_filter are applied if present.
+  - `gwyddion`: compute avg/std via Gwyddion (masked stats supported; `mask` is respected).
+    - `stats_filter` / `python_data_filtering` are considered Python-side filtering and are rejected unless `allow_mixed_processing: true`.
+  - `python` (default): compute avg/std via Python (mask + stats_filter are applied in Python).
+    - Gwyddion-native mask methods (`outliers`, `outliers2`) are rejected unless `allow_mixed_processing: true`.
+
+To prevent ambiguous “half Gwyddion, half Python” pipelines, the runner enforces a strict default:
+- `allow_mixed_processing: false` (default) → mixed routes error (fail fast)
+- `allow_mixed_processing: true` → mixed routes run with warnings and `_debug.mixed_processing*` provenance
 
 Example mask (threshold):
 ```yaml
@@ -121,7 +127,7 @@ modes:
       steps:
         - { method: "threshold", threshold: 0.0, direction: "above" }
         - { method: "percentile", percentiles: [5, 95] }
-      on_empty: "warn"        # error|warn|skip_row if no pixels survive
+      on_empty: "warn"        # error|warn|blank|skip_row if no pixels survive
 ```
 
 Example stats_filter (include/exclude rules):

@@ -22,6 +22,97 @@ def load_config(path: Path) -> Dict[str, Any]:
         return yaml.safe_load(f) or {}
 
 
+def _normalize_method_name(name: Any) -> str:
+    if not name:
+        return ""
+    return str(name).strip().lower().replace("-", "_").replace(" ", "_")
+
+
+def _normalize_stats_source(name: Any) -> str:
+    if not name:
+        return "python"
+    s = _normalize_method_name(name)
+    if s in ("python", "py"):
+        return "python"
+    if s in ("gwyddion", "gwy", "pygwy"):
+        return "gwyddion"
+    if s in ("auto", "default"):
+        return "python"
+    return "python"
+
+
+def _allow_mixed_processing(mode_def: Dict[str, Any]) -> bool:
+    if not mode_def:
+        return False
+    if "allow_mixed_processing" in mode_def:
+        return bool(mode_def.get("allow_mixed_processing"))
+    if "allow_mixed" in mode_def:
+        return bool(mode_def.get("allow_mixed"))
+    pol = mode_def.get("analysis_policy") or mode_def.get("processing_policy") or {}
+    if isinstance(pol, dict):
+        if "allow_mixed_processing" in pol:
+            return bool(pol.get("allow_mixed_processing"))
+        if "allow_mixed" in pol:
+            return bool(pol.get("allow_mixed"))
+    return False
+
+
+def _iter_mask_method_names(mask_cfg: Any) -> list:
+    if not mask_cfg:
+        return []
+    if isinstance(mask_cfg, list):
+        steps = mask_cfg
+    elif isinstance(mask_cfg, dict) and "steps" in mask_cfg:
+        steps = mask_cfg.get("steps") or []
+    else:
+        steps = [mask_cfg]
+
+    names = []
+    for step in steps:
+        if not isinstance(step, dict):
+            continue
+        if step.get("enable", True) is False:
+            continue
+        name = _normalize_method_name(step.get("method") or step.get("type") or "")
+        names.append(name or "threshold")
+    return names
+
+
+def _mask_cfg_uses_gwyddion_native(mask_cfg: Any) -> bool:
+    for name in _iter_mask_method_names(mask_cfg):
+        if name in (
+            "gwy_outliers",
+            "gwy_mask_outliers",
+            "mask_outliers",
+            "outliers",
+            "gwy_outliers2",
+            "gwy_mask_outliers2",
+            "mask_outliers2",
+            "outliers2",
+        ):
+            return True
+    return False
+
+
+def _mixed_processing_reasons(mode_def: Dict[str, Any]) -> list:
+    if not mode_def:
+        mode_def = {}
+    reasons = []
+    stats_source = _normalize_stats_source(mode_def.get("stats_source"))
+    mask_cfg = mode_def.get("mask")
+    stats_filter = mode_def.get("stats_filter")
+    py_filter_cfg = (mode_def.get("python_data_filtering") or mode_def.get("python_filtering") or {})
+
+    if stats_source == "python" and _mask_cfg_uses_gwyddion_native(mask_cfg):
+        reasons.append("stats_source=python with Gwyddion-native mask (outliers/outliers2)")
+    if stats_source == "gwyddion":
+        if stats_filter:
+            reasons.append("stats_source=gwyddion with stats_filter (Python-side value rules)")
+        if isinstance(py_filter_cfg, dict) and py_filter_cfg.get("enable"):
+            reasons.append("stats_source=gwyddion with python_data_filtering.enable (Python-side filters)")
+    return reasons
+
+
 def resolve_modes(cfg: Dict[str, Any], profile: str, processing_mode: str, csv_mode: str) -> Dict[str, str]:
     """Resolve processing/csv modes using an optional profile with explicit overrides."""
     chosen_processing = processing_mode
@@ -143,6 +234,17 @@ def build_manifest(cfg: Dict[str, Any], args: argparse.Namespace) -> Dict[str, A
         "filename_parsing": cfg.get("filename_parsing", {}),
         "debug": cfg.get("debug", {}),
     }
+
+    # Validate route ambiguity early (fail fast).
+    mode_def = manifest.get("mode_definition") or {}
+    reasons = _mixed_processing_reasons(mode_def)
+    if reasons and not _allow_mixed_processing(mode_def):
+        raise ValueError(
+            "Mixed processing route is not allowed for mode '%s': %s. "
+            "Either change the config to use a single route (all-Gwyddion or all-Python), "
+            "or set allow_mixed_processing: true to allow mixed routes with warnings."
+            % (mode_sel["processing_mode"], "; ".join(reasons))
+        )
     return manifest
 
 

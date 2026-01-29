@@ -87,6 +87,7 @@ python scripts/check_env.py
 - Summarization/plotting stay in Python 3.x and consume the outputs written by the Py2 run.
 - The Py2 runner writes `summary.csv` (or `--output-csv`) using the `csv_mode_definition` embedded in the manifest. pygwy is required; no fallback is executed to avoid producing invalid data. Implement real pygwy logic in `scripts/run_pygwy_job.py` where indicated.
 - Units: the pygwy runner reads field units, applies per-mode conversions from `unit_conversions`, and enforces `expected_units` with `on_unit_mismatch` (`error|warn|skip_row`). Modulus configs normalize everything to kPa (conversions for MPa/GPa/Pa included).
+- Route clarity: set `modes.<mode>.stats_source` to `gwyddion` (masked stats via Gwyddion) or `python` (masked stats via Python). Mixed Gwyddion+Python routes are rejected unless `allow_mixed_processing: true` is set in the mode.
 - Optional Python-side filtering/export: set `modes.<mode>.python_data_filtering` to export per-image CSVs (row,col,value,kept) after pygwy preprocessing and run `three_sigma`, `chauvenet`, and/or `min_max` filters before stats are computed.
 - Grid indices: if `grid.filename_regex` changes, regenerate the manifest (otherwise `row_idx/col_idx` will remain `-1`).
 - Plotting recipes: bar/hist/scatter, plus multiple heatmap variants (mean/std/CV/range), overlays (sigma-colored text, alpha/hatch), bubble overlay, and two-panel mean+std. Select via `plotting_modes`/profiles without changing code.

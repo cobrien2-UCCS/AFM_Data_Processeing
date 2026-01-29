@@ -1,8 +1,12 @@
-# Modulus example: row+column Align Rows correction + outlier mask (Gwyddion-native) before stats.
+# Modulus example: row+column Align Rows correction + validity range + outlier mask before stats.
 #
 # Intended use:
 # - When scan-line artefacts exist in both directions.
 # - When a few extreme pixels inflate std; use outlier mask to exclude spikes.
+#
+# Route clarity:
+# - stats_source: "gwyddion" (masked stats computed by Gwyddion)
+# - No stats_filter / python_data_filtering (avoid mixed filtering)
 #
 # Note: This config uses strict unit behavior (skip files with missing units).
 
@@ -18,19 +22,15 @@ modes:
       - { op: "align_rows", params: { direction: "vertical", method: "median" } }
       - { op: "median", params: { size: 3 } }
       - { op: "clip_percentiles", params: { low: 0.5, high: 99.5 } }
+    stats_source: "gwyddion"
     mask:
-      enable: true
-      method: "outliers2"
-      # Thresholds are multiples of σ (RMS deviation) from the mean.
-      # 3.0 corresponds to the common "3-sigma" outlier criterion.
-      thresh_low: 3.0
-      thresh_high: 3.0
+      combine: "and"
+      steps:
+        # Physical-validity range (kPa): exclude invalid zeros/nonphysical values.
+        - { method: "range", min_value: 1000.0, max_value: 50000.0, inclusive: true }
+        # Gwyddion-native outlier marking: exclude spikes beyond thresh*RMS from the mean.
+        - { method: "outliers2", thresh_low: 3.0, thresh_high: 3.0 }
       on_empty: "skip_row"
-    stats_filter:
-      min_value: 1000.0
-      max_value: 50000.0
-      exclude_nonpositive: true
-      on_empty: "blank"
     metric_type: "modulus"
     units: "kPa"
     expected_units: "kPa"
@@ -50,7 +50,7 @@ debug:
   artifacts: ["mask", "leveled", "aligned", "filtered"]
   sample_limit: 3
   out_dir: "out/debug"
-  log_fields: ["units", "mask_counts", "stats_counts", "stats_reasons", "grid"]
+  log_fields: ["units", "stats_source", "mixed_processing", "mask_counts", "stats_counts", "grid"]
 
 csv_modes:
   default_scalar:

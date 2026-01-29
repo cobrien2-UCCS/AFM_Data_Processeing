@@ -18,6 +18,7 @@ This document maps the current repo implementation to the design intents in `AFM
 - Current state:
   - Agreed baseline for modulus: invalid pixels are `0.0`; valid material range is **500-60,000 kPa** (GPa spikes treated as out-of-range/inclusions).
   - Runner applies **unit normalization before masks/filters**, so thresholds can be written in normalized units (kPa).
+  - Runner enforces **unambiguous processing routes** by default (no silent mixed Gwyddion+Python filtering); see `allow_mixed_processing`.
 - Next:
   - Codify the baseline into a dedicated profile/config (e.g., `config.modulus_validity.yaml`) and run a GUI-parity spot check. (Done: config.modulus_validity.yaml)
   - Decide whether to keep stats purely validity-based (no outlier trimming) or add a second-stage outlier rule.
@@ -26,6 +27,7 @@ This document maps the current repo implementation to the design intents in `AFM
 - Goal: confirm pygwy/Gwyddion-derived values (avg/std) are meaningful **before** applying Python-side filters or using results for conclusions.
 - Rationale: if preprocessing or units are wrong, downstream filtering/plotting “looks” plausible but is not valid.
 - Current state:
+  - `stats_source: gwyddion` now computes **masked** stats via Gwyddion (mask respected), removing a major ambiguity.
   - Per-file trace JSON records stats snapshots pre/post ops + final stats + exclusion reasons (see `out/debug/traces/*.trace.json`).
   - Python-side filter provenance is also emitted into the trace (`pyfilter_summary` step).
 - Next:

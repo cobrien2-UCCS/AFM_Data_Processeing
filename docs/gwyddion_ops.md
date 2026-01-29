@@ -252,7 +252,7 @@ mask:
   steps:
     - { method: threshold, threshold: 0.0, direction: above }
     - { method: percentile, percentiles: [5, 95] }
-  on_empty: error     # error|warn|skip_row
+  on_empty: error     # error|warn|blank|skip_row
 ```
 
 ## Grain / particle counting (mode: `particle_count_basic`)
