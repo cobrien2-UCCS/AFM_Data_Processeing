@@ -298,5 +298,82 @@ class PipelineTestCase(unittest.TestCase):
         self.assertEqual(mask, [True, True, True, True, False])
 
 
+class MaskAndRoutePolicyTests(unittest.TestCase):
+    def test_mask_threshold_and_range(self):
+        class FakeField:
+            def __init__(self, data):
+                self._data = list(data)
+
+            def get_data(self):
+                return self._data
+
+        field = FakeField([-1.0, 0.0, 1.0, 2.0, 10.0])
+
+        mask, kept, total = run_pygwy_job._build_single_mask(field, {"method": "threshold", "threshold": 0.0, "direction": "above"})
+        self.assertEqual(total, 5)
+        self.assertEqual(kept, 4)
+        self.assertEqual(mask, [False, True, True, True, True])
+
+        mask, kept, total = run_pygwy_job._build_single_mask(field, {"method": "range", "min_value": 1.0, "max_value": 2.0, "inclusive": True})
+        self.assertEqual((kept, total), (2, 5))
+        self.assertEqual(mask, [False, False, True, True, False])
+
+    def test_mask_percentile(self):
+        class FakeField:
+            def __init__(self, data):
+                self._data = list(data)
+
+            def get_data(self):
+                return self._data
+
+        field = FakeField([0.0, 1.0, 2.0, 3.0, 100.0])
+        mask, kept, total = run_pygwy_job._build_single_mask(field, {"method": "percentile", "percentiles": [0, 80]})
+        self.assertEqual(total, 5)
+        self.assertEqual(kept, 4)
+        self.assertEqual(mask, [True, True, True, True, False])
+
+    def test_mask_combine_and_on_empty_blank(self):
+        class FakeField:
+            def __init__(self, data):
+                self._data = list(data)
+
+            def get_data(self):
+                return self._data
+
+        field = FakeField([1.0, 2.0, 3.0])
+        mask_cfg = {
+            "combine": "and",
+            "on_empty": "blank",
+            "steps": [
+                {"method": "threshold", "threshold": 10.0, "direction": "above"},
+                {"method": "range", "min_value": 20.0, "max_value": 30.0},
+            ],
+        }
+        mask, kept, total = run_pygwy_job._build_mask(field, mask_cfg)
+        self.assertEqual(total, 3)
+        self.assertEqual(kept, 0)
+        self.assertEqual(mask, [False, False, False])
+
+    def test_route_policy_rejects_mixed_by_default(self):
+        mode_def = {
+            "stats_source": "python",
+            "mask": {"method": "outliers2", "thresh_low": 3.0, "thresh_high": 3.0},
+        }
+        reasons = run_pygwy_job._mixed_processing_reasons(mode_def)
+        self.assertTrue(reasons, "Expected mixed processing reasons to be detected")
+        with self.assertRaises(RuntimeError):
+            run_pygwy_job._enforce_processing_route_policy("modulus_basic", mode_def)
+
+    def test_route_policy_allows_mixed_with_flag(self):
+        mode_def = {
+            "allow_mixed_processing": True,
+            "stats_source": "python",
+            "mask": {"method": "outliers2", "thresh_low": 3.0, "thresh_high": 3.0},
+        }
+        allow, reasons = run_pygwy_job._enforce_processing_route_policy("modulus_basic", mode_def)
+        self.assertTrue(allow)
+        self.assertTrue(reasons)
+
+
 if __name__ == "__main__":
     unittest.main()

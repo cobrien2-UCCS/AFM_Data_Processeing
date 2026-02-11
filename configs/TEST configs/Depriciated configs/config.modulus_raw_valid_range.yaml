@@ -1,0 +1,106 @@
+# Modulus "square one": raw stats with a validity mask (no preprocessing, no Python filters).
+#
+# Purpose:
+# - Baseline sanity check that still excludes obviously invalid pixels.
+# - Uses only Gwyddion stats (masked) on the raw loaded DataField.
+#
+# Physical-validity baseline (kPa):
+# - invalid pixels are usually 0
+# - expected material range: 500 .. 60,000 kPa
+
+channel_defaults:
+  modulus_family: "modulus"
+
+modes:
+  raw_noop:
+    channel_family: "modulus"
+    stats_source: "gwyddion"
+    mask:
+      method: "range"
+      min_value: 500.0
+      max_value: 60000.0
+      inclusive: true
+      on_empty: "blank"
+    python_data_filtering:
+      enable: false
+    metric_type: "modulus_raw_valid"
+    units: "kPa"
+    expected_units: "kPa"
+    on_unit_mismatch: "warn"
+    assume_units: "kPa"
+    on_missing_units: "warn"
+
+grid:
+  index_base: 1
+  filename_regex: "LOC_RC(?P<row>\\d{3})(?P<col>\\d{3})"
+
+summarize:
+  recursive: false
+
+debug:
+  enable: true
+  level: "info"
+  artifacts: ["mask"]
+  sample_limit: 3
+  out_dir: "out/debug"
+  log_fields: ["units", "stats_source", "mixed_processing", "mask_counts", "stats_counts", "grid", "raw_stats"]
+  trace_dir: "out/debug/traces"
+  stats_provenance: true
+
+csv_modes:
+  default_scalar:
+    columns:
+      - { name: "source_file", from: "core.source_file" }
+      - { name: "mode", from: "core.mode" }
+      - { name: "metric_type", from: "core.metric_type" }
+      - { name: "avg_value", from: "core.avg_value" }
+      - { name: "std_value", from: "core.std_value" }
+      - { name: "units", from: "core.units" }
+      - { name: "n_valid", from: "core.n_valid", default: "" }
+      - { name: "nx", from: "core.nx" }
+      - { name: "ny", from: "core.ny" }
+      - { name: "row_idx", from: "grid.row_idx", default: -1 }
+      - { name: "col_idx", from: "grid.col_idx", default: -1 }
+    on_missing_field: "warn_null"
+
+result_schemas:
+  default_scalar:
+    from_csv_mode: "default_scalar"
+    fields:
+      - { field: "source_file", type: "string", column: "source_file" }
+      - { field: "mode", type: "string", column: "mode" }
+      - { field: "metric_type", type: "string", column: "metric_type" }
+      - { field: "avg_value", type: "float", column: "avg_value" }
+      - { field: "std_value", type: "float", column: "std_value" }
+      - { field: "units", type: "string", column: "units" }
+      - { field: "n_valid", type: "int", column: "n_valid" }
+      - { field: "nx", type: "int", column: "nx" }
+      - { field: "ny", type: "int", column: "ny" }
+      - { field: "row_idx", type: "int", column: "row_idx" }
+      - { field: "col_idx", type: "int", column: "col_idx" }
+
+plotting_modes:
+  sample_bar_with_error:
+    result_schema: "default_scalar"
+    recipe: "sample_bar_with_error"
+    title: "Raw Modulus Means (Valid Range)"
+    ylabel: "Modulus (kPa)"
+  heatmap_grid:
+    result_schema: "default_scalar"
+    recipe: "heatmap_grid"
+    title: "Raw Modulus Heatmap (Valid Range)"
+    colorbar_label: "avg_value"
+    duplicate_policy: "warn_mean"
+
+profiles:
+  modulus_raw_valid_range:
+    processing_mode: "raw_noop"
+    csv_mode: "default_scalar"
+    plotting_modes: ["sample_bar_with_error", "heatmap_grid"]
+
+unit_conversions:
+  raw_noop:
+    kPa: { target: "kPa", factor: 1.0 }
+    MPa: { target: "kPa", factor: 1000.0 }
+    GPa: { target: "kPa", factor: 1e6 }
+    Pa:  { target: "kPa", factor: 0.001 }
