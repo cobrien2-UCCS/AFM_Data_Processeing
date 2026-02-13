@@ -29,6 +29,33 @@ def _infer_unit(rows: List[Dict[str, Any]]) -> str:
     return ""
 
 
+def _truncate_text(text: str, max_len: int) -> str:
+    if max_len is None:
+        return text
+    try:
+        max_len = int(max_len)
+    except Exception:
+        return text
+    if max_len <= 0 or len(text) <= max_len:
+        return text
+    if max_len <= 3:
+        return text[:max_len]
+    head = (max_len - 3) // 2
+    tail = max_len - 3 - head
+    if tail <= 0:
+        return text[: max_len - 3] + "..."
+    return text[:head] + "..." + text[-tail:]
+
+
+def _format_label(label: Any, plotting_def: Dict[str, Any]) -> str:
+    text = "" if label is None else str(label)
+    if plotting_def.get("label_basename"):
+        text = Path(text).name
+        if plotting_def.get("label_strip_ext", True):
+            text = Path(text).stem
+    return _truncate_text(text, plotting_def.get("label_max_len"))
+
+
 def plot_summary_from_csv(csv_path: str, plotting_mode: str, cfg: Dict[str, Any], output_dir: str):
     """Entry: load CSV, cast rows via result_schema, dispatch plotting recipe."""
     plotting_def = cfg.get("plotting_modes", {}).get(plotting_mode)
@@ -124,7 +151,7 @@ def _extract_value(row: Dict[str, Any], field: str) -> float:
 
 
 def plot_sample_bar_with_error(rows: List[Dict[str, Any]], plotting_def: Dict[str, Any], out_dir: Path, name: str):
-    labels = [r.get("source_file", "") for r in rows]
+    labels = [_format_label(r.get("source_file", ""), plotting_def) for r in rows]
     means = [r.get("avg_value", 0.0) for r in rows]
     stds = [r.get("std_value", 0.0) for r in rows]
     unit = _infer_unit(rows) 
@@ -175,10 +202,11 @@ def plot_scatter_avg_vs_std(rows: List[Dict[str, Any]], plotting_def: Dict[str, 
 
 
 def plot_mode_comparison_bar(rows: List[Dict[str, Any]], plotting_def: Dict[str, Any], out_dir: Path, name: str):
-    labels = [r.get("source_file", "") for r in rows]
+    labels = [_format_label(r.get("source_file", ""), plotting_def) for r in rows]
     modes = [r.get("mode", "") for r in rows]
     means = [r.get("avg_value", 0.0) for r in rows]
     annotated = [f"{m}:{l}" if m else l for m, l in zip(modes, labels)]
+    annotated = [_truncate_text(a, plotting_def.get("label_max_len")) for a in annotated]
     unit = _infer_unit(rows)
 
     fig, ax = plt.subplots()

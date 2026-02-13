@@ -15,6 +15,7 @@ from __future__ import print_function
 import argparse
 import csv
 import json
+import hashlib
 import math
 import os
 import re
@@ -554,6 +555,25 @@ def _export_field_csv(field, mask, path):
                 val = data[idx]
                 keep = 1 if (mask is None or (idx < len(mask) and mask[idx])) else 0
                 writer.writerow([j, i, val, keep])
+
+
+def _shorten_name(name, max_len=None):
+    if max_len is None:
+        return name
+    try:
+        max_len = int(max_len)
+    except Exception:
+        return name
+    if max_len <= 0 or len(name) <= max_len:
+        return name
+    try:
+        h = hashlib.md5(name.encode("utf-8")).hexdigest()[:8]
+    except Exception:
+        h = "hash"
+    keep = max_len - len(h) - 1
+    if keep < 1:
+        return h
+    return name[:keep] + "_" + h
 
 
 def _apply_python_filters(field, base_mask, filter_cfg):
@@ -1760,7 +1780,7 @@ def _process_with_pygwy(path, processing_mode, mode_def, channel_defaults, manif
         field_title = ""
     mode = processing_mode or "raw_noop"
 
-    if mode in ("modulus_basic", "modulus_simple", "modulus_complex", "topography_flat"):
+    if mode not in ("particle_count_basic", "raw_noop"):
         f = field.duplicate()
         trace = []
         stats_debug = _debug_enabled(manifest) and (manifest.get("debug") or {}).get("stats_provenance")
@@ -1875,7 +1895,36 @@ def _process_with_pygwy(path, processing_mode, mode_def, channel_defaults, manif
                         pass
         py_filter_cfg = (mode_def.get("python_data_filtering") or mode_def.get("python_filtering") or {})
         base_name = os.path.splitext(os.path.basename(path))[0]
-        pyfilter_export_dir = py_filter_cfg.get("export_dir") or os.path.join(_debug_out_dir(manifest), "pyfilter")
+        pyfilter_export_dir = py_filter_cfg.get("export_dir")
+        if not pyfilter_export_dir:
+            if _debug_enabled(manifest):
+                pyfilter_export_dir = os.path.join(_debug_out_dir(manifest), "pyfilter")
+            else:
+                pyfilter_export_dir = os.path.join(manifest.get("output_dir", "."), "pyfilter")
+        max_path_len = py_filter_cfg.get("export_path_max_len", 220)
+        try:
+            max_path_len = int(max_path_len)
+        except Exception:
+            max_path_len = 220
+        suffix_len = len("_filtered.csv")
+        max_name_len = max_path_len - len(pyfilter_export_dir) - len(os.sep) - suffix_len
+        if max_name_len < 8:
+            max_name_len = 8
+        cfg_name_len = py_filter_cfg.get("export_basename_max_len")
+        if cfg_name_len is None:
+            cfg_name_len = max_name_len
+        else:
+            try:
+                cfg_name_len = min(int(cfg_name_len), max_name_len)
+            except Exception:
+                cfg_name_len = max_name_len
+        base_name = _shorten_name(base_name, cfg_name_len)
+        if py_filter_cfg.get("export_raw_csv") or py_filter_cfg.get("export_filtered_csv"):
+            try:
+                if not os.path.isdir(pyfilter_export_dir):
+                    os.makedirs(pyfilter_export_dir)
+            except Exception:
+                pass
         if py_filter_cfg.get("export_raw_csv"):
             try:
                 _export_field_csv(f, mask, os.path.join(pyfilter_export_dir, "%s_raw.csv" % base_name))
