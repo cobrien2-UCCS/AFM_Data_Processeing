@@ -2,6 +2,21 @@
 
 This document maps the current repo implementation to the design intents in `AFM TIFF to Summary Stats & Plotting Pipeline v3.md` and tracks what to shore up next.
 
+## Status snapshot (2026-02-13)
+- Known-good example configs:
+- `configs/TEST configs/Example configs/config.modulus_gwyddion_only.yaml` (Gwyddion stats + simple validity mask; no Python filtering)
+- `configs/TEST configs/Example configs/config.modulus_export_python_filters.yaml` (Python stats + optional Python filters; exports per-image CSVs)
+- Known-good outputs (kept unarchived under `out/`):
+- `out/verify_raw_trunc_gwyddion_only/` (baseline)
+- `out/verify_raw_trunc_less_tuned/` (Python variants that retain all data points)
+- Method comparison tooling:
+- `scripts/compare_methods.py` writes Excel-friendly comparisons and plots to `out/method_compare/`.
+- Findings writeup:
+- `docs/method_compare_notes.md` summarizes the 2026-02-13 comparison run.
+- Invariants we now enforce (by design):
+- `stats_source` is explicit (no ambiguous "auto" routing).
+- Mixed routes are rejected unless `allow_mixed_processing: true`, and the runner logs provenance when enabled.
+
 ## Still aligned with the spec (core intent)
 - Config-first behavior: processing/CSV/schema/plotting behavior is controlled by config (`modes`, `csv_modes`, `result_schemas`, `plotting_modes`, `profiles`, `unit_conversions`).
 - Dataflow matches the mental model: TIFF -> pygwy/Gwyddion processing -> ModeResultRecord -> CSV (csv_mode) -> typed rows (result_schema) -> plots (plotting_mode).
@@ -80,10 +95,13 @@ This document maps the current repo implementation to the design intents in `AFM
   - Missing-units behavior is explicit and configurable (`on_missing_units: error|warn|skip_row`).
 - New finding:
   - The current test TIFFs load in pygwy with **no Z-unit metadata** (`field.get_si_unit_z().get_unit_string()` returns empty/None), so strict configs will skip them.
-  - Evidence: see `out/provenance/missing_units/pygwy_run.log`.
+  - Evidence: current example configs set `assume_units: "kPa"` and `on_missing_units: "warn"`, and archived traces exist under `out/archive_20260211_172154/debug/*.trace.json`.
 - Next:
   - Confirm whether unit metadata can be preserved in the upstream export path for these TIFFs.
   - If TIFF cannot reliably carry units, decide on a dataset-scoped strategy (separate configs per known unit batch, or require a source format that carries units).
+
+## Related tools / prior art (to survey)
+- Short list and concrete search queries live in `docs/related_tools.md`.
 
 ### 5) Plotting / uncertainty visualization (spec plotting intent)
 - Current state: multiple plotting modes exist including heatmap overlays, bubbles, CV, and two-panel summaries.
