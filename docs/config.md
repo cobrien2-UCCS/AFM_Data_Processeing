@@ -11,7 +11,10 @@ See `config.example.yaml` for a concrete example.
   - `mask` (optional): config-driven mask (threshold/range/percentile/outliers/outliers2); supports multi-step `steps` with `combine: and|or`; `on_empty: error|warn|blank|skip_row`
     - `gwyddion_export: true` to write the mask as a TIFF artifact.
   - `stats_filter` (optional): exclude invalid/saturated pixels from stats (Python-side value rules); `on_empty: error|warn|blank|skip_row`
-  - `python_data_filtering` (optional): post-Gwyddion value filtering + CSV export; `filters` list supports `three_sigma (sigma)`, `chauvenet`, `min_max (min_value/max_value)`; `export_raw_csv|export_filtered_csv`, `export_dir`. If filtering produces 0 kept pixels, final handling is governed by `stats_filter.on_empty` (e.g., `blank`).
+  - `python_data_filtering` (optional): post-Gwyddion value filtering + CSV export; `filters` list supports `three_sigma (sigma)`, `chauvenet`, `min_max (min_value/max_value)`; `export_raw_csv|export_filtered_csv`, `export_dir`.
+    - If `export_dir` is omitted, exports go to `<output_dir>/debug/pyfilter/` when `debug.enable: true`, otherwise `<output_dir>/pyfilter/`.
+    - Optional filename safety knobs: `export_basename_max_len` and `export_path_max_len` (helps avoid Windows path length errors).
+    - If filtering produces 0 kept pixels, final handling is governed by `stats_filter.on_empty` (e.g., `blank`).
   - `stats_source` (optional): `gwyddion|python` (default: `python`)
     - `gwyddion`: compute avg/std via Gwyddion (masked stats are supported; `mask` is respected).
       - `stats_filter` / `python_data_filtering` are considered Python-side filtering; they are rejected unless `allow_mixed_processing: true`.
@@ -23,7 +26,7 @@ See `config.example.yaml` for a concrete example.
   - `metric_type`, `units`, `expected_units`, `on_unit_mismatch`, `on_missing_units` (`error|warn|skip_row`), `assume_units` (optional: force a unit when the file has none)
   - mode-specific (e.g., `threshold` for particle mode)
 - `grid`: `filename_regex` with named groups `row`/`col` to set grid indices. Optional `index_base` (0 or 1) converts filename indices to zero-based values stored in `grid.row_idx`/`grid.col_idx`.
-- `filename_parsing` (optional): list of regex → key maps for filename metadata (e.g., `patterns: [{ regex: "LOC_RC(?P<row>\\d{3})(?P<col>\\d{3})", map: {row: "grid.row_idx", col: "grid.col_idx"} }, ...]`). Falls back to `grid.filename_regex`.
+- `filename_parsing` (optional): list of regex -> key maps for filename metadata (e.g., `patterns: [{ regex: "LOC_RC(?P<row>\\d{3})(?P<col>\\d{3})", map: {row: "grid.row_idx", col: "grid.col_idx"} }, ...]`). Falls back to `grid.filename_regex`.
 - `summarize`: `recursive` flag for TIFF search.
 - `input_filters` (optional): include/exclude regex filters applied during manifest generation (useful to exclude Forward or Backward duplicates).
 - `csv_modes`: column layout mapping keys (e.g., `core.avg_value`, `grid.row_idx`) to CSV columns.

@@ -29,16 +29,16 @@ Each list item is a dict with:
 - `op` (or `name`): operation name (case-insensitive; `-` and spaces become `_`)
 - `params`: optional dict of args
 
-Example (from `configs/TEST configs/Example configs/config.modulus_suite.yaml`):
+Example (from `configs/TEST configs/Example configs/config.modulus_export_python_filters.yaml`):
 
 ```yaml
 modes:
-  modulus_complex:
+  modulus_export_combo:
     gwyddion_ops:
       - { op: "plane_level" }
       - { op: "align_rows", params: { direction: "horizontal", method: "median" } }
       - { op: "median", params: { size: 3 } }
-      - { op: "clip_percentiles", params: { low: 0.5, high: 99.5 } }
+    stats_source: "python"
 ```
 
 In practice:
@@ -46,7 +46,7 @@ In practice:
 2) Generate a manifest (Py3): `python scripts/make_job_manifest.py --config config.yaml --input-root <tiffs> --output-dir out --processing-mode <mode> --csv-mode <csv_mode> --out out/job_manifest.json`
 3) Run processing (Py2): `& "C:\\Python27\\python.exe" scripts\\run_pygwy_job.py --manifest out\\job_manifest.json`
 
-For end-to-end usage (`manifest → pygwy → plots`), see `docs/USER_GUIDE.md`.
+For end-to-end usage (`manifest -> pygwy -> plots`), see `docs/USER_GUIDE.md`.
 
 ## Operation reference (supported today)
 
@@ -63,7 +63,7 @@ For end-to-end usage (`manifest → pygwy → plots`), see `docs/USER_GUIDE.md`.
 
 **Args:** none (any `params` are currently ignored).
 
-**GUI equivalent:** `Data Process → Level → Plane Level`  
+**GUI equivalent:** `Data Process -> Level -> Plane Level`  
 Docs: https://gwyddion.net/documentation/user-guide-en/leveling-and-background.html#plane-level
 
 ---
@@ -105,7 +105,7 @@ Docs: https://gwyddion.net/documentation/user-guide-en/leveling-and-background.h
     - `trimmed_mean` (6)
     - `trimmed_mean_difference` (7)
 
-**GUI equivalent:** `Data Process → Correct Data → Align Rows`  
+**GUI equivalent:** `Data Process -> Correct Data -> Align Rows`  
 Docs: https://gwyddion.net/documentation/user-guide-en/scan-line-defects.html#line-correction
 
 **Practical note (row + column correction):**
@@ -118,7 +118,7 @@ gwyddion_ops:
 
 #### Alternative config: `modes.<mode>.line_correct`
 
-The runner also supports a single “Align Rows” step as `line_correct`, applied before `gwyddion_ops`:
+The runner also supports a single "Align Rows" step as `line_correct`, applied before `gwyddion_ops`:
 
 ```yaml
 modes:
@@ -147,9 +147,9 @@ Prefer `gwyddion_ops` when you need explicit ordering, repetition, or to keep ev
 
 **Args (`params`):**
 - `size` (int, default `3`)  
-  - Use odd values (3, 5, 7…) to match typical neighbourhood definitions.
+  - Use odd values (3, 5, 7...) to match typical neighbourhood definitions.
 
-**GUI equivalent:** Filters tool → “Median value” (Basic Filters Tool)  
+**GUI equivalent:** Filters tool -> "Median value" (Basic Filters Tool)  
 Docs: https://gwyddion.net/documentation/user-guide-en/filters.html#basic-filters
 
 ---
@@ -167,8 +167,8 @@ Docs: https://gwyddion.net/documentation/user-guide-en/filters.html#basic-filter
 ```
 
 **Args (`params`):**
-- `low` (float, default `0.0`)  — percentile in [0, 100]
-- `high` (float, default `100.0`) — percentile in [0, 100]
+- `low` (float, default `0.0`)  - percentile in [0, 100]
+- `high` (float, default `100.0`) - percentile in [0, 100]
 
 **GUI equivalent:** none 1:1 (conceptually similar to histogram-based clipping).
 
@@ -178,7 +178,7 @@ Older configs may use:
 - `line_level_x: true`
 - `line_level_y: true`
 
-In the runner these are treated as “Align Rows median” (horizontal then vertical). Prefer `gwyddion_ops` for explicit ordering and repeatability.
+In the runner these are treated as "Align Rows median" (horizontal then vertical). Prefer `gwyddion_ops` for explicit ordering and repeatability.
 
 ## Masking / ROI methods (affect stats, not the image)
 
@@ -223,7 +223,7 @@ mask:
 ### `outliers` / `outliers2` (Gwyddion-native outlier marking)
 
 These use `DataField.mask_outliers()` / `DataField.mask_outliers2()` (computed after preprocessing).
-They mark pixels more than `thresh * σ` away from the mean (σ = RMS deviation).
+They mark pixels more than `thresh * sigma` away from the mean (sigma = RMS deviation).
 The pipeline inverts the Gwyddion mask so the default behavior is **keep non-outliers**; set `invert: true` to keep only outliers.
 
 ```yaml
@@ -241,7 +241,7 @@ mask:
   thresh_high: 3.0
 ```
 
-**GUI equivalent:** `Data Process → Correct Data → Mask of Outliers`  
+**GUI equivalent:** `Data Process -> Correct Data -> Mask of Outliers`  
 Docs: https://gwyddion.net/documentation/user-guide-en/editing-correction.html#mask-of-outliers
 
 ### Multi-step masks (`combine: and|or`)
@@ -291,9 +291,9 @@ The runner writes per-file `*.trace.json` step records (including before/after s
 ## Next Gwyddion ops to consider (not implemented yet)
 
 These exist in the GUI and are referenced in the Gwyddion docs, but are not wired into `gwyddion_ops` yet:
-- `Flatten Base` (`Data Process → Level → Flatten Base`)  
+- `Flatten Base` (`Data Process -> Level -> Flatten Base`)  
   Docs: https://gwyddion.net/documentation/user-guide-en/leveling-and-background.html#flatten-base
-- `Polynomial Background` (`Data Process → Level → Polynomial Background`)  
+- `Polynomial Background` (`Data Process -> Level -> Polynomial Background`)  
   Docs: https://gwyddion.net/documentation/user-guide-en/leveling-and-background.html#polynomial-level
 
 When adding new ops, prefer:

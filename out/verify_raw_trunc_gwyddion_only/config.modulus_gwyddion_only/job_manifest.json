@@ -1,0 +1,158 @@
+{
+  "manifest_version": "1.0",
+  "processing_mode": "modulus_gwy_only",
+  "csv_mode": "default_scalar",
+  "input_root": "C:\\Users\\Conor O'Brien\\Desktop\\TEST Folder",
+  "pattern": "*.tif;*.tiff",
+  "files": [
+    "C:\\Users\\Conor O'Brien\\Desktop\\TEST Folder\\PEGDA01TPO000SiNP_Sam01_S1_P__GrID000_LOC_RC001001-5.00x5.00-Modulus_Backward-251021-CRO.tiff",
+    "C:\\Users\\Conor O'Brien\\Desktop\\TEST Folder\\PEGDA01TPO000SiNP_Sam01_S1_P__GrID001_LOC_RC001002-5.00x5.00-Modulus_Backward-251021-CRO.tiff",
+    "C:\\Users\\Conor O'Brien\\Desktop\\TEST Folder\\PEGDA01TPO000SiNP_Sam01_S1_P__GrID002_LOC_RC001003-5.00x5.00-Modulus_Backward-251020-CRO.tiff",
+    "C:\\Users\\Conor O'Brien\\Desktop\\TEST Folder\\PEGDA01TPO000SiNP_Sam01_S1_P__GrID003_LOC_RC001006-5.00x5.00-Modulus_Backward-251022-CRO.tiff",
+    "C:\\Users\\Conor O'Brien\\Desktop\\TEST Folder\\PEGDA01TPO000SiNP_Sam01_S1_P__GrID004_LOC_RC001005-5.00x5.00-Modulus_Backward-251022-CRO.tiff",
+    "C:\\Users\\Conor O'Brien\\Desktop\\TEST Folder\\PEGDA01TPO000SiNP_Sam01_S1_P__GrID005_LOC_RC001010-5.00x5.00-Modulus_Backward-251027-CRO.tiff",
+    "C:\\Users\\Conor O'Brien\\Desktop\\TEST Folder\\PEGDA01TPO000SiNP_Sam01_S1_P__GrID006_LOC_RC001011-5.00x5.00-Modulus_Backward-251027-CRO.tiff"
+  ],
+  "input_filters": {
+    "filters_applied": false,
+    "include_regex": [],
+    "exclude_regex": []
+  },
+  "output_dir": "C:\\Users\\Conor O'Brien\\Documents\\GitHub\\AFM-Data-Management\\out\\verify_raw_trunc_gwyddion_only\\config.modulus_gwyddion_only",
+  "output_csv": "C:\\Users\\Conor O'Brien\\Documents\\GitHub\\AFM-Data-Management\\out\\verify_raw_trunc_gwyddion_only\\config.modulus_gwyddion_only\\summary.csv",
+  "grid": {
+    "index_base": 1,
+    "filename_regex": "LOC_RC(?P<row>\\d{3})(?P<col>\\d{3})"
+  },
+  "channel_defaults": {
+    "modulus_family": "modulus"
+  },
+  "mode_definition": {
+    "channel_family": "modulus",
+    "gwyddion_ops": [
+      {
+        "op": "plane_level"
+      },
+      {
+        "op": "align_rows",
+        "params": {
+          "direction": "horizontal",
+          "method": "median"
+        }
+      },
+      {
+        "op": "median",
+        "params": {
+          "size": 3
+        }
+      }
+    ],
+    "stats_source": "gwyddion",
+    "mask": {
+      "method": "range",
+      "min_value": 1.0,
+      "max_value": 1000000000.0,
+      "inclusive": true,
+      "on_empty": "blank"
+    },
+    "python_data_filtering": {
+      "enable": false
+    },
+    "metric_type": "modulus",
+    "units": "kPa",
+    "expected_units": "kPa",
+    "on_unit_mismatch": "warn",
+    "assume_units": "kPa",
+    "on_missing_units": "warn"
+  },
+  "csv_mode_definition": {
+    "columns": [
+      {
+        "name": "source_file",
+        "from": "core.source_file"
+      },
+      {
+        "name": "mode",
+        "from": "core.mode"
+      },
+      {
+        "name": "metric_type",
+        "from": "core.metric_type"
+      },
+      {
+        "name": "avg_value",
+        "from": "core.avg_value"
+      },
+      {
+        "name": "std_value",
+        "from": "core.std_value"
+      },
+      {
+        "name": "units",
+        "from": "core.units"
+      },
+      {
+        "name": "n_valid",
+        "from": "core.n_valid",
+        "default": ""
+      },
+      {
+        "name": "nx",
+        "from": "core.nx"
+      },
+      {
+        "name": "ny",
+        "from": "core.ny"
+      },
+      {
+        "name": "row_idx",
+        "from": "grid.row_idx",
+        "default": -1
+      },
+      {
+        "name": "col_idx",
+        "from": "grid.col_idx",
+        "default": -1
+      }
+    ],
+    "on_missing_field": "warn_null"
+  },
+  "unit_conversions": {
+    "modulus_gwy_only": {
+      "kPa": {
+        "target": "kPa",
+        "factor": 1.0
+      },
+      "MPa": {
+        "target": "kPa",
+        "factor": 1000.0
+      },
+      "GPa": {
+        "target": "kPa",
+        "factor": "1e6"
+      },
+      "Pa": {
+        "target": "kPa",
+        "factor": 0.001
+      }
+    }
+  },
+  "filename_parsing": {},
+  "debug": {
+    "enable": false,
+    "level": "info",
+    "artifacts": [
+      "mask"
+    ],
+    "sample_limit": 3,
+    "log_fields": [
+      "units",
+      "stats_source",
+      "mixed_processing",
+      "mask_counts",
+      "stats_counts",
+      "grid",
+      "raw_stats"
+    ]
+  }
+}

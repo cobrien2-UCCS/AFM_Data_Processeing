@@ -8,14 +8,32 @@ Add to modes:
   <mode_name>:
     channel_family: "<channel_hint>"
     plane_level: true|false
+    gwyddion_ops: []              # ordered ops; see docs/gwyddion_ops.md
     median_size: <odd_int|null>
     line_level_x: true|false
     line_level_y: true|false
     clip_percentiles: [low, high] | null
+    stats_source: "python|gwyddion"
+    allow_mixed_processing: true|false
+    # Optional python_data_filtering: post-stats value filters + per-image CSV exports.
+    # python_data_filtering:
+    #   enable: true
+    #   export_raw_csv: true
+    #   export_filtered_csv: true
+    #   export_dir: "<optional override>"
+    #   export_basename_max_len: 80
+    #   export_path_max_len: 220
+    #   on_empty: "warn|skip_row|error"
+    #   filters:
+    #     - { type: "three_sigma", sigma: 3.0 }
+    #     - { type: "chauvenet" }
+    #     - { type: "min_max", min_value: 1.0, max_value: 1e9 }
     metric_type: "<metric>"
     units: "<unit>"
     expected_units: "<unit>"
     on_unit_mismatch: "error|warn|skip_row"
+    on_missing_units: "error|warn|skip_row"
+    assume_units: "<unit>"        # explicit opt-in when TIFF Z-units are missing
     threshold: <num|null>  # if particle mode
 ```
 If behavior matches existing branches (modulus/topography filters or particle counting), no code change is needed.
@@ -75,3 +93,12 @@ Implement a new mode "<mode_name>" in scripts/run_pygwy_job.py:
 - Do not add new global state; keep behavior in config or mode branches.
 - Prefer Gwyddion/pygwy ops; use Python helpers only when necessary.
 - Preserve function signatures described in the spec.
+
+## Compare outputs across methods (script)
+Use `scripts/compare_methods.py` to compare multiple `summary.csv` outputs against a baseline.
+
+Template:
+```
+py -3 scripts/compare_methods.py --baseline-summary <baseline_summary.csv> --methods-root <root_of_runs> --out-root out/method_compare --label-max-len 45
+```
+This writes `comparison_wide.csv`, `comparison_long.csv`, and quick plots under `out/method_compare/compare_<timestamp>/plots/`.

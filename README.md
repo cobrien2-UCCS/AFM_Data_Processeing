@@ -100,10 +100,25 @@ python scripts/check_env.py
   ```
 - TIFF processing itself is performed by the Py2/pygwy runner (`scripts/run_pygwy_job.py`).
 
+### Method comparison (Gwyddion-only baseline vs Python variants)
+To compare multiple run outputs against a baseline summary CSV, use:
+```powershell
+py -3 scripts/compare_methods.py `
+  --baseline-summary "out/verify_raw_trunc_gwyddion_only/config.modulus_gwyddion_only/summary.csv" `
+  --methods-root "out/verify_raw_trunc_less_tuned" `
+  --out-root "out/method_compare"
+```
+This writes `comparison_wide.csv` (Excel-friendly), `comparison_long.csv` (tidy), and plots under `out/method_compare/compare_<timestamp>/plots/`.
+
 ### Example config
 See `config.example.yaml` for a starter config matching the spec structure:
 - `channel_defaults`, `modes`, `grid`, `csv_modes`, `result_schemas`, `plotting_modes`, `profiles`.
 - `summarize.recursive` controls recursive TIFF search for summarize.
+
+Repo examples live in `configs/TEST configs/Example configs/`:
+- `configs/TEST configs/Example configs/config.modulus_export_python_filters.yaml`
+- `configs/TEST configs/Example configs/config.modulus_gwyddion_only.yaml`
+Older/staging examples are kept under `configs/TEST configs/Depriciated configs/`.
 
 ### Tests
 Run Py3 unit tests (covers summarize/plot helpers):
@@ -126,5 +141,5 @@ Each config gets its own `out\suite\<config-stem>\` with manifest, summary.csv, 
 
 ### Debug (optional)
 - Enable via `debug.enable: true` in your config (can be stored anywhere; pass `--config <path>`).
-- Choose artifacts: `mask|leveled|aligned|filtered`, set `sample_limit`, and `out_dir` (defaults to `out/debug`); a Pillow/NumPy fallback writes TIFFs if pygwy export isn’t available.
+- Choose artifacts: `mask|leveled|aligned|filtered`, set `sample_limit`, and `out_dir` (defaults to `out/debug`); a Pillow/NumPy fallback writes TIFFs if pygwy export isn't available.
 - Debug logs include units (detected or mode fallback), mask/stats counts, and grid indices when enabled.
