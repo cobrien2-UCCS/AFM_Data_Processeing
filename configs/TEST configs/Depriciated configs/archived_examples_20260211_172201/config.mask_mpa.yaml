@@ -1,0 +1,127 @@
+# Copied from `configs/TEST configs/Depriciated configs/config.mask_mpa.yaml` for convenience.
+#
+# Minimal example showing a threshold mask and basic stats_filter in kPa.
+
+channel_defaults:
+  modulus_family: "modulus"
+  topography_family: "height"
+
+modes:
+  modulus_basic:
+    channel_family: "modulus"
+    plane_level: true
+    median_size: 3
+    line_level_x: false
+    line_level_y: false
+    clip_percentiles: null
+    mask:
+      enable: true
+      method: "threshold"
+      threshold: 0.1
+      direction: "above"
+      invert: false
+      on_empty: "error"
+    stats_filter:
+      min_value: 0.5
+      max_value: 70.0
+      exclude_nonpositive: true
+      on_empty: "warn"
+    metric_type: "modulus"
+    units: "kPa"
+    expected_units: "kPa"
+    on_unit_mismatch: "error"
+
+  topography_flat:
+    channel_family: "height"
+    plane_level: true
+    median_size: 3
+    line_level_x: false
+    line_level_y: false
+    clip_percentiles: null
+    metric_type: "topography_height"
+    units: "nm"
+    expected_units: "nm"
+    on_unit_mismatch: "error"
+
+  particle_count_basic:
+    channel_family: "height"
+    plane_level: false
+    metric_type: "particle_count"
+    threshold: null
+    units: "count"
+    expected_units: "count"
+    on_unit_mismatch: "error"
+
+  raw_noop:
+    channel_family: null
+    plane_level: false
+    metric_type: "raw"
+    units: "a.u."
+
+grid:
+  index_base: 1
+  filename_regex: "LOC_RC(?P<row>\\d{3})(?P<col>\\d{3})"
+
+summarize:
+  recursive: false
+
+debug:
+  enable: false
+  level: "info"
+  artifacts: []
+  sample_limit: 3
+  out_dir: "out/debug"
+  log_fields: ["units", "mask_counts", "stats_counts"]
+  raise_on_warn: false
+  echo_config: false
+
+csv_modes:
+  default_scalar:
+    columns:
+      - { name: "source_file", from: "core.source_file" }
+      - { name: "channel", from: "file.channel", default: "" }
+      - { name: "direction", from: "file.direction", default: "" }
+      - { name: "grid_id", from: "file.grid_id", default: "" }
+      - { name: "date_code", from: "file.date_code", default: "" }
+      - { name: "mode", from: "core.mode" }
+      - { name: "metric_type", from: "core.metric_type" }
+      - { name: "avg_value", from: "core.avg_value" }
+      - { name: "std_value", from: "core.std_value" }
+      - { name: "units", from: "core.units" }
+      - { name: "nx", from: "core.nx" }
+      - { name: "ny", from: "core.ny" }
+      - { name: "row_idx", from: "grid.row_idx", default: -1 }
+      - { name: "col_idx", from: "grid.col_idx", default: -1 }
+    on_missing_field: "warn_null"
+
+result_schemas:
+  default_scalar:
+    from_csv_mode: "default_scalar"
+    fields:
+      - { field: "source_file", type: "string", column: "source_file" }
+      - { field: "channel", type: "string", column: "channel" }
+      - { field: "direction", type: "string", column: "direction" }
+      - { field: "grid_id", type: "string", column: "grid_id" }
+      - { field: "date_code", type: "string", column: "date_code" }
+      - { field: "mode", type: "string", column: "mode" }
+      - { field: "metric_type", type: "string", column: "metric_type" }
+      - { field: "avg_value", type: "float", column: "avg_value" }
+      - { field: "std_value", type: "float", column: "std_value" }
+      - { field: "units", type: "string", column: "units" }
+      - { field: "nx", type: "int", column: "nx" }
+      - { field: "ny", type: "int", column: "ny" }
+      - { field: "row_idx", type: "int", column: "row_idx" }
+      - { field: "col_idx", type: "int", column: "col_idx" }
+
+profiles:
+  modulus_grid_masked:
+    processing_mode: "modulus_basic"
+    csv_mode: "default_scalar"
+    plotting_modes: []
+
+unit_conversions:
+  modulus_basic:
+    kPa: { target: "kPa", factor: 1.0 }
+    MPa: { target: "kPa", factor: 1000.0 }
+    GPa: { target: "kPa", factor: 1e6 }
+    Pa:  { target: "kPa", factor: 0.001 }

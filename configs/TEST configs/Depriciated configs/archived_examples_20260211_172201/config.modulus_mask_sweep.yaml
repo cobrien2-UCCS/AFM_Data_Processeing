@@ -1,0 +1,175 @@
+# Copied from `configs/TEST configs/Depriciated configs/config.modulus_mask_sweep.yaml` for convenience.
+#
+# See that file for full comments/intent.
+
+channel_defaults:
+  modulus_family: "modulus"
+
+modes:
+  modulus_mask_thr_0:
+    channel_family: "modulus"
+    gwyddion_ops: []
+    stats_source: "gwyddion"
+    mask: { method: "threshold", threshold: 0.0, direction: "above", include_equal: true, on_empty: "blank" }
+    metric_type: "modulus"
+    units: "kPa"
+    expected_units: "kPa"
+    on_unit_mismatch: "warn"
+    assume_units: "kPa"
+    on_missing_units: "warn"
+
+  modulus_mask_thr_500:
+    channel_family: "modulus"
+    gwyddion_ops: []
+    stats_source: "gwyddion"
+    mask: { method: "threshold", threshold: 500.0, direction: "above", include_equal: true, on_empty: "blank" }
+    metric_type: "modulus"
+    units: "kPa"
+    expected_units: "kPa"
+    on_unit_mismatch: "warn"
+    assume_units: "kPa"
+    on_missing_units: "warn"
+
+  modulus_mask_thr_5000:
+    channel_family: "modulus"
+    gwyddion_ops: []
+    stats_source: "gwyddion"
+    mask: { method: "threshold", threshold: 5000.0, direction: "above", include_equal: true, on_empty: "blank" }
+    metric_type: "modulus"
+    units: "kPa"
+    expected_units: "kPa"
+    on_unit_mismatch: "warn"
+    assume_units: "kPa"
+    on_missing_units: "warn"
+
+  modulus_mask_thr_mid_30000:
+    channel_family: "modulus"
+    gwyddion_ops: []
+    stats_source: "gwyddion"
+    mask: { method: "threshold", threshold: 30000.0, direction: "above", include_equal: true, on_empty: "blank" }
+    metric_type: "modulus"
+    units: "kPa"
+    expected_units: "kPa"
+    on_unit_mismatch: "warn"
+    assume_units: "kPa"
+    on_missing_units: "warn"
+
+  modulus_mask_thr_max_60000:
+    channel_family: "modulus"
+    gwyddion_ops: []
+    stats_source: "gwyddion"
+    mask: { method: "threshold", threshold: 60000.0, direction: "above", include_equal: true, on_empty: "blank" }
+    metric_type: "modulus"
+    units: "kPa"
+    expected_units: "kPa"
+    on_unit_mismatch: "warn"
+    assume_units: "kPa"
+    on_missing_units: "warn"
+
+  modulus_mask_thr_high_100000:
+    channel_family: "modulus"
+    gwyddion_ops: []
+    stats_source: "gwyddion"
+    mask: { method: "threshold", threshold: 100000.0, direction: "above", include_equal: true, on_empty: "blank" }
+    metric_type: "modulus"
+    units: "kPa"
+    expected_units: "kPa"
+    on_unit_mismatch: "warn"
+    assume_units: "kPa"
+    on_missing_units: "warn"
+
+grid:
+  index_base: 1
+  filename_regex: "LOC_RC(?P<row>\\d{3})(?P<col>\\d{3})"
+
+summarize:
+  recursive: false
+
+debug:
+  enable: false
+  level: "info"
+  artifacts: ["mask"]
+  sample_limit: 2
+  log_fields: ["units", "stats_source", "mixed_processing", "mask_counts", "stats_counts", "grid", "raw_stats"]
+
+csv_modes:
+  default_scalar:
+    columns:
+      - { name: "source_file", from: "core.source_file" }
+      - { name: "mode", from: "core.mode" }
+      - { name: "avg_value", from: "core.avg_value" }
+      - { name: "std_value", from: "core.std_value" }
+      - { name: "units", from: "core.units" }
+      - { name: "n_valid", from: "core.n_valid", default: "" }
+      - { name: "row_idx", from: "grid.row_idx", default: -1 }
+      - { name: "col_idx", from: "grid.col_idx", default: -1 }
+    on_missing_field: "warn_null"
+
+result_schemas:
+  default_scalar:
+    from_csv_mode: "default_scalar"
+    fields:
+      - { field: "source_file", type: "string", column: "source_file" }
+      - { field: "mode", type: "string", column: "mode" }
+      - { field: "avg_value", type: "float", column: "avg_value" }
+      - { field: "std_value", type: "float", column: "std_value" }
+      - { field: "units", type: "string", column: "units" }
+      - { field: "n_valid", type: "int", column: "n_valid" }
+      - { field: "row_idx", type: "int", column: "row_idx" }
+      - { field: "col_idx", type: "int", column: "col_idx" }
+
+plotting_modes:
+  sample_bar_with_error:
+    recipe: "sample_bar_with_error"
+    result_schema: "default_scalar"
+    title: "Average with Std"
+    label_basename: true
+    label_strip_ext: true
+    label_max_len: 40
+  heatmap_grid_avg_two_panel:
+    recipe: "heatmap_two_panel"
+    result_schema: "default_scalar"
+    left_field: "avg_value"
+    right_field: "std_value"
+    left_colorbar_label: "avg_value"
+    right_colorbar_label: "std_value"
+
+profiles:
+  modulus_mask_thr_0: { processing_mode: "modulus_mask_thr_0", csv_mode: "default_scalar", plotting_modes: ["sample_bar_with_error", "heatmap_grid_avg_two_panel"] }
+  modulus_mask_thr_500: { processing_mode: "modulus_mask_thr_500", csv_mode: "default_scalar", plotting_modes: ["sample_bar_with_error", "heatmap_grid_avg_two_panel"] }
+  modulus_mask_thr_5000: { processing_mode: "modulus_mask_thr_5000", csv_mode: "default_scalar", plotting_modes: ["sample_bar_with_error", "heatmap_grid_avg_two_panel"] }
+  modulus_mask_thr_mid_30000: { processing_mode: "modulus_mask_thr_mid_30000", csv_mode: "default_scalar", plotting_modes: ["sample_bar_with_error", "heatmap_grid_avg_two_panel"] }
+  modulus_mask_thr_max_60000: { processing_mode: "modulus_mask_thr_max_60000", csv_mode: "default_scalar", plotting_modes: ["sample_bar_with_error", "heatmap_grid_avg_two_panel"] }
+  modulus_mask_thr_high_100000: { processing_mode: "modulus_mask_thr_high_100000", csv_mode: "default_scalar", plotting_modes: ["sample_bar_with_error", "heatmap_grid_avg_two_panel"] }
+
+unit_conversions:
+  modulus_mask_thr_0:
+    kPa: { target: "kPa", factor: 1.0 }
+    MPa: { target: "kPa", factor: 1000.0 }
+    GPa: { target: "kPa", factor: 1e6 }
+    Pa:  { target: "kPa", factor: 0.001 }
+  modulus_mask_thr_500:
+    kPa: { target: "kPa", factor: 1.0 }
+    MPa: { target: "kPa", factor: 1000.0 }
+    GPa: { target: "kPa", factor: 1e6 }
+    Pa:  { target: "kPa", factor: 0.001 }
+  modulus_mask_thr_5000:
+    kPa: { target: "kPa", factor: 1.0 }
+    MPa: { target: "kPa", factor: 1000.0 }
+    GPa: { target: "kPa", factor: 1e6 }
+    Pa:  { target: "kPa", factor: 0.001 }
+  modulus_mask_thr_mid_30000:
+    kPa: { target: "kPa", factor: 1.0 }
+    MPa: { target: "kPa", factor: 1000.0 }
+    GPa: { target: "kPa", factor: 1e6 }
+    Pa:  { target: "kPa", factor: 0.001 }
+  modulus_mask_thr_max_60000:
+    kPa: { target: "kPa", factor: 1.0 }
+    MPa: { target: "kPa", factor: 1000.0 }
+    GPa: { target: "kPa", factor: 1e6 }
+    Pa:  { target: "kPa", factor: 0.001 }
+  modulus_mask_thr_high_100000:
+    kPa: { target: "kPa", factor: 1.0 }
+    MPa: { target: "kPa", factor: 1000.0 }
+    GPa: { target: "kPa", factor: 1e6 }
+    Pa:  { target: "kPa", factor: 0.001 }
