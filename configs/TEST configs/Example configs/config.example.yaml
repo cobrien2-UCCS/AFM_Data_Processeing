@@ -90,6 +90,12 @@ modes:
     plane_level: false
     metric_type: "particle_count"
     threshold: null                # if null, use mean-based threshold
+    # Optional review pack: emits PNG panels + a review.csv template under <output_dir>/review/
+    # review_pack:
+    #   enable: true
+    #   image_format: "png"
+    #   panel_basename_max_len: 120
+    #   csv_name: "review.csv"
     units: "count"
     expected_units: "count"
     on_unit_mismatch: "error"

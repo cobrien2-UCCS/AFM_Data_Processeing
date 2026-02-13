@@ -41,6 +41,7 @@ Top-level sections (see `config.example.yaml`):
   - `stats_source` (optional): `gwyddion|python` (default: `python`; controls whether avg/std come from Gwyddion or Python; see Section 8.1).
   - `metric_type`, `units`, `expected_units`, `on_unit_mismatch` (`error|warn|skip_row`), `on_missing_units` (`error|warn|skip_row`), `assume_units` (force a unit when the file has none).
   - `threshold` (particle mode), other mode-specific params.
+  - `review_pack` (optional, particle mode): write a `review.csv` template + simple PNG panels under `<output_dir>/review/` to support manual verification.
 - `grid`: filename regex with named groups `row`/`col` to add grid indices. Optional `index_base: 1` converts SmartScan-style `RC001001` to zero-based indices stored in the CSV.
 - `summarize`: `recursive: false|true` to control recursive search for TIFFs.
 - `csv_modes`: column layout and mapping from ModeResultRecord keys.

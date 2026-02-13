@@ -21,6 +21,7 @@ Config-driven modes (see `modes` in `config.example.yaml`). Philosophy: use Gwyd
 - `on_unit_mismatch`: `error | warn | skip_row`.
 - `on_missing_units`: `error | warn | skip_row`.
 - `assume_units`: explicit opt-in default unit string when TIFFs have no Z-units.
+- `review_pack`: optional review artifacts (particle mode): write PNG panels + `review.csv` template for manual verification.
 
 ## Built-in modes
 - `modulus_basic`: channel_family=modulus, plane_level=true, optional median/line/clip/mask, metric_type="modulus", units/expected_units="kPa" (conversions for MPa/GPa/Pa provided).

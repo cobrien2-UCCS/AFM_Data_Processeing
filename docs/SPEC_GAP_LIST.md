@@ -113,6 +113,10 @@ This document maps the current repo implementation to the design intents in `AFM
 - Gap: **Topography statistics and topo-specific preprocessing need dedicated testing**.
 - Plan: when you provide a topo test folder, add topo-focused configs + run suite outputs, and add Py3-side tests that validate plotting/parsing on topo CSVs (and sanity-check expected ranges).
 
+### 6.5) Particle counting workflow (human review loop)
+- Current state: `particle_count_basic` exists (threshold + pygwy grain stats). Optional `review_pack` can emit simple PNG panels + a `review.csv` template for manual verification.
+- Gap: multi-channel mask fusion and per-area user verification UI are not implemented yet (planned; start with CSV + panels).
+
 ### 7) Processing step trace / debug transparency
 - Current state: per-file trace JSON exists when debug is enabled; debug logs include units, mask/stats counts, and filter provenance.
 - Remaining risk: stakeholders may need a run-level report (aggregate counts and file lists by skip reason).

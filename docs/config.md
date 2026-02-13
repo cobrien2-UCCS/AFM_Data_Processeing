@@ -25,6 +25,12 @@ See `config.example.yaml` for a concrete example.
     - When true, the runner continues but emits warnings and records `_debug.mixed_processing*` fields.
   - `metric_type`, `units`, `expected_units`, `on_unit_mismatch`, `on_missing_units` (`error|warn|skip_row`), `assume_units` (optional: force a unit when the file has none)
   - mode-specific (e.g., `threshold` for particle mode)
+  - `review_pack` (optional, particle mode): emit a simple human-review pack (PNG panels + `review.csv` template)
+    - `enable: true|false`
+    - `out_dir` (optional, default `<output_dir>/review`)
+    - `image_format` (optional, default `png`)
+    - `panel_basename_max_len` (optional, default `120`)
+    - `csv_name` (optional, default `review.csv`)
 - `grid`: `filename_regex` with named groups `row`/`col` to set grid indices. Optional `index_base` (0 or 1) converts filename indices to zero-based values stored in `grid.row_idx`/`grid.col_idx`.
 - `filename_parsing` (optional): list of regex -> key maps for filename metadata (e.g., `patterns: [{ regex: "LOC_RC(?P<row>\\d{3})(?P<col>\\d{3})", map: {row: "grid.row_idx", col: "grid.col_idx"} }, ...]`). Falls back to `grid.filename_regex`.
 - `summarize`: `recursive` flag for TIFF search.

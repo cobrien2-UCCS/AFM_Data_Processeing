@@ -385,6 +385,22 @@ def _enforce_processing_route_policy(processing_mode, mode_def):
 def _debug_cfg(manifest):
     return manifest.get("debug") or {}
 
+def _review_pack_cfg(mode_def):
+    """
+    Optional human-review pack output (PNG panels + review.csv template).
+
+    This is intentionally simple: it does not change processing; it only emits
+    extra artifacts to support manual verification.
+    """
+    if not mode_def or not isinstance(mode_def, dict):
+        return {}
+    cfg = mode_def.get("review_pack") or {}
+    if not isinstance(cfg, dict):
+        return {}
+    if not cfg.get("enable"):
+        return {}
+    return cfg
+
 
 def _debug_enabled(manifest):
     dbg = _debug_cfg(manifest)
@@ -464,6 +480,89 @@ def _mask_field_from_bool(field, mask):
         return mfield
     except Exception:
         return None
+
+
+def _write_review_csv(out_path, records):
+    if not records:
+        return
+    out_dir = os.path.dirname(out_path)
+    if out_dir and not os.path.isdir(out_dir):
+        os.makedirs(out_dir)
+    header = [
+        "source_file",
+        "row_idx",
+        "col_idx",
+        "panel_file",
+        "pred_count_total",
+        "pred_count_density",
+        "pred_threshold",
+        "pred_mean_diameter_px",
+        "pred_std_diameter_px",
+        "pred_mean_circularity",
+        "pred_std_circularity",
+        "user_count_total",
+        "user_ok",
+        "user_notes",
+    ]
+    with open(out_path, "w") as f:
+        w = csv.writer(f)
+        w.writerow(header)
+        for r in records:
+            w.writerow([r.get(h, "") for h in header])
+
+
+def _save_particle_review_panel(out_path, field, mask_field):
+    """
+    Save a simple 2-panel PNG:
+    - left: normalized grayscale field
+    - right: grayscale with particle mask overlay (red highlight)
+    """
+    try:
+        import numpy as np
+        from PIL import Image
+    except Exception as exc:
+        sys.stderr.write("WARN: review panel save unavailable (Pillow/NumPy missing): %s\n" % exc)
+        return False
+    try:
+        nx = int(field.get_xres())
+        ny = int(field.get_yres())
+        data = field.get_data()
+        arr = np.array([float(x) for x in data], dtype=float).reshape((ny, nx))
+        vmin = float(np.nanmin(arr)) if arr.size else 0.0
+        vmax = float(np.nanmax(arr)) if arr.size else 1.0
+        if vmax == vmin:
+            vmax = vmin + 1.0
+        norm = (arr - vmin) / (vmax - vmin)
+        norm = np.clip(norm, 0.0, 1.0)
+        gray = np.uint8(norm * 255.0)
+        base = Image.fromarray(gray, mode="L").convert("RGB")
+
+        mdata = mask_field.get_data() if mask_field is not None else None
+        if mdata:
+            mask_arr = np.array([float(x) for x in mdata], dtype=float).reshape((ny, nx)) > 0.5
+        else:
+            mask_arr = np.zeros((ny, nx), dtype=bool)
+
+        overlay = np.array(base, dtype=np.uint8)
+        if mask_arr.any():
+            # Blend in red on masked pixels while keeping underlying intensity.
+            overlay[mask_arr, 0] = 255
+            overlay[mask_arr, 1] = (overlay[mask_arr, 1] * 0.25).astype(np.uint8)
+            overlay[mask_arr, 2] = (overlay[mask_arr, 2] * 0.25).astype(np.uint8)
+        overlay_img = Image.fromarray(overlay, mode="RGB")
+
+        panel = Image.new("RGB", (nx * 2, ny), color=(0, 0, 0))
+        panel.paste(base, (0, 0))
+        panel.paste(overlay_img, (nx, 0))
+
+        out_dir = os.path.dirname(out_path)
+        if out_dir and not os.path.isdir(out_dir):
+            os.makedirs(out_dir)
+        panel.save(out_path)
+        return True
+    except Exception as exc2:
+        sys.stderr.write("WARN: review panel save failed for %s: %s\n" % (out_path, exc2))
+        return False
 
 
 def _apply_ops_sequence(container, field_key, field, ops, debug_artifacts, trace=None, trace_stats=False):
@@ -1780,39 +1879,44 @@ def _process_with_pygwy(path, processing_mode, mode_def, channel_defaults, manif
         field_title = ""
     mode = processing_mode or "raw_noop"
 
-    if mode not in ("particle_count_basic", "raw_noop"):
-        f = field.duplicate()
-        trace = []
-        stats_debug = _debug_enabled(manifest) and (manifest.get("debug") or {}).get("stats_provenance")
-        raw_stats = _quick_stats(f)
+    # Preprocessing: apply gwyddion_ops (preferred) or legacy plane/median/clip.
+    # Keep this available for particle counting too (review panels + deterministic masks).
+    f_pre = None
+    trace = []
+    stats_debug = _debug_enabled(manifest) and (manifest.get("debug") or {}).get("stats_provenance")
+    raw_stats = None
+    if mode != "raw_noop":
+        f_pre = field.duplicate()
+        raw_stats = _quick_stats(f_pre)
         if stats_debug:
-            _trace_stats(trace, f, "initial")
+            _trace_stats(trace, f_pre, "initial")
         ops = mode_def.get("gwyddion_ops")
         if ops:
-            f = _apply_ops_sequence(container, field_id, f, ops, debug_artifacts, trace, trace_stats=stats_debug)
+            f_pre = _apply_ops_sequence(container, field_id, f_pre, ops, debug_artifacts, trace, trace_stats=stats_debug)
         else:
-            # Legacy behavior
-            if mode_def.get("plane_level", True):
+            # Legacy behavior (defaults differ: particle counting should not plane-level unless requested).
+            plane_default = False if mode == "particle_count_basic" else True
+            if mode_def.get("plane_level", plane_default):
                 try:
-                    pa, pbx, pby = f.fit_plane()
-                    f.plane_level(pa, pbx, pby)
+                    pa, pbx, pby = f_pre.fit_plane()
+                    f_pre.plane_level(pa, pbx, pby)
                     _trace_append(trace, "plane_level", True)
                     if allow_debug_save:
-                        debug_artifacts["leveled"] = f.duplicate()
+                        debug_artifacts["leveled"] = f_pre.duplicate()
                     if stats_debug:
-                        _trace_stats(trace, f, "after_plane_level")
+                        _trace_stats(trace, f_pre, "after_plane_level")
                 except Exception as exc:
                     _trace_append(trace, "plane_level", False, str(exc))
                     sys.stderr.write("WARN: plane_level failed for %s: %s\n" % (path, exc))
             median_size = mode_def.get("median_size")
             if median_size:
                 try:
-                    f.filter_median(int(median_size))
+                    f_pre.filter_median(int(median_size))
                     _trace_append(trace, "median", True, {"size": median_size})
                     if allow_debug_save:
-                        debug_artifacts["filtered"] = f.duplicate()
+                        debug_artifacts["filtered"] = f_pre.duplicate()
                     if stats_debug:
-                        _trace_stats(trace, f, "after_median")
+                        _trace_stats(trace, f_pre, "after_median")
                 except Exception as exc:
                     _trace_append(trace, "median", False, str(exc))
                     sys.stderr.write("WARN: median filter failed for %s: %s\n" % (path, exc))
@@ -1824,15 +1928,18 @@ def _process_with_pygwy(path, processing_mode, mode_def, channel_defaults, manif
             if clip and isinstance(clip, (list, tuple)) and len(clip) == 2:
                 try:
                     low, high = float(clip[0]), float(clip[1])
-                    _field_clip_percentiles(f, low, high)
+                    _field_clip_percentiles(f_pre, low, high)
                     _trace_append(trace, "clip_percentiles", True, {"low": low, "high": high})
                     if allow_debug_save:
-                        debug_artifacts["filtered"] = f.duplicate()
+                        debug_artifacts["filtered"] = f_pre.duplicate()
                     if stats_debug:
-                        _trace_stats(trace, f, "after_clip_percentiles")
+                        _trace_stats(trace, f_pre, "after_clip_percentiles")
                 except Exception as exc:
                     _trace_append(trace, "clip_percentiles", False, str(exc))
                     sys.stderr.write("WARN: clip_percentiles failed for %s: %s\n" % (path, exc))
+
+    if mode not in ("particle_count_basic", "raw_noop"):
+        f = f_pre if f_pre is not None else field.duplicate()
 
         # Detect units and apply unit normalization *before* masks/filters so any
         # value-based thresholds are interpreted in normalized units.
@@ -1995,15 +2102,17 @@ def _process_with_pygwy(path, processing_mode, mode_def, channel_defaults, manif
         return applied
 
     if mode == "particle_count_basic":
-        f = field.duplicate()
+        f = f_pre if f_pre is not None else field.duplicate()
         thresh = mode_def.get("threshold")
         if thresh is None:
             try:
                 thresh = _field_get_avg(f)
             except Exception:
                 thresh = 0.0
+            thresh_source = "mean"
         else:
             thresh = float(thresh)
+            thresh_source = "config"
 
         grains_result = None
         try:
@@ -2045,6 +2154,10 @@ def _process_with_pygwy(path, processing_mode, mode_def, channel_defaults, manif
             grains_result = {
                 "particle.count_total": int(count_total),
                 "particle.count_density": float(count_density),
+                "particle.density_denom": float(denom) if denom else 0.0,
+                "particle.density_basis": "real" if area_real > 0 else "pixel",
+                "particle.threshold": float(thresh),
+                "particle.threshold_source": thresh_source,
                 "particle.mean_diameter_px": float(mean_diam),
                 "particle.std_diameter_px": float(std_diam),
             }
@@ -2055,6 +2168,27 @@ def _process_with_pygwy(path, processing_mode, mode_def, channel_defaults, manif
         except Exception as exc:
             sys.stderr.write("WARN: pygwy grain ops failed for %s: %s; skipping row.\n" % (path, exc))
             return None
+
+        # Optional review pack panel.
+        review_cfg = _review_pack_cfg(mode_def)
+        if review_cfg:
+            base = os.path.splitext(os.path.basename(path))[0]
+            out_root = review_cfg.get("out_dir") or os.path.join(manifest.get("output_dir", "."), "review")
+            panels_dir = os.path.join(out_root, "panels")
+            fmt = str(review_cfg.get("image_format") or "png").lower().strip(".")
+            name_len = review_cfg.get("panel_basename_max_len", 120)
+            base_short = _shorten_name(base, name_len)
+            panel_name = "%s_particle_panel.%s" % (base_short, fmt)
+            panel_path = os.path.join(panels_dir, panel_name)
+            ok = _save_particle_review_panel(panel_path, f, mask_field)
+            if ok:
+                grains_result["review.panel_file"] = os.path.join("panels", panel_name)
+                _trace_append(trace, "review_panel", True, {"file": grains_result.get("review.panel_file")})
+            else:
+                _trace_append(trace, "review_panel", False)
+
+        _trace_append(trace, "particle_count", True, {"threshold": float(thresh), "count_total": int(count_total)})
+        _write_trace_file(manifest, path, trace)
 
         result = {
             "core.source_file": os.path.basename(path),
@@ -2301,6 +2435,13 @@ def process_manifest(manifest, dry_run=False):
             "and rerun. No fallback will be used to avoid producing invalid data."
         )
     rows = []
+    review_cfg = _review_pack_cfg(mode_def)
+    review_records = []
+    review_out_path = None
+    if processing_mode == "particle_count_basic" and review_cfg:
+        review_root = review_cfg.get("out_dir") or os.path.join(out_dir, "review")
+        review_csv_name = str(review_cfg.get("csv_name") or "review.csv")
+        review_out_path = os.path.join(review_root, review_csv_name)
     global _DEBUG_SAVED
     for path in files:
         try:
@@ -2309,6 +2450,25 @@ def process_manifest(manifest, dry_run=False):
             if mode_result is None:
                 sys.stderr.write("INFO: Skipped %s due to policy.\n" % path)
                 continue
+            if review_out_path:
+                review_records.append(
+                    {
+                        "source_file": mode_result.get("core.source_file") or os.path.basename(path),
+                        "row_idx": mode_result.get("grid.row_idx", ""),
+                        "col_idx": mode_result.get("grid.col_idx", ""),
+                        "panel_file": mode_result.get("review.panel_file", ""),
+                        "pred_count_total": mode_result.get("particle.count_total", ""),
+                        "pred_count_density": mode_result.get("particle.count_density", ""),
+                        "pred_threshold": mode_result.get("particle.threshold", ""),
+                        "pred_mean_diameter_px": mode_result.get("particle.mean_diameter_px", ""),
+                        "pred_std_diameter_px": mode_result.get("particle.std_diameter_px", ""),
+                        "pred_mean_circularity": mode_result.get("particle.mean_circularity", ""),
+                        "pred_std_circularity": mode_result.get("particle.std_circularity", ""),
+                        "user_count_total": "",
+                        "user_ok": "",
+                        "user_notes": "",
+                    }
+                )
             row = build_csv_row(mode_result, csv_def, processing_mode, csv_mode)
             if row is not None:
                 rows.append(row)
@@ -2319,6 +2479,9 @@ def process_manifest(manifest, dry_run=False):
         except Exception as exc:
             sys.stderr.write("ERROR processing %s: %s\n" % (path, exc))
     write_summary_csv(rows, csv_def, output_csv, processing_mode, csv_mode)
+    if review_out_path and review_records:
+        _write_review_csv(review_out_path, review_records)
+        print("Wrote review CSV: %s" % review_out_path)
 
 
 def parse_args():
