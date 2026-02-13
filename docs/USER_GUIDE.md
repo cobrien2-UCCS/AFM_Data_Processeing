@@ -25,6 +25,8 @@ This guide explains how to configure and extend the AFM TIFF -> summary CSV -> p
   `& "C:\Python27\python.exe" scripts\run_pygwy_job.py --manifest out/job_manifest.json`
 - Plot from CSV (Py3):
   `python scripts/cli_plot.py --config config.yaml --csv out/summary.csv --plotting-mode heatmap_grid --out out/plots/`
+- Compare methods against a baseline (Py3):
+  `py -3 scripts/compare_methods.py --baseline-summary out/baseline/summary.csv --methods-root out/methods_root --out-root out/method_compare`
 - Use profiles (Py3 summarize/plot): add `--profile your_profile` to pull defaults from `config.profiles`.
 
 ## 2) Config anatomy
@@ -36,7 +38,7 @@ Top-level sections (see `config.example.yaml`):
   - `gwyddion_ops` (optional): explicit ordered list of pygwy/Gwyddion operations (preferred for complex pipelines). See `docs/gwyddion_ops.md`.
   - `mask` (optional): apply a config-driven mask and compute stats only on masked pixels (threshold/range/percentile/outliers/outliers2; supports multi-step AND/OR combine).
   - `stats_filter` (optional): include/exclude pixel values from stats without altering the image; `on_empty: error|warn|blank|skip_row`.
-  - `stats_source` (optional): `gwyddion|python` (default: `python`; controls whether avg/std come from Gwyddion or Python; see §8.1).
+  - `stats_source` (optional): `gwyddion|python` (default: `python`; controls whether avg/std come from Gwyddion or Python; see Section 8.1).
   - `metric_type`, `units`, `expected_units`, `on_unit_mismatch` (`error|warn|skip_row`), `on_missing_units` (`error|warn|skip_row`), `assume_units` (force a unit when the file has none).
   - `threshold` (particle mode), other mode-specific params.
 - `grid`: filename regex with named groups `row`/`col` to add grid indices. Optional `index_base: 1` converts SmartScan-style `RC001001` to zero-based indices stored in the CSV.
@@ -44,6 +46,7 @@ Top-level sections (see `config.example.yaml`):
 - `csv_modes`: column layout and mapping from ModeResultRecord keys.
 - `result_schemas`: casting rules from CSV columns to typed fields for plotting.
 - `plotting_modes`: schema + recipe + labels/bins/etc.
+  - `sample_bar_with_error` supports optional label controls: `label_basename`, `label_strip_ext`, `label_max_len`.
 - `profiles`: presets tying together processing_mode, csv_mode, plotting_modes.
 - `unit_conversions`: per-mode unit conversions `{ source_unit: {target, factor} }` (applied to the DataField before `mask`/`stats_filter`/`python_data_filtering`, so thresholds are in normalized units).
 - `input_filters` (optional): include/exclude regex filters applied during manifest generation (useful for Forward/Backward duplicates).
@@ -81,6 +84,7 @@ Top-level sections (see `config.example.yaml`):
 - Plots are written to the specified output directory with filenames = plotting_mode names (`sample_bar_with_error.png`, `heatmap_grid.png`, etc.).
 - pygwy runner writes `summary.csv` (or `--output-csv`) and enforces unit policies.
 - Forward/Backward (and other) filename metadata: the pygwy runner attaches best-effort keys like `file.channel`, `file.direction`, `file.grid_id`, `file.date_code` which you can include as CSV columns via `csv_modes`.
+- Optional per-image exports: `modes.<mode>.python_data_filtering.export_raw_csv|export_filtered_csv` write `*_raw.csv`/`*_filtered.csv` under `<output_dir>/pyfilter/` unless `export_dir` is set.
 
 ## 8) Notes for pygwy (Py2) processing
 - Requires 32-bit Python 2.7 and 32-bit Gwyddion/pygwy on Windows.
@@ -102,9 +106,9 @@ Two different mechanisms affect summary stats:
   - `python` (default): compute avg/std via Python (mask + stats_filter are applied in Python).
     - Gwyddion-native mask methods (`outliers`, `outliers2`) are rejected unless `allow_mixed_processing: true`.
 
-To prevent ambiguous “half Gwyddion, half Python” pipelines, the runner enforces a strict default:
-- `allow_mixed_processing: false` (default) → mixed routes error (fail fast)
-- `allow_mixed_processing: true` → mixed routes run with warnings and `_debug.mixed_processing*` provenance
+To prevent ambiguous "half Gwyddion, half Python" pipelines, the runner enforces a strict default:
+- `allow_mixed_processing: false` (default) -> mixed routes error (fail fast)
+- `allow_mixed_processing: true` -> mixed routes run with warnings and `_debug.mixed_processing*` provenance
 
 Example mask (threshold):
 ```yaml
