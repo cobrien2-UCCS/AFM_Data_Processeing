@@ -1,6 +1,7 @@
 # AFM Pipeline User Guide
 
 This guide explains how to configure and extend the AFM TIFF -> summary CSV -> plotting pipeline.
+See `docs/how_to_run.md` for a one-page run guide.
 
 ## 1) Quick start (Windows / PowerShell)
 - Install Py3 dependencies: `python -m pip install -r requirements.txt`

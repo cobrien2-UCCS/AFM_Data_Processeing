@@ -1,12 +1,28 @@
 # AFM-Data-Management Pipeline
 Config-driven AFM TIFF processing (pygwy/Gwyddion), CSV summarization, and plotting. Support material for Conor O'Brien's thesis project. Defaults normalize modulus to kPa.
 
+## Docs index
+- Quick run guide: `docs/how_to_run.md`
+- User guide (full): `docs/USER_GUIDE.md`
+- Gwyddion/pygwy ops reference: `docs/gwyddion_ops.md`
+- Config schema overview: `docs/config.md`
+- Spec gap list: `docs/SPEC_GAP_LIST.md`
+- Related tools / prior art: `docs/related_tools.md`
+- Method comparison notes: `docs/method_compare_notes.md`
+- Next steps: `docs/next_steps.md`
+
 ## Quick start (Windows / PowerShell)
 Run the full pipeline (Py3 -> Py2/pygwy -> Py3) from the repo root:
 
 ```powershell
-.\scripts\run_pipeline.ps1 -InputRoot "C:\path\to\your\tiffs" -Profile modulus_grid -Plot
+  .\scripts\run_pipeline.ps1 -InputRoot "C:\path\to\your\tiffs" -Profile modulus_grid -Plot
 ```
+
+- Recommended (job-driven): define a `jobs.<name>` in config and run:
+  ```powershell
+  .\scripts\run_pipeline.ps1 -Config config.yaml -Job example_modulus_job
+  ```
+- One-page run guide: `docs/how_to_run.md`
 
 - Set `PYTHON2_EXE` if your Python 2.7 path is not `C:\Python27\python.exe`.
 - Set `GWY_BIN` if your Gwyddion `bin` folder is not `C:\Program Files (x86)\Gwyddion\bin`.

@@ -46,7 +46,7 @@ In practice:
 2) Generate a manifest (Py3): `python scripts/make_job_manifest.py --config config.yaml --input-root <tiffs> --output-dir out --processing-mode <mode> --csv-mode <csv_mode> --out out/job_manifest.json`
 3) Run processing (Py2): `& "C:\\Python27\\python.exe" scripts\\run_pygwy_job.py --manifest out\\job_manifest.json`
 
-For end-to-end usage (`manifest -> pygwy -> plots`), see `docs/USER_GUIDE.md`.
+For end-to-end usage (`manifest -> pygwy -> plots`), see `docs/USER_GUIDE.md` and `docs/how_to_run.md`.
 
 ## Operation reference (supported today)
 

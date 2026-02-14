@@ -38,6 +38,45 @@ Add to modes:
 ```
 If behavior matches existing branches (modulus/topography filters or particle counting), no code change is needed.
 
+## Add a file-collection job (config-only)
+```
+Add to file_collect_jobs:
+  <collect_job>:
+    input_root: "C:/path/to/mixed_folder"
+    recursive: true
+    patterns: ["*.tif", "*.tiff"]
+    include_keywords: ["Modulus", "Backward"]
+    include_mode: "all"
+    exclude_keywords: ["Forward"]
+    min_similarity: 0.85
+    on_empty: "error"   # error|warn|ok
+    output:
+      out_root: "out/file_collect"
+      run_name_template: "collect_{timestamp}_{job}"
+      dest_subdir_template: "{date_code}/{direction}"
+      rename_template: "{orig_stem}_{short_hash}{ext}"
+```
+
+## Add an end-to-end job (config-only)
+```
+Add to jobs:
+  <job_name>:
+    input_root: "C:/path/to/mixed_folder"
+    output_root: "out/jobs"
+    run_name_template: "{job}_{timestamp}"
+    profile: "modulus_grid"
+    pattern: "*.tif;*.tiff"
+    collect:
+      enable: true
+      job: "<collect_job>"
+      out_root: "out/file_collect"
+    # Optional overrides:
+    # processing_mode: "modulus_basic"
+    # csv_mode: "default_scalar"
+    # plotting_modes: ["sample_bar_with_error", "heatmap_grid"]
+    # aggregate_modes: ["dataset_pooled_by_mode_units"]
+```
+
 ## Add CSV layout and schema
 ```
 Add to csv_modes:
