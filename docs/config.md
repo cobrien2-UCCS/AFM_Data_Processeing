@@ -43,6 +43,9 @@ See `config.example.yaml` for a concrete example.
   - Overlays: `overlay_std` (sigma-colored text), `overlay_alpha` (alpha driven by a field), `overlay_hatch` (flag cells above/below a threshold with hatching), `overlay_bubbles` (bubble size/color by sigma bins), `overlay_std.legend: true|false`.
   - Recipes: `heatmap_grid` (base), `heatmap_grid_bubbles` (mean background + bubble overlay), `heatmap_two_panel` (side-by-side mean/std).
 - `profiles`: presets tying processing_mode, csv_mode, plotting_modes.
+- `aggregate_modes`: dataset-level aggregation definitions for per-scan `summary.csv` (pooled mean/std using `n_valid`, plus scan-mean stats).
+  - Profiles can opt in via `profiles.<name>.aggregate_modes: [<aggregate_mode_name>, ...]`.
+  - `aggregate_modes.<name>.out_relpath` controls where the aggregated CSV is written (relative to the summary CSV folder when run via `cli_aggregate_config.py`).
 - `unit_conversions`: per-mode unit conversions `{source: {target, factor}}`. When a conversion applies, the DataField is scaled before `mask`/`stats_filter`/`python_data_filtering`, so thresholds are interpreted in normalized units.
 - `debug` (optional): diagnostics/logging/artifacts:
   - `enable` (bool), `level` (`info|debug`), `artifacts` (`["mask","leveled","aligned","filtered"]`), `sample_limit`, `out_dir`.

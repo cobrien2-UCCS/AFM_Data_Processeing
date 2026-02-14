@@ -16,7 +16,11 @@ param(
 
   [switch]$Plot,
   [string]$PlottingMode = "",
-  [string]$PlotsOut = ""
+  [string]$PlotsOut = "",
+
+  [switch]$Aggregate,
+  [string]$AggregateModes = "",
+  [string]$AggregatesOut = ""
 )
 
 $ErrorActionPreference = "Stop"
@@ -27,6 +31,7 @@ if (-not $Config) { $Config = Join-Path $repoRoot "config.yaml" }
 if (-not $OutputDir) { $OutputDir = Join-Path $repoRoot "out" }
 if (-not $ManifestPath) { $ManifestPath = Join-Path $OutputDir "job_manifest.json" }
 if (-not $PlotsOut) { $PlotsOut = Join-Path $OutputDir "plots" }
+if (-not $AggregatesOut) { $AggregatesOut = Join-Path $OutputDir "aggregates" }
 
 $Config = (Resolve-Path $Config).Path
 $InputRoot = (Resolve-Path $InputRoot).Path
@@ -106,6 +111,28 @@ if ($Plot) {
 
   & $Python3 @plotArgs
   if ($LASTEXITCODE -ne 0) { throw "Plotting failed." }
+}
+
+if ($Aggregate) {
+  Write-Host "`n[extra] Aggregate across scans (Py3)"
+  if (-not (Test-Path $AggregatesOut)) { New-Item -ItemType Directory -Path $AggregatesOut | Out-Null }
+
+  $manifestObj = Get-Content -Path $ManifestPath | ConvertFrom-Json
+  $csvPath = $manifestObj.output_csv
+  if (-not $csvPath) { $csvPath = (Join-Path $OutputDir "summary.csv") }
+
+  $aggArgs = @(
+    (Join-Path $repoRoot "scripts\\cli_aggregate_config.py"),
+    "--config", $Config,
+    "--csv", $csvPath,
+    "--out-dir", $AggregatesOut
+  )
+  if ($AggregateModes) { $aggArgs += @("--aggregate-modes", $AggregateModes) }
+  elseif ($Profile) { $aggArgs += @("--profile", $Profile) }
+  else { throw "Aggregation requested but no -Profile or -AggregateModes provided." }
+
+  & $Python3 @aggArgs
+  if ($LASTEXITCODE -ne 0) { throw "Aggregation failed." }
 }
 
 Write-Host "`nDone."

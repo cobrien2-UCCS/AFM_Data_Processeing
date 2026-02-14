@@ -9,6 +9,8 @@ This guide explains how to configure and extend the AFM TIFF -> summary CSV -> p
   cd "<repo root>"
   .\scripts\run_pipeline.ps1 -InputRoot "C:\path\to\your\tiffs" -Profile modulus_grid -Plot
   ```
+- Optional: run config-driven dataset aggregation after processing:
+  `.\scripts\run_pipeline.ps1 -InputRoot "C:\path\to\your\tiffs" -Profile modulus_grid -Aggregate`
 - Optional (recommended): install the Py3 package for `python -m afm_pipeline.cli ...` and `afm-plot`/`afm-summarize`:
   `python -m pip install -e .`
 
@@ -25,6 +27,10 @@ This guide explains how to configure and extend the AFM TIFF -> summary CSV -> p
   `& "C:\Python27\python.exe" scripts\run_pygwy_job.py --manifest out/job_manifest.json`
 - Plot from CSV (Py3):
   `python scripts/cli_plot.py --config config.yaml --csv out/summary.csv --plotting-mode heatmap_grid --out out/plots/`
+- Aggregate across many scans (Py3):
+  `py -3 scripts/cli_aggregate.py --csv out/summary.csv --out-csv out/summary_aggregated.csv --group-by "mode,units"`
+- Aggregate via config/profile (Py3, recommended for repeat runs):
+  `py -3 scripts/cli_aggregate_config.py --config config.yaml --profile modulus_grid --csv out/summary.csv --out-dir out/aggregates`
 - Compare methods against a baseline (Py3):
   `py -3 scripts/compare_methods.py --baseline-summary out/baseline/summary.csv --methods-root out/methods_root --out-root out/method_compare`
 - Use profiles (Py3 summarize/plot): add `--profile your_profile` to pull defaults from `config.profiles`.

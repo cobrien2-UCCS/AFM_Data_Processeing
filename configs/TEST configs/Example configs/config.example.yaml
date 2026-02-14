@@ -239,11 +239,26 @@ plotting_modes:
     # - error: abort plotting
     duplicate_policy: "warn_mean"
 
+# Aggregate modes define dataset-level aggregation of per-scan stats from summary.csv.
+# These are Py3-side helpers that operate on the summary CSV output.
+aggregate_modes:
+  # Pooled mean/std across all pixels, grouped by mode+units (recommended default).
+  dataset_pooled_by_mode_units:
+    group_by: ["mode", "units"]
+    value_col: "avg_value"
+    std_col: "std_value"
+    n_col: "n_valid"
+    units_col: "units"
+    allow_mixed_units: false
+    out_relpath: "aggregates/dataset_pooled_by_mode_units.csv"
+
 # Profiles provide convenient presets tying modes together.
 profiles:
   modulus_grid:
     processing_mode: "modulus_basic"
     csv_mode: "default_scalar"
+    # Optional post-processing on summary.csv:
+    # aggregate_modes: ["dataset_pooled_by_mode_units"]
     plotting_modes: ["sample_bar_with_error", "heatmap_grid"]
 
 # Unit conversions (per mode). If detected units match a key, values are scaled

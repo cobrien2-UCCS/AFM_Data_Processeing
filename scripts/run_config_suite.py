@@ -27,11 +27,12 @@ def load_config(path: Path) -> dict:
         return yaml.safe_load(f) or {}
 
 
-def resolve_modes(cfg: dict, profile: str, processing_mode: str, csv_mode: str) -> Tuple[str, str, List[str]]:
+def resolve_modes(cfg: dict, profile: str, processing_mode: str, csv_mode: str) -> Tuple[str, str, List[str], List[str]]:
     """Pick processing/csv/plotting_modes from profile or explicit args."""
     pm = processing_mode
     cm = csv_mode
     plotting = []
+    aggregate_modes = []
 
     if profile:
         profiles = cfg.get("profiles", {}) or {}
@@ -39,12 +40,13 @@ def resolve_modes(cfg: dict, profile: str, processing_mode: str, csv_mode: str) 
         pm = pm or prof.get("processing_mode")
         cm = cm or prof.get("csv_mode")
         plotting = prof.get("plotting_modes") or []
+        aggregate_modes = prof.get("aggregate_modes") or []
 
     if not pm or not cm:
         raise ValueError("processing_mode and csv_mode are required (supply --profile or explicit --processing-mode/--csv-mode).")
 
     # If user passed plotting_modes explicitly, caller will override.
-    return pm, cm, plotting
+    return pm, cm, plotting, aggregate_modes
 
 
 def collect_configs(config_args: List[str]) -> List[Path]:
@@ -86,6 +88,7 @@ def parse_args():
     ap.add_argument("--processing-mode", help="Processing mode (overrides profile).")
     ap.add_argument("--csv-mode", help="CSV mode (overrides profile).")
     ap.add_argument("--plotting-modes", nargs="*", help="Plotting modes to render (overrides profile plotting_modes).")
+    ap.add_argument("--aggregate-modes", nargs="*", help="Aggregate modes to run (overrides profile aggregate_modes).")
     ap.add_argument("--pattern", default="*.tif;*.tiff", help="Glob pattern(s) for TIFFs, ';' separated.")
     ap.add_argument("--dry-run", action="store_true", help="Print commands only.")
     return ap.parse_args()
@@ -107,9 +110,11 @@ def main():
     for cfg_path in cfg_paths:
         cfg = load_config(cfg_path)
         profile_for_cfg = profiles_for_configs[cfg_paths.index(cfg_path)]
-        pm, cm, plotting = resolve_modes(cfg, profile_for_cfg, args.processing_mode, args.csv_mode)
+        pm, cm, plotting, agg_modes = resolve_modes(cfg, profile_for_cfg, args.processing_mode, args.csv_mode)
         if args.plotting_modes is not None:
             plotting = args.plotting_modes
+        if args.aggregate_modes is not None:
+            agg_modes = args.aggregate_modes
 
         out_root = Path(args.output_root)
         out_dir = out_root / cfg_path.stem
@@ -172,6 +177,25 @@ def main():
                     ],
                     args.dry_run,
                 )
+
+        if agg_modes:
+            aggs_dir = out_dir / "aggregates"
+            aggs_dir.mkdir(parents=True, exist_ok=True)
+            run_cmd(
+                [
+                    sys.executable,
+                    "scripts/cli_aggregate_config.py",
+                    "--config",
+                    str(cfg_path),
+                    "--csv",
+                    str(summary_csv),
+                    "--aggregate-modes",
+                    ",".join(agg_modes),
+                    "--out-dir",
+                    str(aggs_dir),
+                ],
+                args.dry_run,
+            )
 
     return 0
 
