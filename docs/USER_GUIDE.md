@@ -9,8 +9,16 @@ This guide explains how to configure and extend the AFM TIFF -> summary CSV -> p
   cd "<repo root>"
   .\scripts\run_pipeline.ps1 -InputRoot "C:\path\to\your\tiffs" -Profile modulus_grid -Plot
   ```
+- Recommended (job-driven): define a `jobs.<name>` in config and run:
+  `.\scripts\run_pipeline.ps1 -Config config.yaml -Job example_modulus_job`
 - Optional: run config-driven dataset aggregation after processing:
   `.\scripts\run_pipeline.ps1 -InputRoot "C:\path\to\your\tiffs" -Profile modulus_grid -Aggregate`
+- Optional: collect a subset of files before processing (fuzzy keyword matching, copies to `<output_dir>/collect/...`):
+  `.\scripts\run_pipeline.ps1 -InputRoot "C:\path\to\mixed_folder" -Config config.yaml -CollectJob collect_modulus_backward -Profile modulus_grid -Plot`
+- Job-based end-to-end run (config-driven):
+  `py -3 scripts/run_job.py --config config.yaml --job example_modulus_job`
+- Job overrides (no config edits):
+  `py -3 scripts/run_job.py --config config.yaml --job example_modulus_job --input-root "D:\data" --output-root out/jobs --no-collect`
 - Optional (recommended): install the Py3 package for `python -m afm_pipeline.cli ...` and `afm-plot`/`afm-summarize`:
   `python -m pip install -e .`
 

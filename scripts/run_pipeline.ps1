@@ -1,8 +1,9 @@
 param(
-  [Parameter(Mandatory = $true)]
-  [string]$InputRoot,
+  [string]$InputRoot = "",
 
   [string]$Config = "",
+  [string]$Job = "",
+  [switch]$JobDryRun,
   [string]$Profile = "",
   [string]$ProcessingMode = "",
   [string]$CsvMode = "",
@@ -13,6 +14,9 @@ param(
 
   [string]$Python3 = "python",
   [string]$Python2 = "",
+
+  [string]$CollectJob = "",
+  [switch]$CollectDryRun,
 
   [switch]$Plot,
   [string]$PlottingMode = "",
@@ -34,7 +38,13 @@ if (-not $PlotsOut) { $PlotsOut = Join-Path $OutputDir "plots" }
 if (-not $AggregatesOut) { $AggregatesOut = Join-Path $OutputDir "aggregates" }
 
 $Config = (Resolve-Path $Config).Path
-$InputRoot = (Resolve-Path $InputRoot).Path
+if ($InputRoot) {
+  $InputRoot = (Resolve-Path $InputRoot).Path
+}
+
+if (-not $Job -and -not $InputRoot) {
+  throw "InputRoot is required unless -Job is provided."
+}
 
 if (-not (Test-Path $OutputDir)) { New-Item -ItemType Directory -Path $OutputDir | Out-Null }
 
@@ -57,12 +67,55 @@ if (-not $env:GWY_BIN) {
 
 Write-Host "Repo: $repoRoot"
 Write-Host "Config: $Config"
-Write-Host "Input: $InputRoot"
+if ($InputRoot) { Write-Host "Input: $InputRoot" }
 Write-Host "Out: $OutputDir"
 Write-Host "Manifest: $ManifestPath"
 Write-Host "Py3: $Python3"
 Write-Host "Py2: $Python2"
 if ($env:GWY_BIN) { Write-Host "GWY_BIN: $env:GWY_BIN" }
+
+if ($Job) {
+  Write-Host "`n[0/1] Run config job (Py3)"
+  $jobArgs = @(
+    (Join-Path $repoRoot "scripts\\run_job.py"),
+    "--config", $Config,
+    "--job", $Job
+  )
+  if ($JobDryRun) { $jobArgs += @("--dry-run") }
+  & $Python3 @jobArgs
+  if ($LASTEXITCODE -ne 0) { throw "Job run failed." }
+  Write-Host "`nDone."
+  return
+}
+
+if ($CollectJob) {
+  Write-Host "`n[0/4] Collect files (Py3)"
+  $collectRoot = Join-Path $OutputDir "collect"
+  if (-not (Test-Path $collectRoot)) { New-Item -ItemType Directory -Path $collectRoot | Out-Null }
+
+  $collectArgs = @(
+    (Join-Path $repoRoot "scripts\\collect_files.py"),
+    "--config", $Config,
+    "--job", $CollectJob,
+    "--input-root", $InputRoot,
+    "--out-root", $collectRoot
+  )
+  if ($CollectDryRun) { $collectArgs += @("--dry-run") }
+  & $Python3 @collectArgs
+  if ($LASTEXITCODE -ne 0) { throw "File collection failed." }
+
+  if ($CollectDryRun) {
+    Write-Host "Collect dry-run complete; stopping before processing."
+    return
+  }
+
+  $meta = Get-ChildItem -Path $collectRoot -Recurse -Filter "run_metadata.json" | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+  if (-not $meta) { throw "Collect job ran, but no run_metadata.json found under $collectRoot" }
+  $metaObj = Get-Content -Path $meta.FullName | ConvertFrom-Json
+  if (-not $metaObj.copied_root) { throw "Collect job metadata missing copied_root: $($meta.FullName)" }
+  $InputRoot = (Resolve-Path $metaObj.copied_root).Path
+  Write-Host "Collected input: $InputRoot"
+}
 
 Write-Host "`n[1/4] Check Py3 environment"
 & $Python3 (Join-Path $repoRoot "scripts\\check_env.py")

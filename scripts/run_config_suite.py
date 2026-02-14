@@ -89,6 +89,7 @@ def parse_args():
     ap.add_argument("--csv-mode", help="CSV mode (overrides profile).")
     ap.add_argument("--plotting-modes", nargs="*", help="Plotting modes to render (overrides profile plotting_modes).")
     ap.add_argument("--aggregate-modes", nargs="*", help="Aggregate modes to run (overrides profile aggregate_modes).")
+    ap.add_argument("--collect-job", help="Optional file_collect_jobs job name to run before processing (uses fuzzy matching to stage inputs).")
     ap.add_argument("--pattern", default="*.tif;*.tiff", help="Glob pattern(s) for TIFFs, ';' separated.")
     ap.add_argument("--dry-run", action="store_true", help="Print commands only.")
     return ap.parse_args()
@@ -124,13 +125,43 @@ def main():
         plots_dir = out_dir / "plots"
         plots_dir.mkdir(parents=True, exist_ok=True)
 
+        input_root_for_cfg = str(Path(args.input_root).resolve())
+        if args.collect_job:
+            collect_root = out_dir / "collect"
+            collect_root.mkdir(parents=True, exist_ok=True)
+            collect_cmd = [
+                sys.executable,
+                "scripts/collect_files.py",
+                "--config",
+                str(cfg_path),
+                "--job",
+                args.collect_job,
+                "--input-root",
+                input_root_for_cfg,
+                "--out-root",
+                str(collect_root.resolve()),
+            ]
+            if run_cmd(collect_cmd, args.dry_run) != 0:
+                print("File collection failed; skipping this config.")
+                continue
+            if not args.dry_run:
+                # Pick the newest run_metadata.json under collect_root.
+                metas = sorted(collect_root.rglob("run_metadata.json"), key=lambda p: p.stat().st_mtime, reverse=True)
+                if not metas:
+                    raise RuntimeError("collect-job ran but no run_metadata.json found under %s" % collect_root)
+                meta = json.loads(metas[0].read_text(encoding="utf-8"))
+                copied_root = meta.get("copied_root")
+                if not copied_root:
+                    raise RuntimeError("collect-job metadata missing copied_root: %s" % metas[0])
+                input_root_for_cfg = str(Path(copied_root).resolve())
+
         manifest_cmd = [
             sys.executable,
             "scripts/make_job_manifest.py",
             "--config",
             str(cfg_path),
             "--input-root",
-            str(Path(args.input_root).resolve()),
+            input_root_for_cfg,
             "--output-dir",
             str(out_dir.resolve()),
             "--processing-mode",

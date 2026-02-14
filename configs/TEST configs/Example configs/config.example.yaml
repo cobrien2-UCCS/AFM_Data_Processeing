@@ -272,6 +272,7 @@ file_collect_jobs:
     include_mode: "all"       # all keywords must match (fuzzy)
     exclude_keywords: ["Forward"]
     min_similarity: 0.85
+    on_empty: "error"
     preserve_tree: false
     basename_max_len: 140
     path_max_len: 240
@@ -283,6 +284,24 @@ file_collect_jobs:
       run_name_template: "collect_{timestamp}_{job}"
       dest_subdir_template: "{date_code}/{direction}"
       rename_template: "{orig_stem}_{short_hash}{ext}"
+
+# Jobs: one-stop configs that can run collect -> manifest -> pygwy -> plots -> aggregates.
+jobs:
+  example_modulus_job:
+    input_root: "C:/path/to/mixed_folder"
+    output_root: "out/jobs"
+    run_name_template: "{job}_{timestamp}"
+    profile: "modulus_grid"
+    pattern: "*.tif;*.tiff"
+    collect:
+      enable: true
+      job: "collect_modulus_backward"
+      out_root: "out/file_collect"
+    # Optional overrides:
+    # processing_mode: "modulus_basic"
+    # csv_mode: "default_scalar"
+    # plotting_modes: ["sample_bar_with_error", "heatmap_grid"]
+    # aggregate_modes: ["dataset_pooled_by_mode_units"]
     plotting_modes: ["sample_bar_with_error", "heatmap_grid"]
 
 # Unit conversions (per mode). If detected units match a key, values are scaled

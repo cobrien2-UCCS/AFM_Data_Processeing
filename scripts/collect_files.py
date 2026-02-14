@@ -297,6 +297,7 @@ def collect_job(cfg: Dict[str, Any], job_name: str, *, dry_run: bool = False) ->
     min_similarity = float(job.get("min_similarity", 0.85))
     overwrite = bool(job.get("overwrite", False))
     preserve_tree = bool(job.get("preserve_tree", False))
+    on_empty = str(job.get("on_empty") or "error").strip().lower()
 
     basename_max_len = int(job.get("basename_max_len", 140))
     path_max_len = int(job.get("path_max_len", 240))
@@ -438,6 +439,7 @@ def collect_job(cfg: Dict[str, Any], job_name: str, *, dry_run: bool = False) ->
             "include_mode": str(include_mode),
             "include_keywords": list(include_keywords),
             "exclude_keywords": list(exclude_keywords),
+            "on_empty": on_empty,
         }
         meta_path.write_text(json.dumps(meta, indent=2), encoding="utf-8")
     except Exception:
@@ -450,6 +452,18 @@ def collect_job(cfg: Dict[str, Any], job_name: str, *, dry_run: bool = False) ->
     print(f"Copied root: {copied_root}")
     print(f"Manifest: {manifest_path}")
     print(f"Metadata: {meta_path}")
+
+    if len(rows) == 0:
+        msg = (
+            f"No files matched for job '{job_name}'. "
+            f"considered={considered} patterns={patterns} include_keywords={include_keywords} exclude_keywords={exclude_keywords}"
+        )
+        if on_empty in ("ok", "allow", "ignore", "blank"):
+            return out_dir
+        if on_empty == "warn":
+            print("WARN: " + msg)
+            return out_dir
+        raise RuntimeError(msg + " (set file_collect_jobs.<job>.on_empty: warn|ok to continue)")
     return out_dir
 
 

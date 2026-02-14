@@ -48,8 +48,19 @@ See `config.example.yaml` for a concrete example.
   - `aggregate_modes.<name>.out_relpath` controls where the aggregated CSV is written (relative to the summary CSV folder when run via `cli_aggregate_config.py`).
 - `file_collect_jobs`: optional file collection/copy jobs (fuzzy keyword matching) for organizing mixed folders prior to processing.
   - Used by `scripts/collect_files.py`.
-  - Keys: `input_root`, `recursive`, `patterns`, `include_keywords`, `exclude_keywords`, `include_mode (any|all)`, `min_similarity`.
+  - Required: `input_root` and `output.out_root` (or pass `--input-root`/`--out-root` on the CLI).
+  - Keys: `recursive`, `patterns`, `include_keywords`, `exclude_keywords`, `include_mode (any|all)`, `min_similarity`.
+  - `on_empty: error|warn|ok` controls what happens when 0 files match (default `error`).
   - Output naming: `preserve_tree` or `output.dest_subdir_template` + `output.rename_template`, plus `basename_max_len`/`path_max_len` for Windows path safety.
+- `jobs`: end-to-end run definitions (collect -> manifest -> pygwy -> plots -> aggregates).
+  - Required: `input_root` and `output_root` (or override via CLI).
+  - Common keys: `profile`, `processing_mode`, `csv_mode`, `plotting_modes`, `aggregate_modes`, `pattern`.
+  - Optional collect pre-step: `collect: { enable: true, job: "<file_collect_jobs name>", out_root: "..." }`.
+  - CLI overrides (see `scripts/run_job.py`):
+    - `--input-root`, `--output-root`, `--run-name`
+    - `--profile`, `--processing-mode`, `--csv-mode`, `--pattern`
+    - `--plotting-modes`, `--aggregate-modes`
+    - `--collect-job`, `--collect-out-root`, `--no-collect`
 - `unit_conversions`: per-mode unit conversions `{source: {target, factor}}`. When a conversion applies, the DataField is scaled before `mask`/`stats_filter`/`python_data_filtering`, so thresholds are interpreted in normalized units.
 - `debug` (optional): diagnostics/logging/artifacts:
   - `enable` (bool), `level` (`info|debug`), `artifacts` (`["mask","leveled","aligned","filtered"]`), `sample_limit`, `out_dir`.
