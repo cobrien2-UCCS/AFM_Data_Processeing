@@ -46,6 +46,10 @@ See `config.example.yaml` for a concrete example.
 - `aggregate_modes`: dataset-level aggregation definitions for per-scan `summary.csv` (pooled mean/std using `n_valid`, plus scan-mean stats).
   - Profiles can opt in via `profiles.<name>.aggregate_modes: [<aggregate_mode_name>, ...]`.
   - `aggregate_modes.<name>.out_relpath` controls where the aggregated CSV is written (relative to the summary CSV folder when run via `cli_aggregate_config.py`).
+- `file_collect_jobs`: optional file collection/copy jobs (fuzzy keyword matching) for organizing mixed folders prior to processing.
+  - Used by `scripts/collect_files.py`.
+  - Keys: `input_root`, `recursive`, `patterns`, `include_keywords`, `exclude_keywords`, `include_mode (any|all)`, `min_similarity`.
+  - Output naming: `preserve_tree` or `output.dest_subdir_template` + `output.rename_template`, plus `basename_max_len`/`path_max_len` for Windows path safety.
 - `unit_conversions`: per-mode unit conversions `{source: {target, factor}}`. When a conversion applies, the DataField is scaled before `mask`/`stats_filter`/`python_data_filtering`, so thresholds are interpreted in normalized units.
 - `debug` (optional): diagnostics/logging/artifacts:
   - `enable` (bool), `level` (`info|debug`), `artifacts` (`["mask","leveled","aligned","filtered"]`), `sample_limit`, `out_dir`.

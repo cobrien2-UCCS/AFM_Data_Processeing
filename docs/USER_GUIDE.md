@@ -33,6 +33,8 @@ This guide explains how to configure and extend the AFM TIFF -> summary CSV -> p
   `py -3 scripts/cli_aggregate_config.py --config config.yaml --profile modulus_grid --csv out/summary.csv --out-dir out/aggregates`
 - Compare methods against a baseline (Py3):
   `py -3 scripts/compare_methods.py --baseline-summary out/baseline/summary.csv --methods-root out/methods_root --out-root out/method_compare`
+- Collect/copy subsets out of mixed folders (Py3, fuzzy keyword matching):
+  `py -3 scripts/collect_files.py --config config.yaml --job collect_modulus_backward --dry-run`
 - Use profiles (Py3 summarize/plot): add `--profile your_profile` to pull defaults from `config.profiles`.
 
 ## 2) Config anatomy

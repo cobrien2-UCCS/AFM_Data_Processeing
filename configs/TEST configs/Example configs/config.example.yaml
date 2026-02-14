@@ -259,6 +259,30 @@ profiles:
     csv_mode: "default_scalar"
     # Optional post-processing on summary.csv:
     # aggregate_modes: ["dataset_pooled_by_mode_units"]
+
+# File collection jobs: copy subsets out of mixed folders using fuzzy keyword matching.
+# See `scripts/collect_files.py`.
+file_collect_jobs:
+  # Example: collect Modulus Backward scans (typos tolerated) into a dated folder.
+  collect_modulus_backward:
+    input_root: "C:/path/to/mixed_folder"
+    recursive: true
+    patterns: ["*.tif", "*.tiff"]
+    include_keywords: ["Modulus", "Backward"]
+    include_mode: "all"       # all keywords must match (fuzzy)
+    exclude_keywords: ["Forward"]
+    min_similarity: 0.85
+    preserve_tree: false
+    basename_max_len: 140
+    path_max_len: 240
+    extract:
+      - { regex: "-(?P<date_code>\\d{6})-", map: { date_code: "date_code" } }
+      - { regex: "(?P<direction>Forward|Backward)", map: { direction: "direction" } }
+    output:
+      out_root: "out/file_collect"
+      run_name_template: "collect_{timestamp}_{job}"
+      dest_subdir_template: "{date_code}/{direction}"
+      rename_template: "{orig_stem}_{short_hash}{ext}"
     plotting_modes: ["sample_bar_with_error", "heatmap_grid"]
 
 # Unit conversions (per mode). If detected units match a key, values are scaled
