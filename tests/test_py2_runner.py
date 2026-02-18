@@ -1,15 +1,16 @@
+import os
 import sys
 import unittest
-from pathlib import Path
 
 py2 = sys.version_info[0] == 2
 
 # Ensure local package import without install
-REPO_ROOT = Path(__file__).resolve().parents[1]
-SRC_ROOT = REPO_ROOT / "src"
-for p in (REPO_ROOT, SRC_ROOT):
-    if str(p) not in sys.path:
-        sys.path.insert(0, str(p))
+REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir))
+SRC_ROOT = os.path.join(REPO_ROOT, "src")
+SCRIPTS_ROOT = os.path.join(REPO_ROOT, "scripts")
+for p in (REPO_ROOT, SRC_ROOT, SCRIPTS_ROOT):
+    if p not in sys.path:
+        sys.path.insert(0, p)
 
 
 def _can_import_gwy():
@@ -23,16 +24,14 @@ def _can_import_gwy():
 @unittest.skipUnless(py2, "Py2/pygwy-specific tests; skipped on Py3.")
 class Py2RunnerTests(unittest.TestCase):
     def test_try_import_pygwy_flag(self):
-        from scripts import run_pygwy_job
+        import run_pygwy_job
 
         can = run_pygwy_job.try_import_pygwy()
         imported = _can_import_gwy()
         self.assertEqual(can, imported)
 
     def test_process_manifest_dry_run(self):
-        if not _can_import_gwy():
-            self.skipTest("pygwy not importable in this environment")
-        from scripts import run_pygwy_job
+        import run_pygwy_job
 
         manifest = {
             "files": [],

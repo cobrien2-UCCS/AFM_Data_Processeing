@@ -6,6 +6,15 @@ Usage:
 python scripts/cli_summarize.py --config config.yaml --input-root scans/ --out-csv summary.csv --processing-mode modulus_basic --csv-mode default_scalar
 """
 
+import sys
+from pathlib import Path
+
+# Allow running from a source checkout without `pip install -e .`
+REPO_ROOT = Path(__file__).resolve().parents[1]
+SRC_ROOT = REPO_ROOT / "src"
+if str(SRC_ROOT) not in sys.path:
+    sys.path.insert(0, str(SRC_ROOT))
+
 from afm_pipeline.cli import main_summarize as main  # re-export packaged entrypoint
 
 

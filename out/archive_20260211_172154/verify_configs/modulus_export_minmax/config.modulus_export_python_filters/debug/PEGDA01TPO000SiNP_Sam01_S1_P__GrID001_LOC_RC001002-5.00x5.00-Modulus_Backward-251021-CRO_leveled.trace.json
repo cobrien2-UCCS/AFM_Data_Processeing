@@ -1,0 +1,141 @@
+[
+  {
+    "info": {
+      "rms": 0.002514090025498452, 
+      "min": 0.0, 
+      "max": 1.0, 
+      "p5": 0.0, 
+      "p95": 0.0, 
+      "label": "initial", 
+      "avg": 1.0187485638786762e-05, 
+      "p50": 0.0
+    }, 
+    "step": "stats_snapshot", 
+    "ok": true
+  }, 
+  {
+    "step": "plane_level", 
+    "ok": true
+  }, 
+  {
+    "info": {
+      "rms": 0.0025140532022120913, 
+      "min": -3.5524319076931774e-05, 
+      "max": 0.9999669991950073, 
+      "p5": -3.132833112534425e-05, 
+      "p95": 1.096197706260371e-05, 
+      "label": "after_plane_level", 
+      "avg": 9.276391130081787e-21, 
+      "p50": -1.0180843263342862e-05
+    }, 
+    "step": "stats_snapshot", 
+    "ok": true
+  }, 
+  {
+    "info": {
+      "direction": "horizontal", 
+      "method": "median"
+    }, 
+    "step": "align_rows", 
+    "ok": true
+  }, 
+  {
+    "info": {
+      "rms": 0.0025062275410198892, 
+      "min": -0.007551033274595132, 
+      "max": 0.992668461667097, 
+      "p5": 1.0187485638786762e-05, 
+      "p95": 1.0187485638786762e-05, 
+      "label": "after_align_rows", 
+      "avg": 1.0187485638764834e-05, 
+      "p50": 1.0187485638786762e-05
+    }, 
+    "step": "stats_snapshot", 
+    "ok": true
+  }, 
+  {
+    "info": {
+      "size": 3
+    }, 
+    "step": "median", 
+    "ok": true
+  }, 
+  {
+    "info": {
+      "rms": 5.640657656163825e-06, 
+      "min": -9.281692108264569e-05, 
+      "max": 5.291839379152155e-05, 
+      "p5": 1.0187485638786762e-05, 
+      "p95": 1.0187485638786762e-05, 
+      "label": "after_median", 
+      "avg": 9.57666411770869e-06, 
+      "p50": 1.0187485638786762e-05
+    }, 
+    "step": "stats_snapshot", 
+    "ok": true
+  }, 
+  {
+    "info": {
+      "source": "kPa", 
+      "target": "kPa", 
+      "factor": 1.0
+    }, 
+    "step": "unit_normalization", 
+    "ok": true
+  }, 
+  {
+    "info": {
+      "rms": 5.640657656163825e-06, 
+      "min": -9.281692108264569e-05, 
+      "max": 5.291839379152155e-05, 
+      "p5": 1.0187485638786762e-05, 
+      "p95": 1.0187485638786762e-05, 
+      "label": "after_unit_normalization", 
+      "avg": 9.57666411770869e-06, 
+      "p50": 1.0187485638786762e-05
+    }, 
+    "step": "stats_snapshot", 
+    "ok": true
+  }, 
+  {
+    "info": {
+      "steps": "min_max 0/262144", 
+      "total": 262144, 
+      "kept": 0, 
+      "filters": [
+        {
+          "max_value": 60000.0, 
+          "min_value": 500.0, 
+          "type": "min_max"
+        }
+      ]
+    }, 
+    "step": "pyfilter_summary", 
+    "ok": true
+  }, 
+  {
+    "info": {
+      "std": NaN, 
+      "units": "kPa", 
+      "avg": NaN, 
+      "n_valid": 0
+    }, 
+    "step": "stats_final", 
+    "ok": true
+  }, 
+  {
+    "info": {
+      "excluded_max": 0, 
+      "excluded_nonpositive": 0, 
+      "excluded_mask": 262144, 
+      "excluded_zero": 0, 
+      "excluded_max_abs": 0, 
+      "kept": 0, 
+      "n_total": 262144, 
+      "excluded_nonfinite": 0, 
+      "excluded_min": 0
+    }, 
+    "step": "stats_reasons", 
+    "ok": true
+  }
+]

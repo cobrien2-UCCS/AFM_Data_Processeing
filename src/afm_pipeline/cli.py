@@ -7,6 +7,7 @@ import sys
 from pathlib import Path
 
 from . import load_config, summarize_folder_to_csv, plot_summary_from_csv
+from .summarize import load_csv_table, aggregate_summary_table, write_aggregated_csv
 
 
 def resolve_modes(cfg, profile, processing_mode, csv_mode):
@@ -90,14 +91,127 @@ def main_plot(argv=None):
     return 0
 
 
+def parse_args_aggregate(argv=None):
+    p = argparse.ArgumentParser(description="Aggregate per-scan summary stats into dataset-level stats.")
+    p.add_argument("--csv", required=True, help="Path to summary CSV (per-scan rows).")
+    p.add_argument("--out-csv", required=True, help="Output CSV path for aggregated rows.")
+    p.add_argument(
+        "--group-by",
+        default="",
+        help="Comma-separated list of CSV columns to group by (e.g., mode,metric_type,units). Default: no grouping.",
+    )
+    p.add_argument("--allow-mixed-units", action="store_true", help="Allow aggregating mixed units (sets units='MIXED').")
+    p.add_argument("--value-col", default="avg_value", help="Column name for per-scan mean (default: avg_value).")
+    p.add_argument("--std-col", default="std_value", help="Column name for per-scan std (default: std_value).")
+    p.add_argument("--n-col", default="n_valid", help="Column name for per-scan n_valid (default: n_valid).")
+    p.add_argument("--units-col", default="units", help="Column name for units (default: units).")
+    return p.parse_args(argv)
+
+
+def main_aggregate(argv=None):
+    args = parse_args_aggregate(argv)
+    group_by = [c.strip() for c in str(args.group_by).split(",") if c.strip()]
+    table = load_csv_table(args.csv)
+    aggregated = aggregate_summary_table(
+        table,
+        value_col=args.value_col,
+        std_col=args.std_col,
+        n_col=args.n_col,
+        units_col=args.units_col,
+        group_by=group_by,
+        allow_mixed_units=bool(args.allow_mixed_units),
+    )
+    write_aggregated_csv(args.out_csv, aggregated)
+    print("Wrote aggregated CSV to %s" % args.out_csv)
+    return 0
+
+
+def parse_args_aggregate_config(argv=None):
+    p = argparse.ArgumentParser(description="Aggregate using aggregate_modes definitions from a config/profile.")
+    p.add_argument("--config", required=True, help="Path to config YAML/JSON.")
+    p.add_argument("--csv", required=True, help="Path to summary CSV (per-scan rows).")
+    p.add_argument(
+        "--profile",
+        help="Profile name to pull aggregate_modes list from config.profiles (unless --aggregate-modes is given).",
+    )
+    p.add_argument(
+        "--aggregate-modes",
+        default="",
+        help="Comma-separated aggregate_modes names to run (overrides profile).",
+    )
+    p.add_argument(
+        "--out-dir",
+        default="",
+        help="Output directory base for aggregate outputs. If empty, uses each mode's out_relpath as-is (relative to CSV parent).",
+    )
+    return p.parse_args(argv)
+
+
+def main_aggregate_config(argv=None):
+    args = parse_args_aggregate_config(argv)
+    cfg = load_config(args.config)
+
+    requested = [c.strip() for c in str(args.aggregate_modes).split(",") if c.strip()]
+    if not requested:
+        if not args.profile:
+            raise ValueError("Pass --profile or --aggregate-modes.")
+        profiles = cfg.get("profiles", {}) or {}
+        if args.profile not in profiles:
+            raise ValueError("Unknown profile: %s" % args.profile)
+        prof = profiles.get(args.profile) or {}
+        requested = list(prof.get("aggregate_modes") or [])
+
+    if not requested:
+        raise ValueError("No aggregate modes requested (profile has no aggregate_modes).")
+
+    modes_def = cfg.get("aggregate_modes", {}) or {}
+    table = load_csv_table(args.csv)
+    csv_parent = Path(args.csv).resolve().parent
+    out_dir = Path(args.out_dir).resolve() if args.out_dir else None
+
+    for name in requested:
+        if name not in modes_def:
+            raise ValueError("Unknown aggregate_mode: %s" % name)
+        mdef = modes_def.get(name) or {}
+        group_by = mdef.get("group_by") or []
+        if isinstance(group_by, str):
+            group_by = [c.strip() for c in group_by.split(",") if c.strip()]
+        if not isinstance(group_by, list):
+            raise ValueError("aggregate_modes.%s.group_by must be a list or string" % name)
+
+        out_relpath = str(mdef.get("out_relpath") or ("aggregates/%s.csv" % name))
+        if out_dir is not None:
+            out_csv = out_dir / Path(out_relpath).name
+        else:
+            out_csv = csv_parent / Path(out_relpath)
+
+        aggregated = aggregate_summary_table(
+            table,
+            value_col=str(mdef.get("value_col") or "avg_value"),
+            std_col=str(mdef.get("std_col") or "std_value"),
+            n_col=str(mdef.get("n_col") or "n_valid"),
+            units_col=str(mdef.get("units_col") or "units"),
+            group_by=[str(x) for x in group_by],
+            allow_mixed_units=bool(mdef.get("allow_mixed_units", False)),
+        )
+        write_aggregated_csv(out_csv, aggregated)
+        print("Wrote aggregated CSV to %s" % out_csv)
+
+    return 0
+
+
 def main():
     # Simple dispatcher if called as module
     parser = argparse.ArgumentParser(description="AFM pipeline CLI")
-    parser.add_argument("command", choices=["summarize", "plot"], help="Command to run")
+    parser.add_argument("command", choices=["summarize", "plot", "aggregate", "aggregate-config"], help="Command to run")
     args, remaining = parser.parse_known_args()
     if args.command == "summarize":
         return main_summarize(remaining)
-    return main_plot(remaining)
+    if args.command == "plot":
+        return main_plot(remaining)
+    if args.command == "aggregate":
+        return main_aggregate(remaining)
+    return main_aggregate_config(remaining)
 
 
 if __name__ == "__main__":

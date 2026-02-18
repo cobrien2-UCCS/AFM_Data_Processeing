@@ -1,0 +1,93 @@
+# Modulus example: row+column Align Rows correction + validity range + outlier mask before stats.
+#
+# Intended use:
+# - When scan-line artefacts exist in both directions.
+# - When a few extreme pixels inflate std; use outlier mask to exclude spikes.
+#
+# Route clarity:
+# - stats_source: "gwyddion" (masked stats computed by Gwyddion)
+# - No stats_filter / python_data_filtering (avoid mixed filtering)
+#
+# Note: This config uses strict unit behavior (skip files with missing units).
+
+channel_defaults:
+  modulus_family: "modulus"
+
+modes:
+  modulus_rowcol_mask:
+    channel_family: "modulus"
+    gwyddion_ops:
+      - { op: "plane_level" }
+      - { op: "align_rows", params: { direction: "horizontal", method: "median" } }
+      - { op: "align_rows", params: { direction: "vertical", method: "median" } }
+      - { op: "median", params: { size: 3 } }
+      - { op: "clip_percentiles", params: { low: 0.5, high: 99.5 } }
+    stats_source: "gwyddion"
+    mask:
+      combine: "and"
+      steps:
+        # Physical-validity range (kPa): exclude invalid zeros/nonphysical values.
+        - { method: "range", min_value: 1000.0, max_value: 50000.0, inclusive: true }
+        # Gwyddion-native outlier marking: exclude spikes beyond thresh*RMS from the mean.
+        - { method: "outliers2", thresh_low: 3.0, thresh_high: 3.0 }
+      on_empty: "skip_row"
+    metric_type: "modulus"
+    units: "kPa"
+    expected_units: "kPa"
+    on_unit_mismatch: "warn"
+    on_missing_units: "skip_row"
+
+grid:
+  index_base: 1
+  filename_regex: "LOC_RC(?P<row>\\d{3})(?P<col>\\d{3})"
+
+summarize:
+  recursive: false
+
+debug:
+  enable: true
+  level: "info"
+  artifacts: ["mask", "leveled", "aligned", "filtered"]
+  sample_limit: 3
+  out_dir: "out/debug"
+  log_fields: ["units", "stats_source", "mixed_processing", "mask_counts", "stats_counts", "grid"]
+
+csv_modes:
+  default_scalar:
+    columns:
+      - { name: "source_file", from: "core.source_file" }
+      - { name: "mode", from: "core.mode" }
+      - { name: "avg_value", from: "core.avg_value" }
+      - { name: "std_value", from: "core.std_value" }
+      - { name: "units", from: "core.units" }
+      - { name: "row_idx", from: "grid.row_idx", default: -1 }
+      - { name: "col_idx", from: "grid.col_idx", default: -1 }
+    on_missing_field: "warn_null"
+
+result_schemas:
+  default_scalar:
+    from_csv_mode: "default_scalar"
+    fields:
+      - { field: "source_file", type: "string", column: "source_file" }
+      - { field: "mode", type: "string", column: "mode" }
+      - { field: "avg_value", type: "float", column: "avg_value" }
+      - { field: "std_value", type: "float", column: "std_value" }
+      - { field: "units", type: "string", column: "units" }
+      - { field: "row_idx", type: "int", column: "row_idx" }
+      - { field: "col_idx", type: "int", column: "col_idx" }
+
+plotting_modes:
+  heatmap_grid:
+    result_schema: "default_scalar"
+    recipe: "heatmap_grid"
+    value_field: "avg_value"
+    title: "Grid Heatmap (kPa)"
+    colorbar_label: "avg_value"
+    duplicate_policy: "warn_mean"
+
+unit_conversions:
+  modulus_rowcol_mask:
+    kPa: { target: "kPa", factor: 1.0 }
+    MPa: { target: "kPa", factor: 1000.0 }
+    GPa: { target: "kPa", factor: 1e6 }
+    Pa:  { target: "kPa", factor: 0.001 }

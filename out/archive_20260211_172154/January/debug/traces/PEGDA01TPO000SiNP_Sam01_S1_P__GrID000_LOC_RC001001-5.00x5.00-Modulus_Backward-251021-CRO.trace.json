@@ -1,0 +1,29 @@
+[
+  {
+    "step": "plane_level", 
+    "ok": true
+  }, 
+  {
+    "info": {
+      "direction": "horizontal", 
+      "method": "median"
+    }, 
+    "step": "align_rows", 
+    "ok": true
+  }, 
+  {
+    "info": {
+      "size": 3
+    }, 
+    "step": "median", 
+    "ok": true
+  }, 
+  {
+    "info": {
+      "high": 99.5, 
+      "low": 0.5
+    }, 
+    "step": "clip_percentiles", 
+    "ok": true
+  }
+]

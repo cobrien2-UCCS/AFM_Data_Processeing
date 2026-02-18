@@ -112,7 +112,8 @@ class PipelineTestCase(unittest.TestCase):
                 processor=fake_processor,
             )
 
-            rows = list(csv.DictReader(out_csv.open()))
+            with out_csv.open() as f:
+                rows = list(csv.DictReader(f))
             self.assertEqual(len(rows), 2)
             self.assertEqual(rows[0]["mode"], "modulus_basic")
             self.assertEqual(rows[0]["units"], "GPa")
@@ -135,6 +136,12 @@ class PipelineTestCase(unittest.TestCase):
 
     def test_plot_heatmap_grid_generates_file(self):
         cfg = dict(self.cfg)
+        cfg["result_schemas"] = dict(cfg["result_schemas"])
+        cfg["result_schemas"]["default_scalar"] = dict(cfg["result_schemas"]["default_scalar"])
+        cfg["result_schemas"]["default_scalar"]["fields"] = list(cfg["result_schemas"]["default_scalar"]["fields"]) + [
+            {"field": "row_idx", "type": "int", "column": "row_idx"},
+            {"field": "col_idx", "type": "int", "column": "col_idx"},
+        ]
         cfg["plotting_modes"] = dict(cfg["plotting_modes"])
         cfg["plotting_modes"]["heatmap_grid"] = {
             "result_schema": "default_scalar",
@@ -214,6 +221,158 @@ class PipelineTestCase(unittest.TestCase):
         mode_def_skip["on_unit_mismatch"] = "skip_row"
         skipped = run_pygwy_job._apply_units(base.copy(), "modulus_basic", mode_def_skip, manifest, "kPa")
         self.assertIsNone(skipped)
+
+    def test_mask_outliers_builds_keep_mask(self):
+        class FakeMaskField:
+            def __init__(self, n):
+                self._data = [0.0] * n
+
+            def get_data(self):
+                return self._data
+
+        class FakeField:
+            def __init__(self, data):
+                self._data = list(data)
+
+            def get_data(self):
+                return self._data
+
+            def create_full_mask(self):
+                return FakeMaskField(len(self._data))
+
+            def mask_outliers(self, mask_field, thresh):
+                import math
+
+                mean = sum(self._data) / float(len(self._data))
+                sigma = math.sqrt(sum((v - mean) ** 2 for v in self._data) / float(len(self._data)))
+                limit = float(thresh) * float(sigma)
+                data = mask_field.get_data()
+                for i, v in enumerate(self._data):
+                    data[i] = 1.0 if abs(v - mean) > limit else 0.0
+
+        field = FakeField([0.0, 0.0, 0.0, 0.0, 100.0])
+
+        mask, kept, total = run_pygwy_job._build_single_mask(field, {"method": "outliers", "thresh": 1.5})
+        self.assertEqual(total, 5)
+        self.assertEqual(kept, 4)
+        self.assertEqual(mask, [True, True, True, True, False])
+
+        mask, kept, total = run_pygwy_job._build_single_mask(field, {"method": "outliers", "thresh": 1.5, "invert": True})
+        self.assertEqual(total, 5)
+        self.assertEqual(kept, 1)
+        self.assertEqual(mask, [False, False, False, False, True])
+
+    def test_mask_outliers2_builds_keep_mask(self):
+        class FakeMaskField:
+            def __init__(self, n):
+                self._data = [0.0] * n
+
+            def get_data(self):
+                return self._data
+
+        class FakeField:
+            def __init__(self, data):
+                self._data = list(data)
+
+            def get_data(self):
+                return self._data
+
+            def create_full_mask(self):
+                return FakeMaskField(len(self._data))
+
+            def mask_outliers2(self, mask_field, thresh_low, thresh_high):
+                import math
+
+                mean = sum(self._data) / float(len(self._data))
+                sigma = math.sqrt(sum((v - mean) ** 2 for v in self._data) / float(len(self._data)))
+                lo = mean - float(thresh_low) * float(sigma)
+                hi = mean + float(thresh_high) * float(sigma)
+                data = mask_field.get_data()
+                for i, v in enumerate(self._data):
+                    data[i] = 1.0 if (v < lo or v > hi) else 0.0
+
+        field = FakeField([0.0, 0.0, 0.0, 0.0, 100.0])
+        mask, kept, total = run_pygwy_job._build_single_mask(field, {"method": "outliers2", "thresh_low": 1.5, "thresh_high": 1.5})
+        self.assertEqual(total, 5)
+        self.assertEqual(kept, 4)
+        self.assertEqual(mask, [True, True, True, True, False])
+
+
+class MaskAndRoutePolicyTests(unittest.TestCase):
+    def test_mask_threshold_and_range(self):
+        class FakeField:
+            def __init__(self, data):
+                self._data = list(data)
+
+            def get_data(self):
+                return self._data
+
+        field = FakeField([-1.0, 0.0, 1.0, 2.0, 10.0])
+
+        mask, kept, total = run_pygwy_job._build_single_mask(field, {"method": "threshold", "threshold": 0.0, "direction": "above"})
+        self.assertEqual(total, 5)
+        self.assertEqual(kept, 4)
+        self.assertEqual(mask, [False, True, True, True, True])
+
+        mask, kept, total = run_pygwy_job._build_single_mask(field, {"method": "range", "min_value": 1.0, "max_value": 2.0, "inclusive": True})
+        self.assertEqual((kept, total), (2, 5))
+        self.assertEqual(mask, [False, False, True, True, False])
+
+    def test_mask_percentile(self):
+        class FakeField:
+            def __init__(self, data):
+                self._data = list(data)
+
+            def get_data(self):
+                return self._data
+
+        field = FakeField([0.0, 1.0, 2.0, 3.0, 100.0])
+        mask, kept, total = run_pygwy_job._build_single_mask(field, {"method": "percentile", "percentiles": [0, 80]})
+        self.assertEqual(total, 5)
+        self.assertEqual(kept, 4)
+        self.assertEqual(mask, [True, True, True, True, False])
+
+    def test_mask_combine_and_on_empty_blank(self):
+        class FakeField:
+            def __init__(self, data):
+                self._data = list(data)
+
+            def get_data(self):
+                return self._data
+
+        field = FakeField([1.0, 2.0, 3.0])
+        mask_cfg = {
+            "combine": "and",
+            "on_empty": "blank",
+            "steps": [
+                {"method": "threshold", "threshold": 10.0, "direction": "above"},
+                {"method": "range", "min_value": 20.0, "max_value": 30.0},
+            ],
+        }
+        mask, kept, total = run_pygwy_job._build_mask(field, mask_cfg)
+        self.assertEqual(total, 3)
+        self.assertEqual(kept, 0)
+        self.assertEqual(mask, [False, False, False])
+
+    def test_route_policy_rejects_mixed_by_default(self):
+        mode_def = {
+            "stats_source": "python",
+            "mask": {"method": "outliers2", "thresh_low": 3.0, "thresh_high": 3.0},
+        }
+        reasons = run_pygwy_job._mixed_processing_reasons(mode_def)
+        self.assertTrue(reasons, "Expected mixed processing reasons to be detected")
+        with self.assertRaises(RuntimeError):
+            run_pygwy_job._enforce_processing_route_policy("modulus_basic", mode_def)
+
+    def test_route_policy_allows_mixed_with_flag(self):
+        mode_def = {
+            "allow_mixed_processing": True,
+            "stats_source": "python",
+            "mask": {"method": "outliers2", "thresh_low": 3.0, "thresh_high": 3.0},
+        }
+        allow, reasons = run_pygwy_job._enforce_processing_route_policy("modulus_basic", mode_def)
+        self.assertTrue(allow)
+        self.assertTrue(reasons)
 
 
 if __name__ == "__main__":
