@@ -1,6 +1,7 @@
 # Spec Alignment + Gap List (Working Checklist)
 
 This document maps the current repo implementation to the design intents in `AFM TIFF to Summary Stats & Plotting Pipeline v3.md` and tracks what to shore up next.
+Change policy: see `docs/change_control.md`.
 
 ## Status snapshot (2026-02-13)
 - Known-good example configs:

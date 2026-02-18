@@ -10,6 +10,7 @@ Config-driven AFM TIFF processing (pygwy/Gwyddion), CSV summarization, and plott
 - Related tools / prior art: `docs/related_tools.md`
 - Method comparison notes: `docs/method_compare_notes.md`
 - Next steps: `docs/next_steps.md`
+- Change control: `docs/change_control.md`
 
 ## Quick start (Windows / PowerShell)
 Run the full pipeline (Py3 -> Py2/pygwy -> Py3) from the repo root:
