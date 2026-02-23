@@ -2,6 +2,7 @@
 
 This guide explains how to configure and extend the AFM TIFF -> summary CSV -> plotting pipeline.
 See `docs/how_to_run.md` for a one-page run guide.
+For the method-comparison test rationale and results scaffold, see `docs/method_comparison_study.md`.
 For change policy, see `docs/change_control.md`.
 
 ## 1) Quick start (Windows / PowerShell)
@@ -86,6 +87,24 @@ Top-level sections (see `config.example.yaml`):
     - Optional overlays: `overlay_std` (sigma-colored text with legend), `overlay_alpha` (alpha driven by another field), `overlay_hatch` (flag cells above/below a threshold).
   - `heatmap_grid_bubbles` (mean background + bubble overlay sized/colored by sigma bins of another field, e.g., std)
   - `heatmap_two_panel` (side-by-side heatmaps, e.g., mean vs std)
+- Label/unit formatting (all plot recipes):
+  - `label_units_mode`: `auto|manual` (auto injects units into labels/titles).
+  - `xaxis_format` / `yaxis_format` / `axis_format`: `engineering|scientific|plain`.
+  - `xaxis_places` / `yaxis_places` / `axis_places`: significant places for tick formatting.
+  - `axis_integer` (or `xaxis_integer`/`yaxis_integer`): force integer tick labels (useful for heatmap grid axes).
+- Bar chart labels (`sample_bar_with_error` and `mode_comparison_bar`):
+  - `label_mode`: `grid_rowcol` or `rowcol` to build labels from grid indices.
+  - `label_template`: string formatting with row fields (e.g., `{grid_id} R{row_idx}C{col_idx}`).
+  - `label_fields`: list of fields to join; `label_join` controls separator.
+- Heatmap colorbar formatting:
+  - `colorbar_format`: `engineering|scientific|plain` to format colorbar ticks.
+  - `colorbar_places`: number of significant places for colorbar tick formatting.
+  - Two-panel overrides: `left_colorbar_format`/`right_colorbar_format`, `left_colorbar_places`/`right_colorbar_places`.
+- Heatmap normalization and range locking:
+  - `norm` (or `scale`): `linear|log|symlog|centered`. Log uses positive-only ranges; symlog supports negative values.
+  - `center` / `center_mode` / `center_value`: numeric or `mean|median|auto` for centered (diverging) normalization.
+  - `range_csvs` / `range_csv_glob`: list or glob of CSVs to compute a shared vmin/vmax so multiple runs render on the same color scale.
+  - Two-panel overrides: `left_norm`/`right_norm`, `left_center`/`right_center`, `left_range_csvs`/`right_range_csvs`, `left_vmin`/`right_vmin`, `left_linthresh`/`right_linthresh`, etc.
 - Use `profiles` to bundle processing_mode + csv_mode + plotting_modes for easy CLI use.
 
 ## 5) Unit handling

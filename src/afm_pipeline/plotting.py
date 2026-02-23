@@ -6,13 +6,14 @@ Dispatches plotting_mode -> recipe using cfg["plotting_modes"].
 
 import logging
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
 import numpy as np
 from matplotlib.lines import Line2D
 from matplotlib.patches import Rectangle
+from matplotlib.ticker import EngFormatter, FuncFormatter, FormatStrFormatter, MaxNLocator
 
 from .summarize import load_csv_table, build_result_object_from_csv_row
 
@@ -27,6 +28,169 @@ def _infer_unit(rows: List[Dict[str, Any]]) -> str:
         if "core.units" in r and r["core.units"]:
             return str(r["core.units"])
     return ""
+
+
+def _infer_metric_label(rows: List[Dict[str, Any]]) -> str:
+    """Best-effort metric label inference from data rows."""
+    for r in rows:
+        if "metric_type" in r and r["metric_type"]:
+            return str(r["metric_type"])
+        if "core.metric_type" in r and r["core.metric_type"]:
+            return str(r["core.metric_type"])
+    return ""
+
+
+def _format_text_with_units(text: Any, unit: str, metric_label: str) -> str:
+    if text is None:
+        return ""
+    text = str(text)
+    unit = unit or ""
+    metric_label = metric_label or ""
+    return text.replace("{units}", unit).replace("{unit}", unit).replace("{metric}", metric_label)
+
+
+def _get_formatter(fmt: Any, places: Any):
+    fmt = str(fmt or "").strip().lower()
+    if not fmt:
+        return None
+    try:
+        places = int(places) if places is not None else None
+    except Exception:
+        places = None
+    if fmt in ("engineering", "eng"):
+        return EngFormatter(places=places)
+    if fmt in ("scientific", "sci"):
+        if places is None:
+            return FuncFormatter(lambda x, pos: f"{x:.3e}")
+        return FuncFormatter(lambda x, pos: f"{x:.{places}e}")
+    if fmt in ("plain", "fixed"):
+        if places is None:
+            return None
+        return FormatStrFormatter(f"%.{places}f")
+    return None
+
+
+def _apply_axis_formatting(ax, plotting_def: Dict[str, Any], axis: str):
+    fmt = plotting_def.get(f"{axis}axis_format") or plotting_def.get("axis_format")
+    places = plotting_def.get(f"{axis}axis_places") or plotting_def.get("axis_places")
+    formatter = _get_formatter(fmt, places)
+    if formatter is None:
+        return
+    if axis == "x":
+        ax.xaxis.set_major_formatter(formatter)
+    else:
+        ax.yaxis.set_major_formatter(formatter)
+
+
+def _apply_integer_ticks(ax, plotting_def: Dict[str, Any]):
+    x_int = plotting_def.get("xaxis_integer")
+    y_int = plotting_def.get("yaxis_integer")
+    if x_int is None:
+        x_int = plotting_def.get("axis_integer")
+    if y_int is None:
+        y_int = plotting_def.get("axis_integer")
+    if x_int:
+        ax.xaxis.set_major_locator(MaxNLocator(integer=True))
+    if y_int:
+        ax.yaxis.set_major_locator(MaxNLocator(integer=True))
+
+
+def _apply_colorbar_formatting(cbar, plotting_def: Dict[str, Any], prefix: str = ""):
+    fmt = plotting_def.get(f"{prefix}colorbar_format") or plotting_def.get("colorbar_format")
+    places = plotting_def.get(f"{prefix}colorbar_places") or plotting_def.get("colorbar_places")
+    formatter = _get_formatter(fmt, places)
+    if formatter is None:
+        return
+    cbar.formatter = formatter
+    cbar.update_ticks()
+
+
+def _resolve_center_value(spec: Any, values: List[float]):
+    if spec is None:
+        return None
+    try:
+        if isinstance(spec, (int, float)):
+            return float(spec)
+    except Exception:
+        pass
+    s = str(spec).strip().lower()
+    if s in ("mean", "avg", "average"):
+        return float(np.nanmean(values)) if values else None
+    if s in ("median",):
+        return float(np.nanmedian(values)) if values else None
+    if s in ("zero", "0"):
+        return 0.0
+    try:
+        return float(s)
+    except Exception:
+        return None
+
+
+def _collect_range_values(csv_glob: Any, field: str, base_path: Path) -> List[float]:
+    if not csv_glob:
+        return []
+    base_path = Path(base_path)
+    values: List[float] = []
+    try:
+        paths = list(base_path.glob(str(csv_glob)))
+    except Exception:
+        paths = []
+    for p in paths:
+        try:
+            rows = load_csv_table(str(p))
+        except Exception:
+            continue
+        for r in rows:
+            v = r.get(field)
+            if v is None:
+                continue
+            try:
+                f = float(v)
+            except Exception:
+                continue
+            if f == f:
+                values.append(f)
+    return values
+
+
+def _resolve_norm(norm_name: Any, grid: List[List[float]] | None, vmin: float | None, vmax: float | None,
+                  linthresh: Any = None, linscale: Any = None, vcenter: float | None = None, label: str = ""):
+    if not norm_name:
+        return None, vmin, vmax
+    norm_name = str(norm_name).strip().lower()
+    vals = []
+    if grid:
+        for row in grid:
+            for v in row:
+                if v == v:
+                    vals.append(v)
+    if vmin is None and vals:
+        vmin = min(vals)
+    if vmax is None and vals:
+        vmax = max(vals)
+    if norm_name == "log":
+        if vmin is None or vmax is None:
+            return None, vmin, vmax
+        if vmin <= 0:
+            pos_vals = [v for v in vals if v > 0]
+            if not pos_vals:
+                log.warning("No positive values for log norm %s; skipping log.", label)
+                return None, vmin, vmax
+            vmin = min(pos_vals)
+        return mcolors.LogNorm(vmin=vmin, vmax=vmax), vmin, vmax
+    if norm_name == "symlog":
+        if vmin is None or vmax is None:
+            return None, vmin, vmax
+        lt = float(linthresh) if linthresh is not None else 1.0
+        ls = float(linscale) if linscale is not None else 1.0
+        return mcolors.SymLogNorm(linthresh=lt, linscale=ls, vmin=vmin, vmax=vmax), vmin, vmax
+    if norm_name == "centered":
+        if vmin is None or vmax is None:
+            return None, vmin, vmax
+        if vcenter is None:
+            vcenter = 0.0
+        return mcolors.TwoSlopeNorm(vcenter=vcenter, vmin=vmin, vmax=vmax), vmin, vmax
+    return None, vmin, vmax
 
 
 def _truncate_text(text: str, max_len: int) -> str:
@@ -56,6 +220,26 @@ def _format_label(label: Any, plotting_def: Dict[str, Any]) -> str:
     return _truncate_text(text, plotting_def.get("label_max_len"))
 
 
+def _build_label(row: Dict[str, Any], plotting_def: Dict[str, Any]) -> str:
+    mode = str(plotting_def.get("label_mode") or "").strip().lower()
+    if mode in ("grid_rowcol", "gridrowcol"):
+        gid = row.get("grid_id")
+        ri = row.get("row_idx")
+        ci = row.get("col_idx")
+        parts = []
+        if gid not in (None, ""):
+            parts.append(str(gid))
+        if ri not in (None, -1) and ci not in (None, -1):
+            parts.append(f"r{ri}, c{ci}")
+        label = " ".join(parts) if parts else row.get("source_file", "")
+        return _truncate_text(str(label), plotting_def.get("label_max_len"))
+    if mode in ("grid_id", "gridid"):
+        gid = row.get("grid_id")
+        if gid not in (None, ""):
+            return _truncate_text(str(gid), plotting_def.get("label_max_len"))
+    return _format_label(row.get("source_file", ""), plotting_def)
+
+
 def plot_summary_from_csv(csv_path: str, plotting_mode: str, cfg: Dict[str, Any], output_dir: str):
     """Entry: load CSV, cast rows via result_schema, dispatch plotting recipe."""
     plotting_def = cfg.get("plotting_modes", {}).get(plotting_mode)
@@ -67,10 +251,10 @@ def plot_summary_from_csv(csv_path: str, plotting_mode: str, cfg: Dict[str, Any]
 
     rows = load_csv_table(csv_path)
     typed_rows = [build_result_object_from_csv_row(r, schema_name, cfg) for r in rows]
-    APPLY_PLOTTING_MODE(typed_rows, plotting_mode, cfg, output_dir)
+    APPLY_PLOTTING_MODE(typed_rows, plotting_mode, cfg, output_dir, csv_path=csv_path)
 
 
-def APPLY_PLOTTING_MODE(data_rows: List[Dict[str, Any]], plotting_mode: str, cfg: Dict[str, Any], output_dir: str): # CAPS are generaly styled as contatns or gloabl varibles not funcitons. Overal the Dispacher is a good way to do this. 
+def APPLY_PLOTTING_MODE(data_rows: List[Dict[str, Any]], plotting_mode: str, cfg: Dict[str, Any], output_dir: str, csv_path: Optional[str] = None): # CAPS are generaly styled as contatns or gloabl varibles not funcitons. Overal the Dispacher is a good way to do this. 
     """Dispatcher for plotting modes."""
     plotting_def = cfg.get("plotting_modes", {}).get(plotting_mode, {})
     recipe = plotting_def.get("recipe") or plotting_def.get("type") or plotting_mode
@@ -86,11 +270,11 @@ def APPLY_PLOTTING_MODE(data_rows: List[Dict[str, Any]], plotting_mode: str, cfg
     elif recipe == "mode_comparison_bar":
         plot_mode_comparison_bar(data_rows, plotting_def, out_dir, plotting_mode)
     elif recipe == "heatmap_grid":
-        plot_heatmap_grid(data_rows, plotting_def, out_dir, plotting_mode)
+        plot_heatmap_grid(data_rows, plotting_def, out_dir, plotting_mode, csv_path=csv_path)
     elif recipe in ("heatmap_grid_bubbles", "heatmap_grid_bubble_overlay"):
         plot_heatmap_grid_bubbles(data_rows, plotting_def, out_dir, plotting_mode)
     elif recipe in ("heatmap_two_panel", "heatmap_grid_two_panel"):
-        plot_heatmap_two_panel(data_rows, plotting_def, out_dir, plotting_mode)
+        plot_heatmap_two_panel(data_rows, plotting_def, out_dir, plotting_mode, csv_path=csv_path)
     else:
         raise ValueError(f"Unknown plotting recipe '{recipe}' for plotting_mode '{plotting_mode}'")
 
@@ -112,9 +296,9 @@ def _sigma_legend_handles(sigma_bins: List[float], colors: List[str], marker: st
         return handles
     for idx, thr in enumerate(sigma_bins):
         c = colors[idx] if idx < len(colors) else (colors[-1] if colors else "black")
-        handles.append(Line2D([0], [0], marker=marker, linestyle="None", color=c, label=f"≤ {thr:g}σ"))
+        handles.append(Line2D([0], [0], marker=marker, linestyle="None", color=c, label=f"= {thr:g}s"))
     if len(colors) >= len(sigma_bins) + 1:
-        handles.append(Line2D([0], [0], marker=marker, linestyle="None", color=colors[len(sigma_bins)], label=f"> {sigma_bins[-1]:g}σ"))
+        handles.append(Line2D([0], [0], marker=marker, linestyle="None", color=colors[len(sigma_bins)], label=f"> {sigma_bins[-1]:g}s"))
     return handles
 
 
@@ -151,18 +335,31 @@ def _extract_value(row: Dict[str, Any], field: str) -> float:
 
 
 def plot_sample_bar_with_error(rows: List[Dict[str, Any]], plotting_def: Dict[str, Any], out_dir: Path, name: str):
-    labels = [_format_label(r.get("source_file", ""), plotting_def) for r in rows]
+    labels = [_build_label(r, plotting_def) for r in rows]
     means = [r.get("avg_value", 0.0) for r in rows]
     stds = [r.get("std_value", 0.0) for r in rows]
-    unit = _infer_unit(rows) 
+    unit = _infer_unit(rows)
+    metric_label = _infer_metric_label(rows)
+    label_mode = str(plotting_def.get("label_units_mode") or "auto").strip().lower()
 
     fig, ax = plt.subplots()
     ax.bar(range(len(labels)), means, yerr=stds, capsize=4)
     ax.set_xticks(range(len(labels)))
     ax.set_xticklabels(labels, rotation=45, ha="right")
-    ylabel = plotting_def.get("ylabel") or ("avg_value (%s)" % unit if unit else "avg_value")
+    ylabel = plotting_def.get("ylabel")
+    if label_mode == "auto":
+        ylabel = _format_text_with_units(ylabel, unit, metric_label) if ylabel else (f"avg_value ({unit})" if unit else "avg_value")
+    else:
+        ylabel = ylabel or (f"avg_value ({unit})" if unit else "avg_value")
     ax.set_ylabel(ylabel)
-    ax.set_title(plotting_def.get("title", name))
+    xlabel = plotting_def.get("xlabel")
+    if xlabel:
+        ax.set_xlabel(_format_text_with_units(xlabel, unit, metric_label) if label_mode == "auto" else xlabel)
+    title = plotting_def.get("title", name)
+    if label_mode == "auto":
+        title = _format_text_with_units(title, unit, metric_label) if title else name
+    ax.set_title(title)
+    _apply_axis_formatting(ax, plotting_def, "y")
     fig.tight_layout()
     fig.savefig(out_dir / f"{name}.png", dpi=300)
     plt.close(fig)
@@ -172,13 +369,27 @@ def plot_histogram_avg(rows: List[Dict[str, Any]], plotting_def: Dict[str, Any],
     values = [r.get("avg_value", 0.0) for r in rows if r.get("avg_value") is not None]
     bins = plotting_def.get("bins", 20)
     unit = _infer_unit(rows)
+    metric_label = _infer_metric_label(rows)
+    label_mode = str(plotting_def.get("label_units_mode") or "auto").strip().lower()
 
     fig, ax = plt.subplots()
     ax.hist(values, bins=bins, density=plotting_def.get("density", False))
-    xlabel = plotting_def.get("xlabel") or ("avg_value (%s)" % unit if unit else "avg_value")
+    xlabel = plotting_def.get("xlabel")
+    if label_mode == "auto":
+        xlabel = _format_text_with_units(xlabel, unit, metric_label) if xlabel else (f"avg_value ({unit})" if unit else "avg_value")
+    else:
+        xlabel = xlabel or (f"avg_value ({unit})" if unit else "avg_value")
     ax.set_xlabel(xlabel)
-    ax.set_ylabel(plotting_def.get("ylabel", "count"))
-    ax.set_title(plotting_def.get("title", name))
+    ylabel = plotting_def.get("ylabel", "count")
+    if label_mode == "auto":
+        ylabel = _format_text_with_units(ylabel, unit, metric_label)
+    ax.set_ylabel(ylabel)
+    title = plotting_def.get("title", name)
+    if label_mode == "auto":
+        title = _format_text_with_units(title, unit, metric_label) if title else name
+    ax.set_title(title)
+    _apply_axis_formatting(ax, plotting_def, "x")
+    _apply_axis_formatting(ax, plotting_def, "y")
     fig.tight_layout()
     fig.savefig(out_dir / f"{name}.png", dpi=300)
     plt.close(fig)
@@ -188,40 +399,66 @@ def plot_scatter_avg_vs_std(rows: List[Dict[str, Any]], plotting_def: Dict[str, 
     xs = [r.get("avg_value", 0.0) for r in rows]
     ys = [r.get("std_value", 0.0) for r in rows]
     unit = _infer_unit(rows)
+    metric_label = _infer_metric_label(rows)
+    label_mode = str(plotting_def.get("label_units_mode") or "auto").strip().lower()
 
     fig, ax = plt.subplots()
     ax.scatter(xs, ys, s=plotting_def.get("point_size", 30), alpha=plotting_def.get("alpha", 0.7))
-    xlabel = plotting_def.get("xlabel") or ("avg_value (%s)" % unit if unit else "avg_value")
-    ylabel = plotting_def.get("ylabel") or ("std_value (%s)" % unit if unit else "std_value")
+    xlabel = plotting_def.get("xlabel")
+    ylabel = plotting_def.get("ylabel")
+    if label_mode == "auto":
+        xlabel = _format_text_with_units(xlabel, unit, metric_label) if xlabel else (f"avg_value ({unit})" if unit else "avg_value")
+        ylabel = _format_text_with_units(ylabel, unit, metric_label) if ylabel else (f"std_value ({unit})" if unit else "std_value")
+    else:
+        xlabel = xlabel or (f"avg_value ({unit})" if unit else "avg_value")
+        ylabel = ylabel or (f"std_value ({unit})" if unit else "std_value")
     ax.set_xlabel(xlabel)
     ax.set_ylabel(ylabel)
-    ax.set_title(plotting_def.get("title", name))
+    title = plotting_def.get("title", name)
+    if label_mode == "auto":
+        title = _format_text_with_units(title, unit, metric_label) if title else name
+    ax.set_title(title)
+    _apply_axis_formatting(ax, plotting_def, "x")
+    _apply_axis_formatting(ax, plotting_def, "y")
     fig.tight_layout()
     fig.savefig(out_dir / f"{name}.png", dpi=300)
     plt.close(fig)
 
 
 def plot_mode_comparison_bar(rows: List[Dict[str, Any]], plotting_def: Dict[str, Any], out_dir: Path, name: str):
-    labels = [_format_label(r.get("source_file", ""), plotting_def) for r in rows]
+    labels = [_build_label(r, plotting_def) for r in rows]
     modes = [r.get("mode", "") for r in rows]
     means = [r.get("avg_value", 0.0) for r in rows]
     annotated = [f"{m}:{l}" if m else l for m, l in zip(modes, labels)]
     annotated = [_truncate_text(a, plotting_def.get("label_max_len")) for a in annotated]
     unit = _infer_unit(rows)
+    metric_label = _infer_metric_label(rows)
+    label_mode = str(plotting_def.get("label_units_mode") or "auto").strip().lower()
 
     fig, ax = plt.subplots()
     ax.bar(range(len(annotated)), means)
     ax.set_xticks(range(len(annotated)))
     ax.set_xticklabels(annotated, rotation=45, ha="right")
-    ylabel = plotting_def.get("ylabel") or ("avg_value (%s)" % unit if unit else "avg_value")
+    ylabel = plotting_def.get("ylabel")
+    if label_mode == "auto":
+        ylabel = _format_text_with_units(ylabel, unit, metric_label) if ylabel else (f"avg_value ({unit})" if unit else "avg_value")
+    else:
+        ylabel = ylabel or (f"avg_value ({unit})" if unit else "avg_value")
     ax.set_ylabel(ylabel)
-    ax.set_title(plotting_def.get("title", name))
+    xlabel = plotting_def.get("xlabel")
+    if xlabel:
+        ax.set_xlabel(_format_text_with_units(xlabel, unit, metric_label) if label_mode == "auto" else xlabel)
+    title = plotting_def.get("title", name)
+    if label_mode == "auto":
+        title = _format_text_with_units(title, unit, metric_label) if title else name
+    ax.set_title(title)
+    _apply_axis_formatting(ax, plotting_def, "y")
     fig.tight_layout()
     fig.savefig(out_dir / f"{name}.png", dpi=300)
     plt.close(fig)
 
 
-def plot_heatmap_grid(rows: List[Dict[str, Any]], plotting_def: Dict[str, Any], out_dir: Path, name: str):
+def plot_heatmap_grid(rows: List[Dict[str, Any]], plotting_def: Dict[str, Any], out_dir: Path, name: str, csv_path: Optional[str] = None):
     if not rows:
         log.warning("No data rows for heatmap: %s", name)
         return
@@ -291,6 +528,10 @@ def plot_heatmap_grid(rows: List[Dict[str, Any]], plotting_def: Dict[str, Any], 
             # warn_mean (default): average duplicates
             grid[ri][ci] = sum(clean) / float(len(clean))
 
+    unit = _infer_unit(valid_rows)
+    metric_label = _infer_metric_label(valid_rows)
+    label_mode = str(plotting_def.get("label_units_mode") or "auto").strip().lower()
+
     # Build colormap (optional custom colors or named cmap)
     cmap = None
     cmap_colors = plotting_def.get("cmap_colors")
@@ -301,7 +542,7 @@ def plot_heatmap_grid(rows: List[Dict[str, Any]], plotting_def: Dict[str, Any], 
             cmap = None
     if cmap is None:
         cmap = plotting_def.get("cmap", "viridis")
-    # Optional explicit limits
+    # Optional explicit limits + range locking
     vmin_cfg = plotting_def.get("vmin")
     vmax_cfg = plotting_def.get("vmax")
     discrete_bins = plotting_def.get("discrete_bins")
@@ -309,24 +550,50 @@ def plot_heatmap_grid(rows: List[Dict[str, Any]], plotting_def: Dict[str, Any], 
     vmin = None
     vmax = None
     finite_vals = [grid[r][c] for r in range(len(grid)) for c in range(len(grid[0])) if grid[r][c] == grid[r][c]]
-    if finite_vals:
-        vmin = min(finite_vals) if vmin_cfg is None else float(vmin_cfg)
-        vmax = max(finite_vals) if vmax_cfg is None else float(vmax_cfg)
+    base_path = Path(csv_path).parent if csv_path else out_dir
+    range_vals = _collect_range_values(plotting_def.get("range_csv_glob"), value_field, base_path)
+    vals_for_range = range_vals if range_vals else finite_vals
+    if vals_for_range:
+        vmin = min(vals_for_range) if vmin_cfg is None else float(vmin_cfg)
+        vmax = max(vals_for_range) if vmax_cfg is None else float(vmax_cfg)
         if vmin == vmax:
             eps = abs(vmin) * 1e-6 if vmin != 0 else 1e-3
             vmin -= eps
             vmax += eps
-    if discrete_bins and isinstance(discrete_bins, int) and discrete_bins > 0 and vmin is not None and vmax is not None:
+
+    norm_name = plotting_def.get("norm")
+    center_spec = plotting_def.get("center") or plotting_def.get("center_mode") or plotting_def.get("center_value")
+    center_val = _resolve_center_value(center_spec, vals_for_range)
+    if norm_name:
+        norm, vmin, vmax = _resolve_norm(
+            norm_name,
+            grid,
+            vmin=vmin,
+            vmax=vmax,
+            linthresh=plotting_def.get("linthresh"),
+            linscale=plotting_def.get("linscale"),
+            vcenter=center_val,
+            label=name,
+        )
+    elif discrete_bins and isinstance(discrete_bins, int) and discrete_bins > 0 and vmin is not None and vmax is not None:
         boundaries = list(np.linspace(vmin, vmax, discrete_bins + 1))
         norm = mcolors.BoundaryNorm(boundaries, discrete_bins)
-    unit = _infer_unit(valid_rows)
+
     fig, ax = plt.subplots()
-    im = ax.imshow(grid, origin="lower", cmap=cmap, norm=norm)
-    cbar_label = plotting_def.get("colorbar_label") or ("%s (%s)" % (value_field, unit) if unit else value_field)
+    if norm is not None:
+        im = ax.imshow(grid, origin="lower", cmap=cmap, norm=norm)
+    else:
+        im = ax.imshow(grid, origin="lower", cmap=cmap, vmin=vmin, vmax=vmax)
+    cbar_label = plotting_def.get("colorbar_label")
+    if label_mode == "auto":
+        cbar_label = _format_text_with_units(cbar_label, unit, metric_label) if cbar_label else (f"{value_field} ({unit})" if unit else value_field)
+    else:
+        cbar_label = cbar_label or (f"{value_field} ({unit})" if unit else value_field)
     cbar = fig.colorbar(im, ax=ax, label=cbar_label)
     if norm and isinstance(norm, mcolors.BoundaryNorm):
         cbar.set_ticks(norm.boundaries)
         cbar.ax.set_yticklabels([f"{b:.2g}" for b in norm.boundaries])
+    _apply_colorbar_formatting(cbar, plotting_def)
 
     # Optional overlay: color-coded text for another metric (e.g., std_value sigma bins)
     overlay_cfg = plotting_def.get("overlay_std") or {}
@@ -365,18 +632,18 @@ def plot_heatmap_grid(rows: List[Dict[str, Any]], plotting_def: Dict[str, Any], 
                     loc = overlay_cfg.get("legend_loc", "upper right")
                     bbox = overlay_cfg.get("legend_bbox")  # e.g., [1.05, 1] to place outside
                     if overlay_cfg.get("legend_separate"):
-                        _save_separate_legend(out_dir, f"{name}_sigma", handles, f"{ov_field} σ-bins", loc="upper left")
+                        _save_separate_legend(out_dir, f"{name}_sigma", handles, f"{ov_field} s-bins", loc="upper left")
                     elif overlay_cfg.get("legend_panel"):
                         box = ax.get_position()
                         pad = float(overlay_cfg.get("legend_panel_pad", 0.02))
                         width = float(overlay_cfg.get("legend_panel_width", 0.08))
                         leg_ax = ax.figure.add_axes([box.x1 + pad, box.y0, width, box.height])
                         leg_ax.axis("off")
-                        leg_ax.legend(handles=handles, title=f"{ov_field} σ-bins", loc="upper left", fontsize=7, title_fontsize=8, framealpha=0.8)
+                        leg_ax.legend(handles=handles, title=f"{ov_field} s-bins", loc="upper left", fontsize=7, title_fontsize=8, framealpha=0.8)
                     elif bbox:
-                        ax.legend(handles=handles, title=f"{ov_field} σ-bins", loc=loc, bbox_to_anchor=tuple(bbox), fontsize=7, title_fontsize=8, framealpha=0.8)
+                        ax.legend(handles=handles, title=f"{ov_field} s-bins", loc=loc, bbox_to_anchor=tuple(bbox), fontsize=7, title_fontsize=8, framealpha=0.8)
                     else:
-                        ax.legend(handles=handles, title=f"{ov_field} σ-bins", loc=loc, fontsize=7, title_fontsize=8, framealpha=0.8)
+                        ax.legend(handles=handles, title=f"{ov_field} s-bins", loc=loc, fontsize=7, title_fontsize=8, framealpha=0.8)
 
     # Optional alpha overlay driven by another field (e.g., std_value)
     alpha_cfg = plotting_def.get("overlay_alpha") or {}
@@ -435,19 +702,26 @@ def plot_heatmap_grid(rows: List[Dict[str, Any]], plotting_def: Dict[str, Any], 
 
     ax.set_xlabel("col_idx")
     ax.set_ylabel("row_idx")
-    ax.set_title(plotting_def.get("title", name))
+    _apply_axis_formatting(ax, plotting_def, "x")
+    _apply_axis_formatting(ax, plotting_def, "y")
+    _apply_integer_ticks(ax, plotting_def)
+    title = plotting_def.get("title", name)
+    if label_mode == "auto":
+        title = _format_text_with_units(title, unit, metric_label) if title else name
+    ax.set_title(title)
     fig.tight_layout()
     fig.savefig(out_dir / f"{name}.png", dpi=300)
     plt.close(fig)
 
 
-def plot_heatmap_two_panel(rows: List[Dict[str, Any]], plotting_def: Dict[str, Any], out_dir: Path, name: str):
+def plot_heatmap_two_panel(rows: List[Dict[str, Any]], plotting_def: Dict[str, Any], out_dir: Path, name: str, csv_path: Optional[str] = None):
     """
     Two-panel plot: left = avg heatmap, right = std (or other secondary field).
     """
     left_field = plotting_def.get("left_field", "avg_value")
     right_field = plotting_def.get("right_field", "std_value")
     duplicate_policy = plotting_def.get("duplicate_policy", "warn_mean")
+    label_mode = str(plotting_def.get("label_units_mode") or "auto").strip().lower()
 
     def build_grid(field: str):
         valid_rows = []
@@ -488,25 +762,104 @@ def plot_heatmap_two_panel(rows: List[Dict[str, Any]], plotting_def: Dict[str, A
     if left_grid is None or right_grid is None:
         log.warning("No valid rows for two-panel heatmap: %s", name)
         return
-    max_row = max(lr, rr)
-    max_col = max(lc, rc)
 
     unit = _infer_unit(rows)
+    metric_label = _infer_metric_label(rows)
     fig, axes = plt.subplots(1, 2, figsize=(10, 4), sharex=True, sharey=True)
     cmap_left = plotting_def.get("left_cmap", "viridis")
     cmap_right = plotting_def.get("right_cmap", "magma")
-    im1 = axes[0].imshow(left_grid, origin="lower", cmap=cmap_left)
-    axes[0].set_title(plotting_def.get("left_title", f"{left_field}"))
+
+    base_path = Path(csv_path).parent if csv_path else out_dir
+    left_vals = _collect_range_values(plotting_def.get("left_range_csv_glob"), left_field, base_path)
+    right_vals = _collect_range_values(plotting_def.get("right_range_csv_glob"), right_field, base_path)
+    if not left_vals:
+        left_vals = [v for row in left_grid for v in row if v == v]
+    if not right_vals:
+        right_vals = [v for row in right_grid for v in row if v == v]
+
+    left_vmin = plotting_def.get("left_vmin")
+    left_vmax = plotting_def.get("left_vmax")
+    right_vmin = plotting_def.get("right_vmin")
+    right_vmax = plotting_def.get("right_vmax")
+    if left_vmin is None and left_vals:
+        left_vmin = min(left_vals)
+    if left_vmax is None and left_vals:
+        left_vmax = max(left_vals)
+    if right_vmin is None and right_vals:
+        right_vmin = min(right_vals)
+    if right_vmax is None and right_vals:
+        right_vmax = max(right_vals)
+
+    left_center_spec = plotting_def.get("left_center") or plotting_def.get("center") or plotting_def.get("center_mode") or plotting_def.get("center_value")
+    right_center_spec = plotting_def.get("right_center") or plotting_def.get("center") or plotting_def.get("center_mode") or plotting_def.get("center_value")
+    left_center_val = _resolve_center_value(left_center_spec, left_vals)
+    right_center_val = _resolve_center_value(right_center_spec, right_vals)
+
+    left_norm, left_vmin, left_vmax = _resolve_norm(
+        plotting_def.get("left_norm"),
+        left_grid,
+        vmin=left_vmin,
+        vmax=left_vmax,
+        linthresh=plotting_def.get("left_linthresh"),
+        linscale=plotting_def.get("left_linscale"),
+        vcenter=left_center_val,
+        label=f"{name}.left",
+    )
+    right_norm, right_vmin, right_vmax = _resolve_norm(
+        plotting_def.get("right_norm"),
+        right_grid,
+        vmin=right_vmin,
+        vmax=right_vmax,
+        linthresh=plotting_def.get("right_linthresh"),
+        linscale=plotting_def.get("right_linscale"),
+        vcenter=right_center_val,
+        label=f"{name}.right",
+    )
+
+    if left_norm is not None:
+        im1 = axes[0].imshow(left_grid, origin="lower", cmap=cmap_left, norm=left_norm)
+    else:
+        im1 = axes[0].imshow(left_grid, origin="lower", cmap=cmap_left, vmin=left_vmin, vmax=left_vmax)
+    left_title = plotting_def.get("left_title")
+    if label_mode == "auto":
+        left_title = _format_text_with_units(left_title, unit, metric_label) if left_title else f"{left_field}"
+    else:
+        left_title = left_title or f"{left_field}"
+    axes[0].set_title(left_title)
     axes[0].set_xlabel("col_idx")
     axes[0].set_ylabel("row_idx")
-    cbar1_label = plotting_def.get("left_colorbar_label") or (f"{left_field} ({unit})" if unit else left_field)
-    fig.colorbar(im1, ax=axes[0], label=cbar1_label)
+    _apply_axis_formatting(axes[0], plotting_def, "x")
+    _apply_axis_formatting(axes[0], plotting_def, "y")
+    _apply_integer_ticks(axes[0], plotting_def)
+    cbar1_label = plotting_def.get("left_colorbar_label")
+    if label_mode == "auto":
+        cbar1_label = _format_text_with_units(cbar1_label, unit, metric_label) if cbar1_label else (f"{left_field} ({unit})" if unit else left_field)
+    else:
+        cbar1_label = cbar1_label or (f"{left_field} ({unit})" if unit else left_field)
+    cbar1 = fig.colorbar(im1, ax=axes[0], label=cbar1_label)
+    _apply_colorbar_formatting(cbar1, plotting_def, prefix="left_")
 
-    im2 = axes[1].imshow(right_grid, origin="lower", cmap=cmap_right)
-    axes[1].set_title(plotting_def.get("right_title", f"{right_field}"))
+    if right_norm is not None:
+        im2 = axes[1].imshow(right_grid, origin="lower", cmap=cmap_right, norm=right_norm)
+    else:
+        im2 = axes[1].imshow(right_grid, origin="lower", cmap=cmap_right, vmin=right_vmin, vmax=right_vmax)
+    right_title = plotting_def.get("right_title")
+    if label_mode == "auto":
+        right_title = _format_text_with_units(right_title, unit, metric_label) if right_title else f"{right_field}"
+    else:
+        right_title = right_title or f"{right_field}"
+    axes[1].set_title(right_title)
     axes[1].set_xlabel("col_idx")
-    cbar2_label = plotting_def.get("right_colorbar_label") or (f"{right_field} ({unit})" if unit else right_field)
-    fig.colorbar(im2, ax=axes[1], label=cbar2_label)
+    _apply_axis_formatting(axes[1], plotting_def, "x")
+    _apply_axis_formatting(axes[1], plotting_def, "y")
+    _apply_integer_ticks(axes[1], plotting_def)
+    cbar2_label = plotting_def.get("right_colorbar_label")
+    if label_mode == "auto":
+        cbar2_label = _format_text_with_units(cbar2_label, unit, metric_label) if cbar2_label else (f"{right_field} ({unit})" if unit else right_field)
+    else:
+        cbar2_label = cbar2_label or (f"{right_field} ({unit})" if unit else right_field)
+    cbar2 = fig.colorbar(im2, ax=axes[1], label=cbar2_label)
+    _apply_colorbar_formatting(cbar2, plotting_def, prefix="right_")
 
     fig.tight_layout()
     fig.savefig(out_dir / f"{name}.png", dpi=300)
@@ -672,18 +1025,18 @@ def plot_heatmap_grid_bubbles(rows: List[Dict[str, Any]], plotting_def: Dict[str
             loc = overlay_cfg.get("legend_loc", "upper right")
             bbox = overlay_cfg.get("legend_bbox")
             if overlay_cfg.get("legend_separate"):
-                _save_separate_legend(out_dir, f"{name}_sigma", handles, f"{ov_field} σ-bins", loc="upper left")
+                _save_separate_legend(out_dir, f"{name}_sigma", handles, f"{ov_field} s-bins", loc="upper left")
             elif overlay_cfg.get("legend_panel"):
                 box = ax.get_position()
                 pad = float(overlay_cfg.get("legend_panel_pad", 0.02))
                 width = float(overlay_cfg.get("legend_panel_width", 0.08))
                 leg_ax = ax.figure.add_axes([box.x1 + pad, box.y0, width, box.height])
                 leg_ax.axis("off")
-                leg_ax.legend(handles=handles, title=f"{ov_field} σ-bins", loc="upper left", fontsize=7, title_fontsize=8, framealpha=0.8)
+                leg_ax.legend(handles=handles, title=f"{ov_field} s-bins", loc="upper left", fontsize=7, title_fontsize=8, framealpha=0.8)
             elif bbox:
-                ax.legend(handles=handles, title=f"{ov_field} σ-bins", loc=loc, bbox_to_anchor=tuple(bbox), fontsize=7, title_fontsize=8, framealpha=0.8)
+                ax.legend(handles=handles, title=f"{ov_field} s-bins", loc=loc, bbox_to_anchor=tuple(bbox), fontsize=7, title_fontsize=8, framealpha=0.8)
             else:
-                ax.legend(handles=handles, title=f"{ov_field} σ-bins", loc=loc, fontsize=7, title_fontsize=8, framealpha=0.8)
+                ax.legend(handles=handles, title=f"{ov_field} s-bins", loc=loc, fontsize=7, title_fontsize=8, framealpha=0.8)
 
     ax.set_xlabel("col_idx")
     ax.set_ylabel("row_idx")

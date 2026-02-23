@@ -42,6 +42,27 @@ See `config.example.yaml` for a concrete example.
   - Variants supported: `value_field` can be derived (`avg_value`, `std_value`, `cv_value = std/avg`, `range_value = max-min` if provided).
   - Overlays: `overlay_std` (sigma-colored text), `overlay_alpha` (alpha driven by a field), `overlay_hatch` (flag cells above/below a threshold with hatching), `overlay_bubbles` (bubble size/color by sigma bins), `overlay_std.legend: true|false`.
   - Recipes: `heatmap_grid` (base), `heatmap_grid_bubbles` (mean background + bubble overlay), `heatmap_two_panel` (side-by-side mean/std).
+  - Label/unit formatting (all plot recipes):
+    - `label_units_mode`: `auto|manual` (auto injects units into labels/titles).
+    - `xaxis_format` / `yaxis_format` / `axis_format`: `engineering|scientific|plain`.
+    - `xaxis_places` / `yaxis_places` / `axis_places`: significant places for tick formatting.
+    - `axis_integer` (or `xaxis_integer`/`yaxis_integer`): force integer tick labels (useful for heatmap grid axes).
+  - Bar chart labels (`sample_bar_with_error` and `mode_comparison_bar`):
+    - `label_mode`: `grid_rowcol` or `rowcol` to build labels from grid indices.
+    - `label_template`: string formatting with row fields (e.g., `{grid_id} R{row_idx}C{col_idx}`).
+    - `label_fields`: list of fields to join; `label_join` controls separator.
+  - Heatmap colorbar formatting:
+    - `colorbar_format`: `engineering|scientific|plain` to format colorbar ticks.
+    - `colorbar_places`: number of significant places for colorbar tick formatting.
+    - Two-panel overrides: `left_colorbar_format`/`right_colorbar_format`, `left_colorbar_places`/`right_colorbar_places`.
+  - Heatmap normalization:
+    - `norm` (or `scale`): `linear|log|symlog|centered`.
+    - `center` / `center_mode` / `center_value`: numeric or `mean|median|auto` for centered normalization.
+    - `vmin` / `vmax`: explicit range override (single-panel).
+    - `linthresh` / `linscale`: symlog parameters (single-panel).
+  - Range locking across datasets:
+    - `range_csvs` or `range_csv_glob`: list or glob of CSVs to compute a shared vmin/vmax for consistent color scales.
+    - Two-panel overrides: `left_norm`/`right_norm`, `left_center`/`right_center`, `left_vmin`/`right_vmin`, `left_linthresh`/`right_linthresh`, `left_range_csvs`/`right_range_csvs`, `left_range_csv_glob`/`right_range_csv_glob`.
 - `profiles`: presets tying processing_mode, csv_mode, plotting_modes.
 - `aggregate_modes`: dataset-level aggregation definitions for per-scan `summary.csv` (pooled mean/std using `n_valid`, plus scan-mean stats).
   - Profiles can opt in via `profiles.<name>.aggregate_modes: [<aggregate_mode_name>, ...]`.

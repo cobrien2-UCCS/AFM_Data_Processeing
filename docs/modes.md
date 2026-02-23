@@ -36,3 +36,6 @@ Config-driven modes (see `modes` in `config.example.yaml`). Philosophy: use Gwyd
 
 ## Unit conversions
 - Define under `unit_conversions`: per-mode map of source unit -> `{target, factor}`. Applied in the runner before unit mismatch policy. Defaults include kPa/MPa/GPa/Pa -> kPa for modulus.
+
+## Plot normalization (downstream)
+Plot normalization is configured under `plotting_modes` (log, symlog, centered, or range-locked heatmaps). See `docs/config.md` and `docs/USER_GUIDE.md`.

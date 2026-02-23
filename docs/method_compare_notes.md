@@ -30,3 +30,14 @@ Takeaways:
 - Outlier-style Python filters change means only a few percent on average for this set; the biggest drops come from the combo stack.
 - If provenance clarity is critical, stick to `modulus_gwy_only` or `raw_only/minmax` (no n_valid changes). Use the filtered variants when you explicitly want reproducible outlier removal; set `allow_mixed_processing: true` if mixing with Gwyddion stats.
 - For future runs, shorten exported basenames (`python_data_filtering.export_basename_max_len`) if path length is a concern.
+
+## Addendum: Plot Normalization Options
+To make cross-method plots visually comparable, the plotting system now supports:
+- `norm: log` or `norm: symlog` for wide-range data.
+- `norm: centered` with `center: mean|median|auto` to visualize deviation from the dataset mean.
+- `range_csvs` / `range_csv_glob` to lock vmin/vmax across multiple `summary.csv` files.
+
+Typical usage for cross-method comparison:
+1. Pick a baseline `summary.csv` or a folder of summaries.
+2. Set `range_csv_glob: "../*/summary.csv"` so all runs share the same color scale.
+3. Use `heatmap_two_panel` with `left_norm` and `right_norm` if you want different normalization for mean vs std.

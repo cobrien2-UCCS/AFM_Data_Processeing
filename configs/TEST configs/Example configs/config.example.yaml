@@ -210,19 +210,35 @@ result_schemas:
 # Plotting modes map schema to recipe and styling.
 plotting_modes:
   sample_bar_with_error:
-    result_schema: "default_scalar"
     recipe: "sample_bar_with_error"
-    title: "Sample Means"
-    ylabel: "Value"
+    result_schema: "default_scalar"
+    title: "Mean +/- Std"
+    xlabel: "Scan (Grid ID / Row, Col)"
+    ylabel: "Mean Value"
+    label_units_mode: "manual"
+    yaxis_format: "engineering"
+    yaxis_places: 3
+    label_mode: "grid_rowcol"
+    label_max_len: 30
   histogram_avg:
     result_schema: "default_scalar"
     recipe: "histogram_avg"
     bins: 20
     title: "Average Distribution"
+    label_units_mode: "auto"
+    xaxis_format: "engineering"
+    yaxis_format: "engineering"
+    xaxis_places: 3
+    yaxis_places: 3
   scatter_avg_vs_std:
     result_schema: "default_scalar"
     recipe: "scatter_avg_vs_std"
     title: "Avg vs Std"
+    label_units_mode: "auto"
+    xaxis_format: "engineering"
+    yaxis_format: "engineering"
+    xaxis_places: 3
+    yaxis_places: 3
   mode_comparison_bar:
     result_schema: "default_scalar"
     recipe: "mode_comparison_bar"
@@ -292,7 +308,7 @@ jobs:
     output_root: "out/jobs"
     run_name_template: "{job}_{timestamp}"
     profile: "modulus_grid"
-    pattern: "*.tif;*.tiff"
+    pattern: "**/*.tif;**/*.tiff"
     collect:
       enable: true
       job: "collect_modulus_backward"

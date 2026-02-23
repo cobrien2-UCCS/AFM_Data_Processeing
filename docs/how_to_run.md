@@ -33,3 +33,5 @@ If you want to run the steps yourself:
 4) Aggregate (Py3)
 
 See `docs/USER_GUIDE.md` for full detail and flags.
+
+Note: if your config defines normalized heatmap variants (log, symlog, or centered), include those plot modes in `plotting_modes` and re-run `scripts/cli_plot.py` against the same `summary.csv` to regenerate plots with consistent color ranges.

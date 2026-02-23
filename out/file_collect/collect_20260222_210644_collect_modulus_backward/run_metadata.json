@@ -1,0 +1,21 @@
+{
+  "job": "collect_modulus_backward",
+  "timestamp": "20260222_210644",
+  "input_root": "C:\\Users\\Conor O'Brien\\Dropbox\\03_AML\\03 References and Materials\\RAW DATA Files\\AFM Scans\\Particle Density for Fracture Surfaces Verification\\102025-CRO\\DATA\\PEGDA1TPO00SiNP_Sam01_S1",
+  "out_dir": "out\\file_collect\\collect_20260222_210644_collect_modulus_backward",
+  "copied_root": "out\\file_collect\\collect_20260222_210644_collect_modulus_backward\\copied",
+  "considered": 842,
+  "matched": 107,
+  "copied": 107,
+  "dry_run": false,
+  "min_similarity": 0.85,
+  "include_mode": "all",
+  "include_keywords": [
+    "Modulus",
+    "Backward"
+  ],
+  "exclude_keywords": [
+    "Forward"
+  ],
+  "on_empty": "error"
+}

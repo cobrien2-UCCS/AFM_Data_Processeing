@@ -101,6 +101,29 @@ Add to plotting_modes:
     title: "..."
     xlabel/ylabel/colorbar_label: "..."   # optional, defaults include units
     bins/point_size/alpha/cmap/show_colorbar: <as needed>
+    # Heatmap normalization (optional):
+    # norm: "linear|log|symlog|centered"
+    # center: "mean|median|auto" | <number>
+    # vmin/vmax: <number>
+    # linthresh/linscale: <number>  # symlog only
+    # range_csvs: ["../*/summary.csv"] or range_csv_glob: "../*/summary.csv"
+    # Two-panel overrides:
+    # left_norm/right_norm, left_center/right_center, left_vmin/right_vmin,
+    # left_linthresh/right_linthresh, left_range_csvs/right_range_csvs
+    # Bar labels (sample_bar_with_error):
+    # label_mode: "grid_rowcol|rowcol"
+    # label_template: "{grid_id} R{row_idx}C{col_idx}"
+    # label_fields: ["grid_id","row_idx","col_idx"]
+    # label_join: " "
+    # label_units_mode: "auto|manual"
+    # xaxis_format/yaxis_format/axis_format: "engineering|scientific|plain"
+    # xaxis_places/yaxis_places/axis_places: 3
+    # axis_integer: true  # or xaxis_integer/yaxis_integer
+    # Heatmap colorbar formatting:
+    # colorbar_format: "engineering|scientific|plain"
+    # colorbar_places: 3
+    # left_colorbar_format/right_colorbar_format (two-panel)
+    # left_colorbar_places/right_colorbar_places
 ```
 
 ## Add unit conversions
