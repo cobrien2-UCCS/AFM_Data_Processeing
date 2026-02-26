@@ -1,3 +1,37 @@
+# Method Comparison Notes (2026-02-23)
+
+This summarizes the forward/backward comparisons for the full modulus dataset (PEGDA1TPO00SiNP_Sam01_S1).
+
+- Forward compare outputs: `out/method_compare/compare_20260223_173256/`
+- Backward compare outputs: `out/method_compare/compare_20260223_173335/`
+- Forward vs Backward paired summary: `out/method_compare/fwd_bwd_20260223_173826/`
+- Baseline: `config.modulus_gwy_stats` (Gwyddion stats after Gwyddion preprocessing).
+- Methods compared:
+  - `gwy_ops_py_stats` (Gwyddion preprocessing, Python stats)
+  - `raw_minmax` (raw export + Python min/max filter)
+  - `raw_chauvenet` (raw export + Chauvenet)
+  - `raw_three_sigma` (raw export + 3-sigma)
+- Dataset: 107 scans per direction (Forward and Backward).
+
+Key findings (mean ratio avg_value vs baseline):
+- **Forward**: `gwy_ops_py_stats/raw_minmax ≈ 0.910`, `raw_chauvenet ≈ 0.944`, `raw_three_sigma ≈ 0.950`.
+- **Backward**: `gwy_ops_py_stats/raw_minmax ≈ 0.913`, `raw_chauvenet ≈ 0.936`, `raw_three_sigma ≈ 0.938`.
+- **n_valid impact**:
+  - `gwy_ops_py_stats/raw_minmax`: no change in n_valid.
+  - `raw_chauvenet`: mean delta ≈ -490 (min -2447) forward; mean delta ≈ -467 (min -2466) backward.
+  - `raw_three_sigma`: mean delta ≈ -1189 (min -5060) forward; mean delta ≈ -1142 (min -4992) backward.
+- **Largest |delta avg|**:
+  - Forward: ~`-1.036e11` at GrID045 (row 9, col 11).
+  - Backward: ~`-2.223e10` at GrID045 (row 9, col 11).
+
+Takeaways:
+- The ordering is consistent across directions: raw outlier filters reduce mean values less than the Gwyddion-vs-Python stats shift.
+- Forward and Backward trends are similar; Backward is slightly closer to baseline on average.
+- Baseline averages are heavily skewed by outliers (mean >> median), so medians are better for “typical” comparisons.
+- Paired forward/backward medians are ~1.0 across methods (row/col matched), indicating directional consistency when matching tiles.
+
+---
+
 # Method Comparison Notes (2026-02-13)
 
 This summarizes the `compare_methods.py` run that contrasted the Gwyddion-only baseline against Python-filter variants on the PEGDA modulus set.

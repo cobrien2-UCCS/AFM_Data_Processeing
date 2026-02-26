@@ -66,6 +66,24 @@ This document defines why we run the method-comparison tests, what each test is 
 - Forward vs Backward comparison plot (mean and delta).
 - Optional centered-normalization heatmap to emphasize deviations from dataset mean.
 
+**Latest Run Summary (2026-02-23)**
+- Compare outputs:
+  - Forward: `out/method_compare/compare_20260223_173256/`
+  - Backward: `out/method_compare/compare_20260223_173335/`
+  - Forward vs Backward paired: `out/method_compare/fwd_bwd_20260223_173826/`
+- Baseline: `config.modulus_gwy_stats` (Gwyddion stats after preprocessing).
+- Mean ratio avg (method/baseline):
+  - Forward range: ~0.910–0.950
+  - Backward range: ~0.913–0.938
+- n_valid change range:
+  - Forward: 0 to -5060
+  - Backward: 0 to -4992
+- Largest |delta avg|:
+  - Forward: ~-1.036e11 (GrID045, row 9, col 11)
+  - Backward: ~-2.223e10 (GrID045, row 9, col 11)
+- Directional conclusion: Forward and Backward follow the same ordering; Backward is slightly closer to baseline on average.
+- Paired F/B medians are ~1.0 across methods (row/col matched), supporting directional consistency.
+
 **AI Component (Methods Note)**
 - AI-assisted tasks are limited to configuration scaffolding, documentation drafts, and QA checklists.
 - All processing logic remains config-driven and deterministic; AI does not alter raw data or decide scientific interpretations.
@@ -133,9 +151,9 @@ Notes:
 - Ratio values are only computed when the baseline is nonzero; otherwise the ratio field is left blank.
 
 **Placeholders for Results**
-- Baseline method chosen: ____________________________
-- Mean ratio range across methods: __________________
-- Largest delta_avg observed: _______________________
-- n_valid change range: _____________________________
-- Forward vs Backward conclusion: ___________________
-- Notes on masks/units: _____________________________
+- Baseline method chosen: `modulus_gwy_stats` (Gwyddion stats after preprocessing).
+- Mean ratio range across methods: Forward ~0.910–0.950; Backward ~0.913–0.938.
+- Largest delta_avg observed: Forward ~-1.036e11; Backward ~-2.223e10.
+- n_valid change range: Forward 0 to -5060; Backward 0 to -4992.
+- Forward vs Backward conclusion: same ordering, Backward slightly closer to baseline.
+- Notes on masks/units: units normalized to kPa; mask + stats_filter rules applied consistently across methods.

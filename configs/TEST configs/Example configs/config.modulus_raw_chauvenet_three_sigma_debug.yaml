@@ -1,0 +1,429 @@
+# Modulus: raw data with Chauvenet or 3-sigma filtering (Python). Full debug enabled.
+
+channel_defaults:
+  modulus_family: "modulus"
+
+modes:
+  modulus_raw_chauvenet:
+    channel_family: "modulus"
+    gwyddion_ops:
+      - { op: "plane_level" }
+      - { op: "align_rows", params: { direction: "horizontal", method: "median" } }
+      - { op: "median", params: { size: 3 } }
+    stats_source: "python"
+    mask: null
+    stats_filter:
+      exclude_zero: true
+      exclude_nonpositive: true
+      min_value: 1.0
+      max_value: 1000000000.0
+      on_empty: "blank"
+    python_data_filtering:
+      enable: true
+      export_raw_csv: false
+      export_filtered_csv: false
+      on_empty: "warn"
+      filters:
+        - { type: "chauvenet" }
+    metric_type: "modulus"
+    units: "kPa"
+    expected_units: "kPa"
+    on_unit_mismatch: "warn"
+    assume_units: "kPa"
+    on_missing_units: "warn"
+
+  modulus_raw_three_sigma:
+    channel_family: "modulus"
+    gwyddion_ops:
+      - { op: "plane_level" }
+      - { op: "align_rows", params: { direction: "horizontal", method: "median" } }
+      - { op: "median", params: { size: 3 } }
+    stats_source: "python"
+    mask: null
+    stats_filter:
+      exclude_zero: true
+      exclude_nonpositive: true
+      min_value: 1.0
+      max_value: 1000000000.0
+      on_empty: "blank"
+    python_data_filtering:
+      enable: true
+      export_raw_csv: false
+      export_filtered_csv: false
+      on_empty: "warn"
+      filters:
+        - { type: "three_sigma", sigma: 3.0 }
+    metric_type: "modulus"
+    units: "kPa"
+    expected_units: "kPa"
+    on_unit_mismatch: "warn"
+    assume_units: "kPa"
+    on_missing_units: "warn"
+
+grid:
+  index_base: 1
+  filename_regex: "LOC_RC(?P<row>\\d{3})(?P<col>\\d{3})"
+
+summarize:
+  recursive: false
+
+debug:
+  enable: true
+  level: "info"
+  artifacts: ["mask"]
+  sample_limit: 3
+  log_fields: ["units", "stats_source", "mixed_processing", "mask_counts", "stats_counts", "grid"]
+  stats_provenance: false
+  echo_config: false
+
+csv_modes:
+  default_scalar:
+    columns:
+      - { name: "source_file", from: "core.source_file" }
+      - { name: "channel", from: "file.channel", default: "" }
+      - { name: "direction", from: "file.direction", default: "" }
+      - { name: "grid_id", from: "file.grid_id", default: "" }
+      - { name: "date_code", from: "file.date_code", default: "" }
+      - { name: "mode", from: "core.mode" }
+      - { name: "metric_type", from: "core.metric_type" }
+      - { name: "avg_value", from: "core.avg_value" }
+      - { name: "std_value", from: "core.std_value" }
+      - { name: "units", from: "core.units" }
+      - { name: "n_valid", from: "core.n_valid", default: "" }
+      - { name: "row_idx", from: "grid.row_idx", default: -1 }
+      - { name: "col_idx", from: "grid.col_idx", default: -1 }
+    on_missing_field: "warn_null"
+
+result_schemas:
+  default_scalar:
+    from_csv_mode: "default_scalar"
+    fields:
+      - { field: "source_file", type: "string", column: "source_file" }
+      - { field: "channel", type: "string", column: "channel" }
+      - { field: "direction", type: "string", column: "direction" }
+      - { field: "grid_id", type: "string", column: "grid_id" }
+      - { field: "date_code", type: "string", column: "date_code" }
+      - { field: "mode", type: "string", column: "mode" }
+      - { field: "metric_type", type: "string", column: "metric_type" }
+      - { field: "avg_value", type: "float", column: "avg_value" }
+      - { field: "std_value", type: "float", column: "std_value" }
+      - { field: "units", type: "string", column: "units" }
+      - { field: "n_valid", type: "int", column: "n_valid" }
+      - { field: "row_idx", type: "int", column: "row_idx" }
+      - { field: "col_idx", type: "int", column: "col_idx" }
+plotting_modes:
+  sample_bar_with_error:
+    recipe: "sample_bar_with_error"
+    result_schema: "default_scalar"
+    title: "Mean Modulus +/- Std ({units})"
+    xlabel: "Scan (Grid ID / Row, Col)"
+    ylabel: "Mean Modulus ({units})"
+    label_units_mode: "auto"
+    yaxis_format: "engineering"
+    yaxis_places: 3
+    label_mode: "grid_rowcol"
+    label_max_len: 30
+  heatmap_grid_avg_two_panel:
+    result_schema: "default_scalar"
+    recipe: "heatmap_two_panel"
+    axis_integer: true
+    xaxis_format: "plain"
+    yaxis_format: "plain"
+    left_field: "avg_value"
+    right_field: "std_value"
+    title: "Grid Heatmap (Mean / Std)"
+    left_colorbar_label: "Mean ({units})"
+    right_colorbar_label: "Std ({units})"
+    left_colorbar_format: "engineering"
+    right_colorbar_format: "engineering"
+    left_colorbar_places: 3
+    right_colorbar_places: 3
+    duplicate_policy: "warn_mean"
+  heatmap_grid_avg_two_panel_log:
+    result_schema: "default_scalar"
+    recipe: "heatmap_two_panel"
+    axis_integer: true
+    xaxis_format: "plain"
+    yaxis_format: "plain"
+    left_field: "avg_value"
+    right_field: "std_value"
+    title: "Grid Heatmap (Mean / Std, Log)"
+    left_colorbar_label: "Mean ({units})"
+    right_colorbar_label: "Std ({units})"
+    left_norm: "log"
+    right_norm: "log"
+    left_colorbar_format: "engineering"
+    right_colorbar_format: "engineering"
+    left_colorbar_places: 3
+    right_colorbar_places: 3
+    duplicate_policy: "warn_mean"
+  heatmap_grid_avg_two_panel_log_symlog_std:
+    result_schema: "default_scalar"
+    recipe: "heatmap_two_panel"
+    axis_integer: true
+    xaxis_format: "plain"
+    yaxis_format: "plain"
+    left_field: "avg_value"
+    right_field: "std_value"
+    title: "Grid Heatmap (Mean / Std, Log/Symlog)"
+    left_colorbar_label: "Mean ({units})"
+    right_colorbar_label: "Std ({units})"
+    left_norm: "log"
+    right_norm: "symlog"
+    right_linthresh: 1.0
+    right_linscale: 1.0
+    left_colorbar_format: "engineering"
+    right_colorbar_format: "engineering"
+    left_colorbar_places: 3
+    right_colorbar_places: 3
+    duplicate_policy: "warn_mean"
+  heatmap_grid_avg_two_panel_log_locked:
+    result_schema: "default_scalar"
+    recipe: "heatmap_two_panel"
+    axis_integer: true
+    xaxis_format: "plain"
+    yaxis_format: "plain"
+    left_field: "avg_value"
+    right_field: "std_value"
+    title: "Grid Heatmap (Mean / Std, Log, Locked)"
+    left_colorbar_label: "Mean ({units})"
+    right_colorbar_label: "Std ({units})"
+    left_norm: "log"
+    right_norm: "log"
+    left_range_csv_glob: "../*/summary.csv"
+    right_range_csv_glob: "../*/summary.csv"
+    left_colorbar_format: "engineering"
+    right_colorbar_format: "engineering"
+    left_colorbar_places: 3
+    right_colorbar_places: 3
+    duplicate_policy: "warn_mean"
+  heatmap_grid_avg_two_panel_centered:
+    result_schema: "default_scalar"
+    recipe: "heatmap_two_panel"
+    axis_integer: true
+    xaxis_format: "plain"
+    yaxis_format: "plain"
+    left_field: "avg_value"
+    right_field: "std_value"
+    title: "Grid Heatmap (Mean / Std, Centered)"
+    left_colorbar_label: "Mean ({units})"
+    right_colorbar_label: "Std ({units})"
+    left_norm: "centered"
+    right_norm: "centered"
+    left_center: "mean"
+    right_center: "mean"
+    left_colorbar_format: "engineering"
+    right_colorbar_format: "engineering"
+    left_colorbar_places: 3
+    right_colorbar_places: 3
+    duplicate_policy: "warn_mean"
+  heatmap_grid_avg_two_panel_centered_locked:
+    result_schema: "default_scalar"
+    recipe: "heatmap_two_panel"
+    axis_integer: true
+    xaxis_format: "plain"
+    yaxis_format: "plain"
+    left_field: "avg_value"
+    right_field: "std_value"
+    title: "Grid Heatmap (Mean / Std, Centered, Locked)"
+    left_colorbar_label: "Mean ({units})"
+    right_colorbar_label: "Std ({units})"
+    left_norm: "centered"
+    right_norm: "centered"
+    left_center: "mean"
+    right_center: "mean"
+    left_range_csv_glob: "../*/summary.csv"
+    right_range_csv_glob: "../*/summary.csv"
+    left_colorbar_format: "engineering"
+    right_colorbar_format: "engineering"
+    left_colorbar_places: 3
+    right_colorbar_places: 3
+    duplicate_policy: "warn_mean"
+  heatmap_grid_log:
+    result_schema: "default_scalar"
+    recipe: "heatmap_grid"
+    axis_integer: true
+    xaxis_format: "plain"
+    yaxis_format: "plain"
+    value_field: "avg_value"
+    title: "Grid Heatmap (Mean, Log)"
+    colorbar_label: "Mean ({units})"
+    colorbar_format: "engineering"
+    colorbar_places: 3
+    norm: "log"
+    duplicate_policy: "warn_mean"
+  heatmap_grid_log_locked:
+    result_schema: "default_scalar"
+    recipe: "heatmap_grid"
+    axis_integer: true
+    xaxis_format: "plain"
+    yaxis_format: "plain"
+    value_field: "avg_value"
+    title: "Grid Heatmap (Mean, Log, Locked)"
+    colorbar_label: "Mean ({units})"
+    colorbar_format: "engineering"
+    colorbar_places: 3
+    norm: "log"
+    range_csv_glob: "../*/summary.csv"
+    duplicate_policy: "warn_mean"
+  heatmap_grid_centered:
+    result_schema: "default_scalar"
+    recipe: "heatmap_grid"
+    axis_integer: true
+    xaxis_format: "plain"
+    yaxis_format: "plain"
+    value_field: "avg_value"
+    title: "Grid Heatmap (Mean, Centered)"
+    colorbar_label: "Mean ({units})"
+    colorbar_format: "engineering"
+    colorbar_places: 3
+    norm: "centered"
+    center: "mean"
+    duplicate_policy: "warn_mean"
+  heatmap_grid_centered_locked:
+    result_schema: "default_scalar"
+    recipe: "heatmap_grid"
+    axis_integer: true
+    xaxis_format: "plain"
+    yaxis_format: "plain"
+    value_field: "avg_value"
+    title: "Grid Heatmap (Mean, Centered, Locked)"
+    colorbar_label: "Mean ({units})"
+    colorbar_format: "engineering"
+    colorbar_places: 3
+    norm: "centered"
+    center: "mean"
+    range_csv_glob: "../*/summary.csv"
+    duplicate_policy: "warn_mean"
+
+profiles:
+  modulus_raw_chauvenet:
+    processing_mode: "modulus_raw_chauvenet"
+    csv_mode: "default_scalar"
+    plotting_modes: ["sample_bar_with_error", "heatmap_grid_avg_two_panel", "heatmap_grid_avg_two_panel_log", "heatmap_grid_avg_two_panel_log_symlog_std", "heatmap_grid_avg_two_panel_log_locked", "heatmap_grid_avg_two_panel_centered", "heatmap_grid_avg_two_panel_centered_locked", "heatmap_grid_log", "heatmap_grid_log_locked", "heatmap_grid_centered", "heatmap_grid_centered_locked"]
+    aggregate_modes: ["dataset_pooled_by_mode_units"]
+
+  modulus_raw_three_sigma:
+    processing_mode: "modulus_raw_three_sigma"
+    csv_mode: "default_scalar"
+    plotting_modes: ["sample_bar_with_error", "heatmap_grid_avg_two_panel", "heatmap_grid_avg_two_panel_log", "heatmap_grid_avg_two_panel_log_symlog_std", "heatmap_grid_avg_two_panel_log_locked", "heatmap_grid_avg_two_panel_centered", "heatmap_grid_avg_two_panel_centered_locked", "heatmap_grid_log", "heatmap_grid_log_locked", "heatmap_grid_centered", "heatmap_grid_centered_locked"]
+    aggregate_modes: ["dataset_pooled_by_mode_units"]
+
+file_collect_jobs:
+  collect_modulus_forward:
+    input_root: "C:/path/to/mixed_folder"
+    recursive: true
+    patterns: ["*.tif", "*.tiff"]
+    include_keywords: ["Modulus", "Forward"]
+    include_mode: "all"
+    exclude_keywords: ["Backward"]
+    min_similarity: 0.85
+    on_empty: "error"
+    preserve_tree: false
+    basename_max_len: 140
+    path_max_len: 240
+    extract:
+      - { regex: "-(?P<date_code>\\d{6})-", map: { date_code: "date_code" } }
+      - { regex: "(?P<direction>Forward|Backward)", map: { direction: "direction" } }
+    output:
+      out_root: "C:/AFM_STAGE"
+      run_name_template: "collect_{timestamp}_{job}"
+      dest_subdir_template: "{date_code}/{direction}"
+      rename_template: "{orig_stem}_{short_hash}{ext}"
+
+  collect_modulus_backward:
+    input_root: "C:/path/to/mixed_folder"
+    recursive: true
+    patterns: ["*.tif", "*.tiff"]
+    include_keywords: ["Modulus", "Backward"]
+    include_mode: "all"
+    exclude_keywords: ["Forward"]
+    min_similarity: 0.85
+    on_empty: "error"
+    preserve_tree: false
+    basename_max_len: 140
+    path_max_len: 240
+    extract:
+      - { regex: "-(?P<date_code>\\d{6})-", map: { date_code: "date_code" } }
+      - { regex: "(?P<direction>Forward|Backward)", map: { direction: "direction" } }
+    output:
+      out_root: "C:/AFM_STAGE"
+      run_name_template: "collect_{timestamp}_{job}"
+      dest_subdir_template: "{date_code}/{direction}"
+      rename_template: "{orig_stem}_{short_hash}{ext}"
+
+jobs:
+  modulus_raw_chauvenet_forward:
+    input_root: "C:/path/to/mixed_folder"
+    output_root: "out/modulus_tests/modulus_raw_chauvenet"
+    run_name_template: "modulus_raw_chauvenet_forward"
+    profile: "modulus_raw_chauvenet"
+    pattern: "**/*Modulus*Forward*.tif;**/*Modulus*Forward*.tiff"
+    plotting_modes: ["sample_bar_with_error", "heatmap_grid_avg_two_panel", "heatmap_grid_avg_two_panel_log", "heatmap_grid_avg_two_panel_log_symlog_std", "heatmap_grid_avg_two_panel_log_locked", "heatmap_grid_avg_two_panel_centered", "heatmap_grid_avg_two_panel_centered_locked", "heatmap_grid_log", "heatmap_grid_log_locked", "heatmap_grid_centered", "heatmap_grid_centered_locked"]
+    aggregate_modes: ["dataset_pooled_by_mode_units"]
+    collect:
+      enable: true
+      job: "collect_modulus_forward"
+      out_root: "C:/AFM_STAGE"
+
+  modulus_raw_chauvenet_backward:
+    input_root: "C:/path/to/mixed_folder"
+    output_root: "out/modulus_tests/modulus_raw_chauvenet"
+    run_name_template: "modulus_raw_chauvenet_backward"
+    profile: "modulus_raw_chauvenet"
+    pattern: "**/*Modulus*Backward*.tif;**/*Modulus*Backward*.tiff"
+    plotting_modes: ["sample_bar_with_error", "heatmap_grid_avg_two_panel", "heatmap_grid_avg_two_panel_log", "heatmap_grid_avg_two_panel_log_symlog_std", "heatmap_grid_avg_two_panel_log_locked", "heatmap_grid_avg_two_panel_centered", "heatmap_grid_avg_two_panel_centered_locked", "heatmap_grid_log", "heatmap_grid_log_locked", "heatmap_grid_centered", "heatmap_grid_centered_locked"]
+    aggregate_modes: ["dataset_pooled_by_mode_units"]
+    collect:
+      enable: true
+      job: "collect_modulus_backward"
+      out_root: "C:/AFM_STAGE"
+
+  modulus_raw_three_sigma_forward:
+    input_root: "C:/path/to/mixed_folder"
+    output_root: "out/modulus_tests/modulus_raw_three_sigma"
+    run_name_template: "modulus_raw_three_sigma_forward"
+    profile: "modulus_raw_three_sigma"
+    pattern: "**/*Modulus*Forward*.tif;**/*Modulus*Forward*.tiff"
+    plotting_modes: ["sample_bar_with_error", "heatmap_grid_avg_two_panel", "heatmap_grid_avg_two_panel_log", "heatmap_grid_avg_two_panel_log_symlog_std", "heatmap_grid_avg_two_panel_log_locked", "heatmap_grid_avg_two_panel_centered", "heatmap_grid_avg_two_panel_centered_locked", "heatmap_grid_log", "heatmap_grid_log_locked", "heatmap_grid_centered", "heatmap_grid_centered_locked"]
+    aggregate_modes: ["dataset_pooled_by_mode_units"]
+    collect:
+      enable: true
+      job: "collect_modulus_forward"
+      out_root: "C:/AFM_STAGE"
+
+  modulus_raw_three_sigma_backward:
+    input_root: "C:/path/to/mixed_folder"
+    output_root: "out/modulus_tests/modulus_raw_three_sigma"
+    run_name_template: "modulus_raw_three_sigma_backward"
+    profile: "modulus_raw_three_sigma"
+    pattern: "**/*Modulus*Backward*.tif;**/*Modulus*Backward*.tiff"
+    plotting_modes: ["sample_bar_with_error", "heatmap_grid_avg_two_panel", "heatmap_grid_avg_two_panel_log", "heatmap_grid_avg_two_panel_log_symlog_std", "heatmap_grid_avg_two_panel_log_locked", "heatmap_grid_avg_two_panel_centered", "heatmap_grid_avg_two_panel_centered_locked", "heatmap_grid_log", "heatmap_grid_log_locked", "heatmap_grid_centered", "heatmap_grid_centered_locked"]
+    aggregate_modes: ["dataset_pooled_by_mode_units"]
+    collect:
+      enable: true
+      job: "collect_modulus_backward"
+      out_root: "C:/AFM_STAGE"
+
+aggregate_modes:
+  dataset_pooled_by_mode_units:
+    group_by: ["mode", "units"]
+    avg_col: "avg_value"
+    std_col: "std_value"
+    n_col: "n_valid"
+    units_col: "units"
+    allow_mixed_units: false
+    out_relpath: "aggregates/dataset_pooled_by_mode_units.csv"
+
+unit_conversions:
+  modulus_raw_chauvenet:
+    kPa: { target: "kPa", factor: 1.0 }
+    MPa: { target: "kPa", factor: 1000.0 }
+    GPa: { target: "kPa", factor: 1e6 }
+    Pa:  { target: "kPa", factor: 0.001 }
+
+  modulus_raw_three_sigma:
+    kPa: { target: "kPa", factor: 1.0 }
+    MPa: { target: "kPa", factor: 1000.0 }
+    GPa: { target: "kPa", factor: 1e6 }
+    Pa:  { target: "kPa", factor: 0.001 }
