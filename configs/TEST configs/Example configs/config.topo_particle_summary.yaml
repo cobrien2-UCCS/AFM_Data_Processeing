@@ -1,0 +1,111 @@
+# Topography + particle counting summary config (PEGDA / PEGDA-SiNP)
+
+channel_defaults:
+  topography_family: "height"
+
+modes:
+  topography_flat:
+    channel_family: "height"
+    plane_level: true
+    median_size: 3
+    line_level_x: false
+    line_level_y: false
+    clip_percentiles: null
+    metric_type: "topography_height"
+    units: "nm"
+    expected_units: "nm"
+    on_unit_mismatch: "warn"
+
+  particle_count_basic:
+    channel_family: "height"
+    plane_level: false
+    metric_type: "particle_count"
+    threshold: null
+    units: "count"
+    expected_units: "count"
+    on_unit_mismatch: "warn"
+    # Diameter filter (nm) + isolation (center-to-center, nm)
+    particle_diameter_min_nm: 400
+    particle_diameter_max_nm: 500
+    isolation_min_dist_nm: 900
+    export_particles: true
+
+# Grid config for deriving row/col indices from filenames.
+grid:
+  index_base: 1
+  filename_regex: "LOC_RC(?P<row>\\d{3})(?P<col>\\d{3})"
+
+summarize:
+  recursive: false
+
+debug:
+  enable: false
+  level: "info"
+  artifacts: []
+  sample_limit: 3
+  out_dir: "out/debug"
+  log_fields: ["units", "mask_counts", "stats_counts"]
+  raise_on_warn: false
+  echo_config: false
+
+csv_modes:
+  particle_metrics_full:
+    columns:
+      - { name: "source_file", from: "core.source_file" }
+      - { name: "mode", from: "core.mode" }
+      - { name: "metric_type", from: "core.metric_type" }
+      - { name: "count_total", from: "particle.count_total" }
+      - { name: "count_total_raw", from: "particle.count_total_raw" }
+      - { name: "count_total_filtered", from: "particle.count_total_filtered" }
+      - { name: "count_isolated", from: "particle.count_isolated" }
+      - { name: "mean_diam_nm", from: "particle.mean_diameter_nm" }
+      - { name: "std_diam_nm", from: "particle.std_diameter_nm" }
+      - { name: "mean_diam_px", from: "particle.mean_diameter_px" }
+      - { name: "std_diam_px", from: "particle.std_diameter_px" }
+      - { name: "threshold", from: "particle.threshold" }
+      - { name: "diam_min_nm", from: "particle.filter_min_nm" }
+      - { name: "diam_max_nm", from: "particle.filter_max_nm" }
+      - { name: "iso_min_dist_nm", from: "particle.isolation_min_dist_nm" }
+      - { name: "nx", from: "core.nx" }
+      - { name: "ny", from: "core.ny" }
+      - { name: "row_idx", from: "grid.row_idx", default: -1 }
+      - { name: "col_idx", from: "grid.col_idx", default: -1 }
+    on_missing_field: "warn_null"
+
+result_schemas:
+  particle_metrics_full:
+    from_csv_mode: "particle_metrics_full"
+    fields:
+      - { field: "source_file", type: "string", column: "source_file" }
+      - { field: "mode", type: "string", column: "mode" }
+      - { field: "metric_type", type: "string", column: "metric_type" }
+      - { field: "count_total", type: "int", column: "count_total" }
+      - { field: "count_total_raw", type: "int", column: "count_total_raw" }
+      - { field: "count_total_filtered", type: "int", column: "count_total_filtered" }
+      - { field: "count_isolated", type: "int", column: "count_isolated" }
+      - { field: "mean_diam_nm", type: "float", column: "mean_diam_nm" }
+      - { field: "std_diam_nm", type: "float", column: "std_diam_nm" }
+      - { field: "mean_diam_px", type: "float", column: "mean_diam_px" }
+      - { field: "std_diam_px", type: "float", column: "std_diam_px" }
+      - { field: "threshold", type: "float", column: "threshold" }
+      - { field: "diam_min_nm", type: "float", column: "diam_min_nm" }
+      - { field: "diam_max_nm", type: "float", column: "diam_max_nm" }
+      - { field: "iso_min_dist_nm", type: "float", column: "iso_min_dist_nm" }
+      - { field: "nx", type: "int", column: "nx" }
+      - { field: "ny", type: "int", column: "ny" }
+      - { field: "row_idx", type: "int", column: "row_idx" }
+      - { field: "col_idx", type: "int", column: "col_idx" }
+
+profiles:
+  particle_count_basic:
+    processing_mode: "particle_count_basic"
+    csv_mode: "particle_metrics_full"
+
+jobs:
+  particle_forward:
+    input_root: "C:/path/to/mixed_folder"
+    output_root: "out/topo_particle/particle_count"
+    run_name_template: "particle_forward"
+    profile: "particle_count_basic"
+    pattern: "**/*Z Height*Forward*.tif;**/*Z Height*Forward*.tiff"
+
