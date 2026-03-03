@@ -1,6 +1,7 @@
 # Topo Particle Test Matrix
 
 This matrix defines the current topo particle preprocessing + masking sweep for forward scans.
+Terminology note: "map/grid" refers to the collection of scan positions; each "scan" is one image at one grid index.
 
 Defaults for all modes:
 - Median filter size: 3
