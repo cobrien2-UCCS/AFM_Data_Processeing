@@ -2447,7 +2447,7 @@ def _process_with_pygwy(path, processing_mode, mode_def, channel_defaults, manif
             else:
                 _trace_append(trace, "review_panel", False)
 
-        _trace_append(trace, "particle_count", True, {"threshold": float(thresh), "count_total": int(count_total)})
+        _trace_append(trace, "particle_count", True, {"threshold": float(thresh), "count_total": int(count_total_report)})
         _write_trace_file(manifest, path, trace)
 
         result = {

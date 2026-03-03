@@ -101,6 +101,28 @@ profiles:
     processing_mode: "particle_count_basic"
     csv_mode: "particle_metrics_full"
 
+file_collect_jobs:
+  collect_forward:
+    input_root: "C:/path/to/mixed_folder"
+    recursive: true
+    patterns: ["*.tif", "*.tiff"]
+    include_keywords: ["Z Height", "Forward"]
+    include_mode: "all"
+    exclude_keywords: ["Backward"]
+    min_similarity: 0.85
+    on_empty: "error"
+    preserve_tree: false
+    basename_max_len: 140
+    path_max_len: 240
+    extract:
+      - { regex: "-(?P<date_code>\\d{6})-", map: { date_code: "date_code" } }
+      - { regex: "(?P<direction>Forward|Backward)", map: { direction: "direction" } }
+    output:
+      out_root: "C:/AFM_STAGE"
+      run_name_template: "collect_{timestamp}_{job}"
+      dest_subdir_template: "{date_code}/{direction}"
+      rename_template: "{orig_stem}_{short_hash}{ext}"
+
 jobs:
   particle_forward:
     input_root: "C:/path/to/mixed_folder"
@@ -108,4 +130,8 @@ jobs:
     run_name_template: "particle_forward"
     profile: "particle_count_basic"
     pattern: "**/*Z Height*Forward*.tif;**/*Z Height*Forward*.tiff"
+    collect:
+      enable: true
+      job: "collect_forward"
+      out_root: "C:/AFM_STAGE"
 
