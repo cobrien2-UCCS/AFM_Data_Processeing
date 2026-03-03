@@ -5,10 +5,21 @@ import json
 import subprocess
 from pathlib import Path
 
-CONFIG_PATH = Path("configs/TEST configs/Example configs/config.topo_particle_summary.yaml")
+CONFIG_PATH = Path("configs/TEST configs/Example configs/config.topo_particle_2jobs_masking.yaml")
 DATA_LIST = Path("docs/File Locations for Data Grouped.txt")
 OUT_BASE = Path(r"C:\Users\Conor O'Brien\Dropbox\03_AML\00 IN-BOX\AFM Topo Particle processing OUT")
 PATTERN = "*Z Height*Forward*.tif;*Z Height*Forward*.tiff"
+
+JOBS = [
+    "particle_forward_medianbg_mean",
+    "particle_forward_medianbg_fixed0",
+    "particle_forward_medianbg_p95",
+    "particle_forward_medianbg_max_fixed0_p95",
+    "particle_forward_flatten_mean",
+    "particle_forward_flatten_fixed0",
+    "particle_forward_flatten_p95",
+    "particle_forward_flatten_max_fixed0_p95",
+]
 
 SCAN_SIZE_UM = (5.0, 5.0)
 GRID = (512, 512)
@@ -51,12 +62,12 @@ def find_files(root):
     return sorted({str(p.resolve()) for p in files if p.is_file()})
 
 
-def run_particle_job(input_root, output_root):
+def run_particle_job(input_root, output_root, job_name):
     cmd = [
         sys.executable,
         "scripts/run_job.py",
         "--config", str(CONFIG_PATH),
-        "--job", "particle_forward",
+        "--job", job_name,
         "--input-root", str(input_root),
         "--output-root", str(output_root),
     ]
@@ -100,7 +111,8 @@ def main():
         base = Path(root).name
         out_root = OUT_BASE / "PEGDA_SiNP" / base
         out_root.mkdir(parents=True, exist_ok=True)
-        run_particle_job(root, out_root)
+        for job_name in JOBS:
+            run_particle_job(root, out_root, job_name)
 
     print("Done.")
 

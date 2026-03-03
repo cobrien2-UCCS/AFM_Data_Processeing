@@ -1,0 +1,350 @@
+# Two preprocessing jobs (median-bg vs flatten_base) with masking sweep.
+
+channel_defaults:
+  topography_family: "height"
+
+modes:
+  # --- Median-bg preprocessing (2x align + plane + median-bg) ---
+  particle_count_align_medianbg_mean:
+    channel_family: "height"
+    metric_type: "particle_count"
+    units: "count"
+    expected_units: "count"
+    gwyddion_ops:
+      - op: align_rows
+        params: { direction: "horizontal", method: "median" }
+      - op: plane_level
+      - op: align_rows
+        params: { direction: "horizontal", method: "median" }
+      - op: median_level
+      - op: median
+        params: { size: 3 }
+    threshold_strategy: "mean"
+    particle_diameter_min_nm: 400
+    particle_diameter_max_nm: 500
+    isolation_min_dist_nm: 900
+    export_particles: true
+    edge_exclude: true
+    review_pack: { enable: true, sample_limit: 10, seed: 1337 }
+    grain_export:
+      enable: true
+      use_review_sample: true
+      quantities: ["center_x", "center_y", "pixel_area", "projected_area", "surface_area", "mean", "max", "min", "rms", "equiv_disc_radius", "equiv_square_side", "equiv_ellipse_major", "equiv_ellipse_minor", "circumcircle_r", "inscribed_disc_r"]
+
+  particle_count_align_medianbg_fixed0:
+    channel_family: "height"
+    metric_type: "particle_count"
+    units: "count"
+    expected_units: "count"
+    gwyddion_ops:
+      - op: align_rows
+        params: { direction: "horizontal", method: "median" }
+      - op: plane_level
+      - op: align_rows
+        params: { direction: "horizontal", method: "median" }
+      - op: median_level
+      - op: median
+        params: { size: 3 }
+    threshold_strategy: "fixed"
+    threshold_fixed: 0.0
+    particle_diameter_min_nm: 400
+    particle_diameter_max_nm: 500
+    isolation_min_dist_nm: 900
+    export_particles: true
+    edge_exclude: true
+    review_pack: { enable: true, sample_limit: 10, seed: 1337 }
+    grain_export:
+      enable: true
+      use_review_sample: true
+      quantities: ["center_x", "center_y", "pixel_area", "projected_area", "surface_area", "mean", "max", "min", "rms", "equiv_disc_radius", "equiv_square_side", "equiv_ellipse_major", "equiv_ellipse_minor", "circumcircle_r", "inscribed_disc_r"]
+
+  particle_count_align_medianbg_p95:
+    channel_family: "height"
+    metric_type: "particle_count"
+    units: "count"
+    expected_units: "count"
+    gwyddion_ops:
+      - op: align_rows
+        params: { direction: "horizontal", method: "median" }
+      - op: plane_level
+      - op: align_rows
+        params: { direction: "horizontal", method: "median" }
+      - op: median_level
+      - op: median
+        params: { size: 3 }
+    threshold_strategy: "percentile"
+    threshold_percentile: 95
+    particle_diameter_min_nm: 400
+    particle_diameter_max_nm: 500
+    isolation_min_dist_nm: 900
+    export_particles: true
+    edge_exclude: true
+    review_pack: { enable: true, sample_limit: 10, seed: 1337 }
+    grain_export:
+      enable: true
+      use_review_sample: true
+      quantities: ["center_x", "center_y", "pixel_area", "projected_area", "surface_area", "mean", "max", "min", "rms", "equiv_disc_radius", "equiv_square_side", "equiv_ellipse_major", "equiv_ellipse_minor", "circumcircle_r", "inscribed_disc_r"]
+
+  particle_count_align_medianbg_max_fixed0_p95:
+    channel_family: "height"
+    metric_type: "particle_count"
+    units: "count"
+    expected_units: "count"
+    gwyddion_ops:
+      - op: align_rows
+        params: { direction: "horizontal", method: "median" }
+      - op: plane_level
+      - op: align_rows
+        params: { direction: "horizontal", method: "median" }
+      - op: median_level
+      - op: median
+        params: { size: 3 }
+    # Combined: threshold = max(mean, 0.0, p95)
+    threshold_strategy: "max"
+    threshold_fixed: 0.0
+    threshold_percentile: 95
+    particle_diameter_min_nm: 400
+    particle_diameter_max_nm: 500
+    isolation_min_dist_nm: 900
+    export_particles: true
+    edge_exclude: true
+    review_pack: { enable: true, sample_limit: 10, seed: 1337 }
+    grain_export:
+      enable: true
+      use_review_sample: true
+      quantities: ["center_x", "center_y", "pixel_area", "projected_area", "surface_area", "mean", "max", "min", "rms", "equiv_disc_radius", "equiv_square_side", "equiv_ellipse_major", "equiv_ellipse_minor", "circumcircle_r", "inscribed_disc_r"]
+
+  # --- Flatten Base preprocessing (2x align + plane + flatten_base) ---
+  particle_count_align_flatten_mean:
+    channel_family: "height"
+    metric_type: "particle_count"
+    units: "count"
+    expected_units: "count"
+    gwyddion_ops:
+      - op: align_rows
+        params: { direction: "horizontal", method: "median" }
+      - op: plane_level
+      - op: align_rows
+        params: { direction: "horizontal", method: "median" }
+      - op: flatten_base
+      - op: median
+        params: { size: 3 }
+    threshold_strategy: "mean"
+    particle_diameter_min_nm: 400
+    particle_diameter_max_nm: 500
+    isolation_min_dist_nm: 900
+    export_particles: true
+    edge_exclude: true
+    review_pack: { enable: true, sample_limit: 10, seed: 1337 }
+    grain_export:
+      enable: true
+      use_review_sample: true
+      quantities: ["center_x", "center_y", "pixel_area", "projected_area", "surface_area", "mean", "max", "min", "rms", "equiv_disc_radius", "equiv_square_side", "equiv_ellipse_major", "equiv_ellipse_minor", "circumcircle_r", "inscribed_disc_r"]
+
+  particle_count_align_flatten_fixed0:
+    channel_family: "height"
+    metric_type: "particle_count"
+    units: "count"
+    expected_units: "count"
+    gwyddion_ops:
+      - op: align_rows
+        params: { direction: "horizontal", method: "median" }
+      - op: plane_level
+      - op: align_rows
+        params: { direction: "horizontal", method: "median" }
+      - op: flatten_base
+      - op: median
+        params: { size: 3 }
+    threshold_strategy: "fixed"
+    threshold_fixed: 0.0
+    particle_diameter_min_nm: 400
+    particle_diameter_max_nm: 500
+    isolation_min_dist_nm: 900
+    export_particles: true
+    edge_exclude: true
+    review_pack: { enable: true, sample_limit: 10, seed: 1337 }
+    grain_export:
+      enable: true
+      use_review_sample: true
+      quantities: ["center_x", "center_y", "pixel_area", "projected_area", "surface_area", "mean", "max", "min", "rms", "equiv_disc_radius", "equiv_square_side", "equiv_ellipse_major", "equiv_ellipse_minor", "circumcircle_r", "inscribed_disc_r"]
+
+  particle_count_align_flatten_p95:
+    channel_family: "height"
+    metric_type: "particle_count"
+    units: "count"
+    expected_units: "count"
+    gwyddion_ops:
+      - op: align_rows
+        params: { direction: "horizontal", method: "median" }
+      - op: plane_level
+      - op: align_rows
+        params: { direction: "horizontal", method: "median" }
+      - op: flatten_base
+      - op: median
+        params: { size: 3 }
+    threshold_strategy: "percentile"
+    threshold_percentile: 95
+    particle_diameter_min_nm: 400
+    particle_diameter_max_nm: 500
+    isolation_min_dist_nm: 900
+    export_particles: true
+    edge_exclude: true
+    review_pack: { enable: true, sample_limit: 10, seed: 1337 }
+    grain_export:
+      enable: true
+      use_review_sample: true
+      quantities: ["center_x", "center_y", "pixel_area", "projected_area", "surface_area", "mean", "max", "min", "rms", "equiv_disc_radius", "equiv_square_side", "equiv_ellipse_major", "equiv_ellipse_minor", "circumcircle_r", "inscribed_disc_r"]
+
+  particle_count_align_flatten_max_fixed0_p95:
+    channel_family: "height"
+    metric_type: "particle_count"
+    units: "count"
+    expected_units: "count"
+    gwyddion_ops:
+      - op: align_rows
+        params: { direction: "horizontal", method: "median" }
+      - op: plane_level
+      - op: align_rows
+        params: { direction: "horizontal", method: "median" }
+      - op: flatten_base
+      - op: median
+        params: { size: 3 }
+    threshold_strategy: "max"
+    threshold_fixed: 0.0
+    threshold_percentile: 95
+    particle_diameter_min_nm: 400
+    particle_diameter_max_nm: 500
+    isolation_min_dist_nm: 900
+    export_particles: true
+    edge_exclude: true
+    review_pack: { enable: true, sample_limit: 10, seed: 1337 }
+    grain_export:
+      enable: true
+      use_review_sample: true
+      quantities: ["center_x", "center_y", "pixel_area", "projected_area", "surface_area", "mean", "max", "min", "rms", "equiv_disc_radius", "equiv_square_side", "equiv_ellipse_major", "equiv_ellipse_minor", "circumcircle_r", "inscribed_disc_r"]
+
+grid:
+  index_base: 1
+  filename_regex: "LOC_RC(?P<row>\\d{3})(?P<col>\\d{3})"
+
+csv_modes:
+  particle_metrics_full:
+    columns:
+      - { name: "source_file", from: "core.source_file" }
+      - { name: "mode", from: "core.mode" }
+      - { name: "metric_type", from: "core.metric_type" }
+      - { name: "count_total", from: "particle.count_total" }
+      - { name: "count_total_raw", from: "particle.count_total_raw" }
+      - { name: "count_total_filtered", from: "particle.count_total_filtered" }
+      - { name: "count_isolated", from: "particle.count_isolated" }
+      - { name: "mean_diam_nm", from: "particle.mean_diameter_nm" }
+      - { name: "std_diam_nm", from: "particle.std_diameter_nm" }
+      - { name: "threshold", from: "particle.threshold" }
+      - { name: "threshold_source", from: "particle.threshold_source", default: "" }
+      - { name: "edge_excluded_count", from: "particle.edge_excluded_count", default: 0 }
+      - { name: "diam_min_nm", from: "particle.filter_min_nm" }
+      - { name: "diam_max_nm", from: "particle.filter_max_nm" }
+      - { name: "iso_min_dist_nm", from: "particle.isolation_min_dist_nm" }
+      - { name: "nx", from: "core.nx" }
+      - { name: "ny", from: "core.ny" }
+      - { name: "row_idx", from: "grid.row_idx", default: -1 }
+      - { name: "col_idx", from: "grid.col_idx", default: -1 }
+    on_missing_field: "warn_null"
+
+profiles:
+  medianbg_mean: { processing_mode: "particle_count_align_medianbg_mean", csv_mode: "particle_metrics_full" }
+  medianbg_fixed0: { processing_mode: "particle_count_align_medianbg_fixed0", csv_mode: "particle_metrics_full" }
+  medianbg_p95: { processing_mode: "particle_count_align_medianbg_p95", csv_mode: "particle_metrics_full" }
+  medianbg_max_fixed0_p95: { processing_mode: "particle_count_align_medianbg_max_fixed0_p95", csv_mode: "particle_metrics_full" }
+
+  flatten_mean: { processing_mode: "particle_count_align_flatten_mean", csv_mode: "particle_metrics_full" }
+  flatten_fixed0: { processing_mode: "particle_count_align_flatten_fixed0", csv_mode: "particle_metrics_full" }
+  flatten_p95: { processing_mode: "particle_count_align_flatten_p95", csv_mode: "particle_metrics_full" }
+  flatten_max_fixed0_p95: { processing_mode: "particle_count_align_flatten_max_fixed0_p95", csv_mode: "particle_metrics_full" }
+
+file_collect_jobs:
+  collect_forward:
+    input_root: "C:/path/to/mixed_folder"
+    recursive: true
+    patterns: ["*.tif", "*.tiff"]
+    include_keywords: ["Z Height", "Forward"]
+    include_mode: "all"
+    exclude_keywords: ["Backward"]
+    min_similarity: 0.85
+    on_empty: "error"
+    preserve_tree: false
+    basename_max_len: 140
+    path_max_len: 240
+    output:
+      out_root: "C:/AFM_STAGE"
+      run_name_template: "collect_{timestamp}_{job}"
+      dest_subdir_template: "forward"
+      rename_template: "{orig_stem}_{short_hash}{ext}"
+
+jobs:
+  # Median-bg jobs
+  particle_forward_medianbg_mean:
+    input_root: "C:/path/to/mixed_folder"
+    output_root: "out/topo_particle/particle_forward_medianbg_mean"
+    run_name_template: "particle_forward_medianbg_mean"
+    profile: "medianbg_mean"
+    pattern: "**/*Z Height*Forward*.tif;**/*Z Height*Forward*.tiff"
+    collect: { enable: true, job: "collect_forward", out_root: "C:/AFM_STAGE" }
+
+  particle_forward_medianbg_fixed0:
+    input_root: "C:/path/to/mixed_folder"
+    output_root: "out/topo_particle/particle_forward_medianbg_fixed0"
+    run_name_template: "particle_forward_medianbg_fixed0"
+    profile: "medianbg_fixed0"
+    pattern: "**/*Z Height*Forward*.tif;**/*Z Height*Forward*.tiff"
+    collect: { enable: true, job: "collect_forward", out_root: "C:/AFM_STAGE" }
+
+  particle_forward_medianbg_p95:
+    input_root: "C:/path/to/mixed_folder"
+    output_root: "out/topo_particle/particle_forward_medianbg_p95"
+    run_name_template: "particle_forward_medianbg_p95"
+    profile: "medianbg_p95"
+    pattern: "**/*Z Height*Forward*.tif;**/*Z Height*Forward*.tiff"
+    collect: { enable: true, job: "collect_forward", out_root: "C:/AFM_STAGE" }
+
+  particle_forward_medianbg_max_fixed0_p95:
+    input_root: "C:/path/to/mixed_folder"
+    output_root: "out/topo_particle/particle_forward_medianbg_max_fixed0_p95"
+    run_name_template: "particle_forward_medianbg_max_fixed0_p95"
+    profile: "medianbg_max_fixed0_p95"
+    pattern: "**/*Z Height*Forward*.tif;**/*Z Height*Forward*.tiff"
+    collect: { enable: true, job: "collect_forward", out_root: "C:/AFM_STAGE" }
+
+  # Flatten Base jobs
+  particle_forward_flatten_mean:
+    input_root: "C:/path/to/mixed_folder"
+    output_root: "out/topo_particle/particle_forward_flatten_mean"
+    run_name_template: "particle_forward_flatten_mean"
+    profile: "flatten_mean"
+    pattern: "**/*Z Height*Forward*.tif;**/*Z Height*Forward*.tiff"
+    collect: { enable: true, job: "collect_forward", out_root: "C:/AFM_STAGE" }
+
+  particle_forward_flatten_fixed0:
+    input_root: "C:/path/to/mixed_folder"
+    output_root: "out/topo_particle/particle_forward_flatten_fixed0"
+    run_name_template: "particle_forward_flatten_fixed0"
+    profile: "flatten_fixed0"
+    pattern: "**/*Z Height*Forward*.tif;**/*Z Height*Forward*.tiff"
+    collect: { enable: true, job: "collect_forward", out_root: "C:/AFM_STAGE" }
+
+  particle_forward_flatten_p95:
+    input_root: "C:/path/to/mixed_folder"
+    output_root: "out/topo_particle/particle_forward_flatten_p95"
+    run_name_template: "particle_forward_flatten_p95"
+    profile: "flatten_p95"
+    pattern: "**/*Z Height*Forward*.tif;**/*Z Height*Forward*.tiff"
+    collect: { enable: true, job: "collect_forward", out_root: "C:/AFM_STAGE" }
+
+  particle_forward_flatten_max_fixed0_p95:
+    input_root: "C:/path/to/mixed_folder"
+    output_root: "out/topo_particle/particle_forward_flatten_max_fixed0_p95"
+    run_name_template: "particle_forward_flatten_max_fixed0_p95"
+    profile: "flatten_max_fixed0_p95"
+    pattern: "**/*Z Height*Forward*.tif;**/*Z Height*Forward*.tiff"
+    collect: { enable: true, job: "collect_forward", out_root: "C:/AFM_STAGE" }
+

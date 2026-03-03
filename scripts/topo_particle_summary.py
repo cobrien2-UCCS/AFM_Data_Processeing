@@ -58,11 +58,31 @@ def read_particle_rows(csv_path):
     return rows
 
 
+def find_grain_csvs():
+    return list(OUT_BASE.rglob("*_grains.csv"))
+
+
+def read_grain_rows(csv_path):
+    rows = []
+    with open(csv_path, "r", encoding="utf-8") as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            rows.append(row)
+    return rows
+
+
 def to_float(v, default=0.0):
     try:
         return float(v)
     except Exception:
         return default
+
+
+def to_float_or_none(v):
+    try:
+        return float(v)
+    except Exception:
+        return None
 
 
 def to_int(v, default=0):
@@ -73,7 +93,7 @@ def to_int(v, default=0):
 
 
 def sample_from_summary_path(csv_path):
-    # .../PEGDA_SiNP/<sample>/particle_forward/summary.csv
+    # .../<system>/<sample>/<job>/summary.csv
     try:
         return csv_path.parent.parent.name
     except Exception:
@@ -82,15 +102,21 @@ def sample_from_summary_path(csv_path):
 
 def system_from_summary_path(csv_path):
     try:
-        # .../<system>/<sample>/particle_forward/summary.csv
+        # .../<system>/<sample>/<job>/summary.csv
         return csv_path.parent.parent.parent.name
+    except Exception:
+        return "unknown"
+
+def job_from_summary_path(csv_path):
+    try:
+        return csv_path.parent.name
     except Exception:
         return "unknown"
 
 
 def sample_from_particle_path(csv_path):
     try:
-        # .../PEGDA_SiNP/<sample>/particle_forward/*_particles.csv
+        # .../<system>/<sample>/<job>/particles/*_particles.csv
         return csv_path.parent.parent.name
     except Exception:
         return "unknown"
@@ -101,6 +127,86 @@ def system_from_particle_path(csv_path):
         return csv_path.parent.parent.parent.name
     except Exception:
         return "unknown"
+
+def job_from_particle_path(csv_path):
+    try:
+        return csv_path.parent.parent.name
+    except Exception:
+        return "unknown"
+
+
+def sample_from_grain_path(csv_path):
+    try:
+        # .../<system>/<sample>/<job>/grains/*_grains.csv
+        return csv_path.parent.parent.name
+    except Exception:
+        return "unknown"
+
+
+def system_from_grain_path(csv_path):
+    try:
+        return csv_path.parent.parent.parent.name
+    except Exception:
+        return "unknown"
+
+
+def job_from_grain_path(csv_path):
+    try:
+        return csv_path.parent.parent.name
+    except Exception:
+        return "unknown"
+
+
+def grain_numeric_fields(rows):
+    if not rows:
+        return []
+    exclude = set([
+        "source_file",
+        "grain_id",
+        "center_x_px",
+        "center_y_px",
+        "center_x_nm",
+        "center_y_nm",
+        "kept",
+        "isolated",
+        "edge_excluded",
+    ])
+    fields = set()
+    for row in rows:
+        for key, val in row.items():
+            if key in exclude:
+                continue
+            if not (key in ("area_px", "diameter_px", "diameter_nm") or key.startswith("grain_")):
+                continue
+            if to_float_or_none(val) is not None:
+                fields.add(key)
+    return sorted(fields)
+
+
+def summarize_numeric(values):
+    if not values:
+        return {"mean": 0.0, "std": 0.0, "median": 0.0, "min": 0.0, "max": 0.0, "count": 0}
+    return {
+        "mean": stats.mean(values),
+        "std": stats.pstdev(values) if len(values) > 1 else 0.0,
+        "median": stats.median(values),
+        "min": min(values),
+        "max": max(values),
+        "count": len(values),
+    }
+
+
+def _plot_hist(values, title, xlabel, out_path, bins=30, color="#4C78A8"):
+    if not values:
+        return
+    plt.figure(figsize=(6, 4))
+    plt.hist(values, bins=bins, color=color, edgecolor="black")
+    plt.title(title)
+    plt.xlabel(xlabel)
+    plt.ylabel("Frequency")
+    plt.tight_layout()
+    plt.savefig(out_path, dpi=300)
+    plt.close()
 
 
 def short_label(label, max_len=18):
@@ -139,12 +245,14 @@ def main():
 
     summary_rows = []
     for p in find_summary_csvs():
-        if "particle_forward" not in str(p):
+        # Accept any particle job summary: .../<system>/<sample>/<job>/summary.csv
+        if p.parent.name.lower().startswith("particle_") is False:
             continue
         for row in read_particle_summary(p):
             row["source_csv"] = str(p)
             row["sample"] = sample_from_summary_path(p)
             row["system"] = system_from_summary_path(p)
+            row["job"] = job_from_summary_path(p)
             summary_rows.append(row)
 
     count_rows = []
@@ -154,11 +262,14 @@ def main():
     isolated_by_sample = {}
     sample_system = {}
     rows_by_sample = {}
+    counts_by_job = {}
+    isolated_by_job = {}
     for row in summary_rows:
         count_total = to_int(row.get("count_total"))
         count_iso = to_int(row.get("count_isolated"))
         sample = row.get("sample", "unknown")
         system = row.get("system", "unknown")
+        job = row.get("job", "unknown")
         counts.append(count_total)
         isolated_counts.append(count_iso)
         counts_by_sample.setdefault(sample, []).append(count_total)
@@ -166,6 +277,8 @@ def main():
         rows_by_sample.setdefault(sample, []).append(row)
         if sample not in sample_system:
             sample_system[sample] = system
+        counts_by_job.setdefault(job, []).append(count_total)
+        isolated_by_job.setdefault(job, []).append(count_iso)
         count_rows.append({
             "source_file": row.get("source_file", ""),
             "count_total": count_total,
@@ -175,6 +288,7 @@ def main():
             "iso_min_dist_nm": row.get("iso_min_dist_nm", ""),
             "sample": sample,
             "system": system,
+            "job": job,
         })
 
     if count_rows:
@@ -202,6 +316,7 @@ def main():
 
     diameters = []
     diameters_by_sample = {}
+    diameters_by_job = {}
     for p in find_particle_csvs():
         for row in read_particle_rows(p):
             kept = to_int(row.get("kept", 0))
@@ -212,6 +327,8 @@ def main():
                 diameters.append(d)
                 sample = sample_from_particle_path(p)
                 diameters_by_sample.setdefault(sample, []).append(d)
+                job = job_from_particle_path(p)
+                diameters_by_job.setdefault(job, []).append(d)
 
     diam_stats = {}
     if diameters:
@@ -243,7 +360,7 @@ def main():
     if counts:
         plt.figure(figsize=(6,4))
         plt.hist(counts, bins=20, color="#4C78A8", edgecolor="black")
-        plt.title("Particle Count per Map (PEGDA-SiNP)")
+        plt.title("Particle Count per Map (all jobs)")
         plt.xlabel("Particles per map")
         plt.ylabel("Frequency")
         plt.tight_layout()
@@ -263,7 +380,7 @@ def main():
     if isolated_counts:
         plt.figure(figsize=(6,4))
         plt.hist(isolated_counts, bins=20, color="#54A24B", edgecolor="black")
-        plt.title("Isolated Particle Count per Map (PEGDA-SiNP)")
+        plt.title("Isolated Particle Count per Map (all jobs)")
         plt.xlabel("Isolated particles per map")
         plt.ylabel("Frequency")
         plt.tight_layout()
@@ -344,6 +461,34 @@ def main():
         plt.savefig(OUT_BASE / "fig_isolated_count_mean_by_sample.png", dpi=300)
         plt.close()
 
+    if counts_by_job:
+        job_labels = [short_label(j, 24) for j in counts_by_job.keys()]
+        means = [stats.mean(v) if v else 0.0 for v in counts_by_job.values()]
+        stds = [stats.pstdev(v) if len(v) > 1 else 0.0 for v in counts_by_job.values()]
+        plt.figure(figsize=(9,4))
+        plt.bar(job_labels, means, yerr=stds, color="#72B7B2", capsize=4)
+        plt.title("Mean Particle Count per Map by Job")
+        plt.xlabel("Job")
+        plt.ylabel("Particles per map (mean ± std)")
+        plt.xticks(rotation=30, ha="right")
+        plt.tight_layout()
+        plt.savefig(OUT_BASE / "fig_particle_count_mean_by_job.png", dpi=300)
+        plt.close()
+
+    if isolated_by_job:
+        job_labels = [short_label(j, 24) for j in isolated_by_job.keys()]
+        means = [stats.mean(v) if v else 0.0 for v in isolated_by_job.values()]
+        stds = [stats.pstdev(v) if len(v) > 1 else 0.0 for v in isolated_by_job.values()]
+        plt.figure(figsize=(9,4))
+        plt.bar(job_labels, means, yerr=stds, color="#59A14F", capsize=4)
+        plt.title("Mean Isolated Particle Count per Map by Job")
+        plt.xlabel("Job")
+        plt.ylabel("Isolated particles per map (mean ± std)")
+        plt.xticks(rotation=30, ha="right")
+        plt.tight_layout()
+        plt.savefig(OUT_BASE / "fig_isolated_count_mean_by_job.png", dpi=300)
+        plt.close()
+
     per_sample_rows = []
     for sample, sample_counts in counts_by_sample.items():
         sample_isolated = isolated_by_sample.get(sample, [])
@@ -422,6 +567,156 @@ def main():
 
     if per_sample_rows:
         write_csv(OUT_BASE / "particle_summary_stats_by_sample.csv", per_sample_rows, list(per_sample_rows[0].keys()))
+
+    # Per-job summary table
+    per_job_rows = []
+    for job, job_counts in counts_by_job.items():
+        job_isolated = isolated_by_job.get(job, [])
+        job_diam = diameters_by_job.get(job, [])
+        per_job_rows.append({
+            "job": job,
+            "maps": len(job_counts),
+            "total_particles": sum(job_counts),
+            "mean_per_map": stats.mean(job_counts) if job_counts else 0.0,
+            "std_per_map": stats.pstdev(job_counts) if len(job_counts) > 1 else 0.0,
+            "mean_isolated_per_map": stats.mean(job_isolated) if job_isolated else 0.0,
+            "std_isolated_per_map": stats.pstdev(job_isolated) if len(job_isolated) > 1 else 0.0,
+            "percent_maps_with_isolated": (
+                100.0 * sum(1 for v in job_isolated if v > 0) / float(len(job_isolated))
+                if job_isolated else 0.0
+            ),
+            "mean_diameter_nm": stats.mean(job_diam) if job_diam else 0.0,
+            "std_diameter_nm": stats.pstdev(job_diam) if len(job_diam) > 1 else 0.0,
+        })
+    if per_job_rows:
+        write_csv(OUT_BASE / "particle_summary_stats_by_job.csv", per_job_rows, list(per_job_rows[0].keys()))
+
+    # ---- Grain summary (from *_grains.csv) ----
+    grain_rows = []
+    for p in find_grain_csvs():
+        for row in read_grain_rows(p):
+            row["source_csv"] = str(p)
+            row["sample"] = sample_from_grain_path(p)
+            row["system"] = system_from_grain_path(p)
+            row["job"] = job_from_grain_path(p)
+            grain_rows.append(row)
+
+    if grain_rows:
+        numeric_fields = grain_numeric_fields(grain_rows)
+        if numeric_fields:
+            # Group by job
+            rows_by_job = {}
+            rows_by_sample_job = {}
+            for row in grain_rows:
+                job = row.get("job", "unknown")
+                sample = row.get("sample", "unknown")
+                rows_by_job.setdefault(job, []).append(row)
+                rows_by_sample_job.setdefault((sample, job), []).append(row)
+
+            def build_grain_summary(rows, include_keys):
+                kept_vals = {f: [] for f in numeric_fields}
+                iso_vals = {f: [] for f in numeric_fields}
+                all_vals = {f: [] for f in numeric_fields}
+                kept_count = 0
+                iso_count = 0
+                edge_excluded = 0
+                for r in rows:
+                    kept = to_int(r.get("kept", 0)) == 1
+                    iso = to_int(r.get("isolated", 0)) == 1
+                    edge = to_int(r.get("edge_excluded", 0)) == 1
+                    if edge:
+                        edge_excluded += 1
+                    for f in numeric_fields:
+                        v = to_float_or_none(r.get(f))
+                        if v is None:
+                            continue
+                        all_vals[f].append(v)
+                        if kept:
+                            kept_vals[f].append(v)
+                        if iso:
+                            iso_vals[f].append(v)
+                    if kept:
+                        kept_count += 1
+                    if iso:
+                        iso_count += 1
+                out = dict(include_keys)
+                out["grain_total"] = len(rows)
+                out["grain_kept"] = kept_count
+                out["grain_isolated"] = iso_count
+                out["grain_edge_excluded"] = edge_excluded
+                for f in numeric_fields:
+                    s_all = summarize_numeric(all_vals[f])
+                    s_kept = summarize_numeric(kept_vals[f])
+                    s_iso = summarize_numeric(iso_vals[f])
+                    out["all_mean_%s" % f] = s_all["mean"]
+                    out["all_median_%s" % f] = s_all["median"]
+                    out["all_std_%s" % f] = s_all["std"]
+                    out["kept_mean_%s" % f] = s_kept["mean"]
+                    out["kept_median_%s" % f] = s_kept["median"]
+                    out["kept_std_%s" % f] = s_kept["std"]
+                    out["isolated_mean_%s" % f] = s_iso["mean"]
+                    out["isolated_median_%s" % f] = s_iso["median"]
+                    out["isolated_std_%s" % f] = s_iso["std"]
+                return out
+
+            job_rows = []
+            for job, rows in rows_by_job.items():
+                job_rows.append(build_grain_summary(rows, {"job": job}))
+            if job_rows:
+                write_csv(OUT_BASE / "grain_summary_by_job.csv", job_rows, list(job_rows[0].keys()))
+
+            sample_job_rows = []
+            for (sample, job), rows in rows_by_sample_job.items():
+                sample_job_rows.append(build_grain_summary(rows, {"sample": sample, "job": job}))
+            if sample_job_rows:
+                write_csv(OUT_BASE / "grain_summary_by_sample_job.csv", sample_job_rows, list(sample_job_rows[0].keys()))
+
+            # Per-grain plots (by job) for key fields if available.
+            plots_dir = OUT_BASE / "grain_plots"
+            plots_dir.mkdir(parents=True, exist_ok=True)
+            key_fields = []
+            for f in ("diameter_nm", "area_px", "grain_projected_area", "grain_surface_area"):
+                if f in numeric_fields:
+                    key_fields.append(f)
+            if not key_fields:
+                key_fields = numeric_fields[:2]
+
+            for job, rows in rows_by_job.items():
+                job_dir = plots_dir / job
+                job_dir.mkdir(parents=True, exist_ok=True)
+                for field_name in key_fields:
+                    vals_all = []
+                    vals_kept = []
+                    vals_iso = []
+                    for r in rows:
+                        v = to_float_or_none(r.get(field_name))
+                        if v is None:
+                            continue
+                        vals_all.append(v)
+                        if to_int(r.get("kept", 0)) == 1:
+                            vals_kept.append(v)
+                        if to_int(r.get("isolated", 0)) == 1:
+                            vals_iso.append(v)
+                    _plot_hist(
+                        vals_all,
+                        "Grain %s (all) - %s" % (field_name, job),
+                        field_name,
+                        job_dir / ("grain_%s_all.png" % field_name),
+                    )
+                    _plot_hist(
+                        vals_kept,
+                        "Grain %s (kept) - %s" % (field_name, job),
+                        field_name,
+                        job_dir / ("grain_%s_kept.png" % field_name),
+                        color="#F58518",
+                    )
+                    _plot_hist(
+                        vals_iso,
+                        "Grain %s (isolated) - %s" % (field_name, job),
+                        field_name,
+                        job_dir / ("grain_%s_isolated.png" % field_name),
+                        color="#54A24B",
+                    )
 
     feas = ""
     if iso_stats and iso_stats.get("mean_isolated_per_map"):

@@ -22,12 +22,16 @@ Config-driven modes (see `modes` in `config.example.yaml`). Philosophy: use Gwyd
 - `on_missing_units`: `error | warn | skip_row`.
 - `assume_units`: explicit opt-in default unit string when TIFFs have no Z-units.
 - `review_pack`: optional review artifacts (particle mode): write PNG panels + `review.csv` template for manual verification.
+- `grain_export`: optional per-grain CSV export (particle mode): writes per-grain properties for the review sample set.
 
 ## Built-in modes
 - `modulus_basic`: channel_family=modulus, plane_level=true, optional median/line/clip/mask, metric_type="modulus", units/expected_units="kPa" (conversions for MPa/GPa/Pa provided).
 - `topography_flat`: channel_family=height, plane_level=true, optional median/line/clip/mask, metric_type="topography_height", units/expected_units="nm".
 - `particle_count_basic`: channel_family=height, plane_level=false, threshold (default: mean), uses pygwy grain stats (count, density, equivalent diameter, optional circularity), units/expected_units="count".
 - `raw_noop`: duplicate field; metric_type="raw", units="a.u.".
+
+## Topo test matrix
+See `docs/topo_particle_test_matrix.md` for the current topo particle preprocessing + masking sweep.
 
 ## Extending modes
 1) Add a new block under `modes` with the keys above.

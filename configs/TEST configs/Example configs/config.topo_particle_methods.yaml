@@ -1,0 +1,215 @@
+# Topography particle counting methods (forward only)
+
+channel_defaults:
+  topography_family: "height"
+
+modes:
+  particle_count_basic:
+    channel_family: "height"
+    plane_level: false
+    metric_type: "particle_count"
+    threshold: null
+    units: "count"
+    expected_units: "count"
+    on_unit_mismatch: "warn"
+    # Diameter filter (nm) + isolation (center-to-center, nm)
+    particle_diameter_min_nm: 400
+    particle_diameter_max_nm: 500
+    isolation_min_dist_nm: 900
+    export_particles: true
+
+  particle_count_align_plane:
+    channel_family: "height"
+    metric_type: "particle_count"
+    threshold: null
+    units: "count"
+    expected_units: "count"
+    on_unit_mismatch: "warn"
+    gwyddion_ops:
+      - op: align_rows
+        params: { direction: "horizontal", method: "median" }
+      - op: plane_level
+    particle_diameter_min_nm: 400
+    particle_diameter_max_nm: 500
+    isolation_min_dist_nm: 900
+    export_particles: true
+
+  particle_count_flatten_base:
+    channel_family: "height"
+    metric_type: "particle_count"
+    threshold: null
+    units: "count"
+    expected_units: "count"
+    on_unit_mismatch: "warn"
+    gwyddion_ops:
+      - op: align_rows
+        params: { direction: "horizontal", method: "median" }
+      - op: plane_level
+      - op: flatten_base
+    particle_diameter_min_nm: 400
+    particle_diameter_max_nm: 500
+    isolation_min_dist_nm: 900
+    export_particles: true
+
+  particle_count_median_level:
+    channel_family: "height"
+    metric_type: "particle_count"
+    threshold: null
+    units: "count"
+    expected_units: "count"
+    on_unit_mismatch: "warn"
+    gwyddion_ops:
+      - op: align_rows
+        params: { direction: "horizontal", method: "median" }
+      - op: plane_level
+      - op: median_level
+    particle_diameter_min_nm: 400
+    particle_diameter_max_nm: 500
+    isolation_min_dist_nm: 900
+    export_particles: true
+
+grid:
+  index_base: 1
+  filename_regex: "LOC_RC(?P<row>\\d{3})(?P<col>\\d{3})"
+
+summarize:
+  recursive: false
+
+debug:
+  enable: false
+  level: "info"
+  artifacts: []
+  sample_limit: 3
+  out_dir: "out/debug"
+  log_fields: ["units", "mask_counts", "stats_counts"]
+  raise_on_warn: false
+  echo_config: false
+
+csv_modes:
+  particle_metrics_full:
+    columns:
+      - { name: "source_file", from: "core.source_file" }
+      - { name: "mode", from: "core.mode" }
+      - { name: "metric_type", from: "core.metric_type" }
+      - { name: "count_total", from: "particle.count_total" }
+      - { name: "count_total_raw", from: "particle.count_total_raw" }
+      - { name: "count_total_filtered", from: "particle.count_total_filtered" }
+      - { name: "count_isolated", from: "particle.count_isolated" }
+      - { name: "mean_diam_nm", from: "particle.mean_diameter_nm" }
+      - { name: "std_diam_nm", from: "particle.std_diameter_nm" }
+      - { name: "mean_diam_px", from: "particle.mean_diameter_px" }
+      - { name: "std_diam_px", from: "particle.std_diameter_px" }
+      - { name: "threshold", from: "particle.threshold" }
+      - { name: "diam_min_nm", from: "particle.filter_min_nm" }
+      - { name: "diam_max_nm", from: "particle.filter_max_nm" }
+      - { name: "iso_min_dist_nm", from: "particle.isolation_min_dist_nm" }
+      - { name: "nx", from: "core.nx" }
+      - { name: "ny", from: "core.ny" }
+      - { name: "row_idx", from: "grid.row_idx", default: -1 }
+      - { name: "col_idx", from: "grid.col_idx", default: -1 }
+    on_missing_field: "warn_null"
+
+result_schemas:
+  particle_metrics_full:
+    from_csv_mode: "particle_metrics_full"
+    fields:
+      - { field: "source_file", type: "string", column: "source_file" }
+      - { field: "mode", type: "string", column: "mode" }
+      - { field: "metric_type", type: "string", column: "metric_type" }
+      - { field: "count_total", type: "int", column: "count_total" }
+      - { field: "count_total_raw", type: "int", column: "count_total_raw" }
+      - { field: "count_total_filtered", type: "int", column: "count_total_filtered" }
+      - { field: "count_isolated", type: "int", column: "count_isolated" }
+      - { field: "mean_diam_nm", type: "float", column: "mean_diam_nm" }
+      - { field: "std_diam_nm", type: "float", column: "std_diam_nm" }
+      - { field: "mean_diam_px", type: "float", column: "mean_diam_px" }
+      - { field: "std_diam_px", type: "float", column: "std_diam_px" }
+      - { field: "threshold", type: "float", column: "threshold" }
+      - { field: "diam_min_nm", type: "float", column: "diam_min_nm" }
+      - { field: "diam_max_nm", type: "float", column: "diam_max_nm" }
+      - { field: "iso_min_dist_nm", type: "float", column: "iso_min_dist_nm" }
+      - { field: "nx", type: "int", column: "nx" }
+      - { field: "ny", type: "int", column: "ny" }
+      - { field: "row_idx", type: "int", column: "row_idx" }
+      - { field: "col_idx", type: "int", column: "col_idx" }
+
+profiles:
+  particle_base:
+    processing_mode: "particle_count_basic"
+    csv_mode: "particle_metrics_full"
+  particle_align_plane:
+    processing_mode: "particle_count_align_plane"
+    csv_mode: "particle_metrics_full"
+  particle_flatten_base:
+    processing_mode: "particle_count_flatten_base"
+    csv_mode: "particle_metrics_full"
+  particle_median_level:
+    processing_mode: "particle_count_median_level"
+    csv_mode: "particle_metrics_full"
+
+file_collect_jobs:
+  collect_forward:
+    input_root: "C:/path/to/mixed_folder"
+    recursive: true
+    patterns: ["*.tif", "*.tiff"]
+    include_keywords: ["Z Height", "Forward"]
+    include_mode: "all"
+    exclude_keywords: ["Backward"]
+    min_similarity: 0.85
+    on_empty: "error"
+    preserve_tree: false
+    basename_max_len: 140
+    path_max_len: 240
+    extract:
+      - { regex: "-(?P<date_code>\\d{6})-", map: { date_code: "date_code" } }
+      - { regex: "(?P<direction>Forward|Backward)", map: { direction: "direction" } }
+    output:
+      out_root: "C:/AFM_STAGE"
+      run_name_template: "collect_{timestamp}_{job}"
+      dest_subdir_template: "{date_code}/{direction}"
+      rename_template: "{orig_stem}_{short_hash}{ext}"
+
+jobs:
+  particle_forward_base:
+    input_root: "C:/path/to/mixed_folder"
+    output_root: "out/topo_particle/particle_forward_base"
+    run_name_template: "particle_forward_base"
+    profile: "particle_base"
+    pattern: "**/*Z Height*Forward*.tif;**/*Z Height*Forward*.tiff"
+    collect:
+      enable: true
+      job: "collect_forward"
+      out_root: "C:/AFM_STAGE"
+
+  particle_forward_align_plane:
+    input_root: "C:/path/to/mixed_folder"
+    output_root: "out/topo_particle/particle_forward_align_plane"
+    run_name_template: "particle_forward_align_plane"
+    profile: "particle_align_plane"
+    pattern: "**/*Z Height*Forward*.tif;**/*Z Height*Forward*.tiff"
+    collect:
+      enable: true
+      job: "collect_forward"
+      out_root: "C:/AFM_STAGE"
+
+  particle_forward_flatten_base:
+    input_root: "C:/path/to/mixed_folder"
+    output_root: "out/topo_particle/particle_forward_flatten_base"
+    run_name_template: "particle_forward_flatten_base"
+    profile: "particle_flatten_base"
+    pattern: "**/*Z Height*Forward*.tif;**/*Z Height*Forward*.tiff"
+    collect:
+      enable: true
+      job: "collect_forward"
+      out_root: "C:/AFM_STAGE"
+
+  particle_forward_median_level:
+    input_root: "C:/path/to/mixed_folder"
+    output_root: "out/topo_particle/particle_forward_median_level"
+    run_name_template: "particle_forward_median_level"
+    profile: "particle_median_level"
+    pattern: "**/*Z Height*Forward*.tif;**/*Z Height*Forward*.tiff"
+    collect:
+      enable: true
+      job: "collect_forward"
+      out_root: "C:/AFM_STAGE"

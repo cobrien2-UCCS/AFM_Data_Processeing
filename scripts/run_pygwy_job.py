@@ -20,6 +20,7 @@ import math
 import os
 import re
 import sys
+import random
 
 try:
     long  # type: ignore  # noqa: F821
@@ -252,6 +253,113 @@ def _normalize_method_name(name):
         return ""
     return str(name).strip().lower().replace("-", "_").replace(" ", "_")
 
+def _is_particle_count_mode(mode):
+    try:
+        return str(mode or "").startswith("particle_count")
+    except Exception:
+        return False
+
+
+def _percentile(values, p):
+    """
+    Compute an empirical percentile (0..100) with linear interpolation.
+    Ignores NaN/inf. Returns 0.0 if no finite values.
+    """
+    try:
+        p = float(p)
+    except Exception:
+        p = 50.0
+    if p < 0.0:
+        p = 0.0
+    if p > 100.0:
+        p = 100.0
+    finite = []
+    for v in values:
+        try:
+            fv = float(v)
+        except Exception:
+            continue
+        if _is_finite(fv):
+            finite.append(fv)
+    if not finite:
+        return 0.0
+    finite.sort()
+    if len(finite) == 1:
+        return float(finite[0])
+    # position in [0, n-1]
+    pos = (p / 100.0) * (len(finite) - 1)
+    lo = int(math.floor(pos))
+    hi = int(math.ceil(pos))
+    if lo == hi:
+        return float(finite[lo])
+    w = pos - lo
+    return float(finite[lo] * (1.0 - w) + finite[hi] * w)
+
+
+def _resolve_particle_threshold(field, mode_def):
+    """
+    Resolve a particle threshold from config.
+
+    Supported config styles:
+      - threshold: <number>  -> fixed
+      - threshold_strategy: mean|fixed|percentile|max
+        threshold_fixed: <number>
+        threshold_percentile: <0..100>
+    """
+    if not mode_def:
+        mode_def = {}
+
+    thresh_cfg = mode_def.get("threshold")
+    if isinstance(thresh_cfg, (int, long, float)):
+        return float(thresh_cfg), "fixed(config.threshold)"
+
+    strategy = _normalize_method_name(mode_def.get("threshold_strategy") or "mean")
+    fixed = mode_def.get("threshold_fixed")
+    perc = mode_def.get("threshold_percentile")
+    try:
+        fixed = float(fixed) if fixed is not None else None
+    except Exception:
+        fixed = None
+    try:
+        perc = float(perc) if perc is not None else None
+    except Exception:
+        perc = None
+
+    if strategy in ("fixed", "absolute") and fixed is not None:
+        return float(fixed), "fixed(threshold_fixed)"
+
+    if strategy in ("percentile", "pct", "p") and perc is not None:
+        data = field.get_data()
+        return _percentile(data, perc), "percentile(%s)" % perc
+
+    if strategy in ("max", "combine", "combined"):
+        candidates = []
+        # Always include mean for determinism.
+        try:
+            candidates.append(float(_field_get_avg(field)))
+        except Exception:
+            candidates.append(0.0)
+        sources = ["mean"]
+        if fixed is not None:
+            candidates.append(float(fixed))
+            sources.append("fixed")
+        if perc is not None:
+            try:
+                candidates.append(_percentile(field.get_data(), perc))
+                sources.append("p%s" % perc)
+            except Exception:
+                pass
+        if not candidates:
+            return 0.0, "max(empty)"
+        m = max(candidates)
+        return float(m), "max(%s)" % ",".join(sources)
+
+    # Default: mean
+    try:
+        return float(_field_get_avg(field)), "mean"
+    except Exception:
+        return 0.0, "mean(fallback)"
+
 def _normalize_stats_source(name):
     # Default is explicit and deterministic (no auto switching).
     if not name:
@@ -400,6 +508,110 @@ def _review_pack_cfg(mode_def):
     if not cfg.get("enable"):
         return {}
     return cfg
+
+
+def _review_allow_set(files, review_cfg):
+    if not review_cfg:
+        return None
+    limit = review_cfg.get("sample_limit")
+    try:
+        limit = int(limit)
+    except Exception:
+        limit = None
+    if not limit or limit <= 0:
+        return None
+    if limit >= len(files):
+        return set(files)
+    seed = review_cfg.get("seed")
+    try:
+        seed_val = int(seed) if seed is not None else None
+    except Exception:
+        seed_val = None
+    rng = random.Random(seed_val) if seed_val is not None else random
+    try:
+        return set(rng.sample(list(files), limit))
+    except Exception:
+        return None
+
+
+def _review_should_include(manifest, path):
+    allow = manifest.get("_review_allow")
+    if allow is None:
+        return True
+    return path in allow
+
+
+def _grain_quantities_map():
+    try:
+        import gwy  # type: ignore
+    except Exception:
+        return {}
+    mapping = {
+        "center_x": "GRAIN_VALUE_CENTER_X",
+        "center_y": "GRAIN_VALUE_CENTER_Y",
+        "pixel_area": "GRAIN_VALUE_PIXEL_AREA",
+        "projected_area": "GRAIN_VALUE_PROJECTED_AREA",
+        "surface_area": "GRAIN_VALUE_SURFACE_AREA",
+        "mean": "GRAIN_VALUE_MEAN",
+        "max": "GRAIN_VALUE_MAXIMUM",
+        "min": "GRAIN_VALUE_MINIMUM",
+        "rms": "GRAIN_VALUE_RMS",
+        "equiv_disc_radius": "GRAIN_VALUE_EQUIV_DISC_RADIUS",
+        "equiv_square_side": "GRAIN_VALUE_EQUIV_SQUARE_SIDE",
+        "equiv_ellipse_major": "GRAIN_VALUE_EQUIV_ELLIPSE_MAJOR",
+        "equiv_ellipse_minor": "GRAIN_VALUE_EQUIV_ELLIPSE_MINOR",
+        "circumcircle_r": "GRAIN_VALUE_CIRCUMCIRCLE_R",
+        "inscribed_disc_r": "GRAIN_VALUE_INSCRIBED_DISC_R",
+    }
+    out = {}
+    for name, attr in mapping.items():
+        if hasattr(gwy, attr):
+            out[name] = getattr(gwy, attr)
+    return out
+
+
+def _resolve_grain_quantities(requested):
+    if not requested:
+        requested = [
+            "center_x",
+            "center_y",
+            "pixel_area",
+            "projected_area",
+            "mean",
+            "max",
+            "min",
+            "rms",
+            "equiv_disc_radius",
+        ]
+    qty_map = _grain_quantities_map()
+    out = []
+    for name in requested:
+        key = str(name).strip()
+        if not key:
+            continue
+        if key in qty_map:
+            out.append((key, qty_map[key]))
+            continue
+        # Allow raw GRAIN_VALUE_* names
+        if key.upper().startswith("GRAIN_VALUE_"):
+            try:
+                import gwy  # type: ignore
+                if hasattr(gwy, key.upper()):
+                    out.append((key.lower(), getattr(gwy, key.upper())))
+            except Exception:
+                pass
+    return out
+
+
+def _get_grain_values(field, grains, quantities):
+    values = {}
+    for name, q in quantities:
+        try:
+            vals = field.grains_get_values(grains, q)
+            values[name] = list(vals)[1:] if vals is not None else []
+        except Exception:
+            values[name] = []
+    return values
 
 
 def _debug_enabled(manifest):
@@ -573,6 +785,9 @@ def _apply_ops_sequence(container, field_key, field, ops, debug_artifacts, trace
       - align_rows: {direction: horizontal|vertical, method: median|polynomial|matching|...}
       - median: {size: int}
       - clip_percentiles: {low: float, high: float}
+      - flatten_base: {}
+      - median_level: {}
+      - process_func: {name: "flatten_base", settings: {"/module/flatten_base/mask": true}}
     """
     f = field
     for op in ops:
@@ -628,6 +843,33 @@ def _apply_ops_sequence(container, field_key, field, ops, debug_artifacts, trace
                     _trace_stats(trace, f, "after_clip_percentiles")
             except Exception as exc:
                 _trace_append(trace, "clip_percentiles", False, str(exc))
+        elif name in ("flatten_base", "median_level", "median_bg", "median-bg"):
+            func_name = "flatten_base" if name == "flatten_base" else "median-bg"
+            ok = _apply_process_func(container, field_key, func_name, params.get("settings"))
+            _trace_append(trace, name, ok, {"func": func_name})
+            if ok and debug_artifacts is not None:
+                try:
+                    f = container.get_object_by_name(field_key)
+                    debug_artifacts["filtered"] = f.duplicate()
+                except Exception:
+                    pass
+            if ok and trace_stats:
+                _trace_stats(trace, f, "after_%s" % name)
+        elif name in ("process_func", "gwy_process", "gwyddion_process"):
+            func_name = params.get("name") or params.get("func") or params.get("process")
+            if func_name:
+                ok = _apply_process_func(container, field_key, func_name, params.get("settings"))
+                _trace_append(trace, "process_func", ok, {"func": func_name})
+                if ok and debug_artifacts is not None:
+                    try:
+                        f = container.get_object_by_name(field_key)
+                        debug_artifacts["filtered"] = f.duplicate()
+                    except Exception:
+                        pass
+                if ok and trace_stats:
+                    _trace_stats(trace, f, "after_process_func")
+            else:
+                _trace_append(trace, "process_func", False, {"reason": "missing name"})
         else:
             _trace_append(trace, "op_ignored", False, {"op": name})
     return f
@@ -693,18 +935,23 @@ def _grain_center_values(field, grains):
         ("XPOSITION", "YPOSITION"),
         ("X", "Y"),
         ("X0", "Y0"),
+        ("GRAIN_VALUE_CENTER_X", "GRAIN_VALUE_CENTER_Y"),
     ]
     for x_name, y_name in candidates:
-        if not hasattr(gwy.GrainQuantity, x_name):
-            continue
-        if not hasattr(gwy.GrainQuantity, y_name):
-            continue
         try:
-            x_vals = field.grains_get_values(grains, getattr(gwy.GrainQuantity, x_name))
-            y_vals = field.grains_get_values(grains, getattr(gwy.GrainQuantity, y_name))
-            return list(x_vals)[1:], list(y_vals)[1:], (x_name, y_name)
+            if hasattr(gwy.GrainQuantity, x_name) and hasattr(gwy.GrainQuantity, y_name):
+                x_vals = field.grains_get_values(grains, getattr(gwy.GrainQuantity, x_name))
+                y_vals = field.grains_get_values(grains, getattr(gwy.GrainQuantity, y_name))
+                return list(x_vals)[1:], list(y_vals)[1:], (x_name, y_name)
         except Exception:
-            continue
+            pass
+        try:
+            if hasattr(gwy, x_name) and hasattr(gwy, y_name):
+                x_vals = field.grains_get_values(grains, getattr(gwy, x_name))
+                y_vals = field.grains_get_values(grains, getattr(gwy, y_name))
+                return list(x_vals)[1:], list(y_vals)[1:], (x_name, y_name)
+        except Exception:
+            pass
     return None, None, None
 
 
@@ -762,6 +1009,23 @@ def _centers_to_nm(x_vals, y_vals, field):
 
 def _write_particle_table(out_dir, base_name, rows, max_len):
     if not rows:
+        return None
+
+
+def _write_grain_table(out_dir, base_name, header, rows, max_len):
+    if not rows:
+        return None
+    _safe_makedirs(out_dir)
+    base = _shorten_name(base_name, max_len)
+    path = os.path.join(out_dir, "%s_grains.csv" % base)
+    try:
+        with open(path, "w") as f:
+            writer = csv.writer(f)
+            writer.writerow(header)
+            for row in rows:
+                writer.writerow(row)
+        return path
+    except Exception:
         return None
     _safe_makedirs(out_dir)
     base = _shorten_name(base_name, max_len)
@@ -1324,6 +1588,80 @@ def _apply_line_correction(container, field_key, line_cfg, fallback_direction=No
         return True
     except Exception as exc:
         sys.stderr.write("WARN: align_rows failed: %s\n" % exc)
+        return False
+    finally:
+        try:
+            gwy.gwy_app_data_browser_remove(container)
+        except Exception:
+            pass
+
+
+def _select_field_by_key(container, field_key):
+    try:
+        import gwy  # type: ignore
+    except Exception:
+        return None
+    try:
+        gwy.gwy_app_data_browser_add(container)
+        ids = gwy.gwy_app_data_browser_get_data_ids(container)
+        target_id = None
+        for i in ids:
+            gwy.gwy_app_data_browser_select_data_field(container, i)
+            try:
+                key = gwy.gwy_app_data_browser_get_current(gwy.APP_DATA_FIELD_KEY)
+            except Exception:
+                key = None
+            if key and str(key) == str(field_key):
+                target_id = i
+                break
+        if target_id is None and ids:
+            target_id = ids[0]
+        if target_id is None:
+            return None
+        gwy.gwy_app_data_browser_select_data_field(container, target_id)
+        return target_id
+    except Exception:
+        return None
+
+
+def _apply_process_func(container, field_key, func_name, settings=None):
+    """
+    Run a Gwyddion processing function by name (menu action), optionally
+    setting module parameters via app settings keys.
+    """
+    try:
+        import gwy  # type: ignore
+    except Exception:
+        return False
+
+    try:
+        target_id = _select_field_by_key(container, field_key)
+        if target_id is None:
+            return False
+
+        if settings and isinstance(settings, dict):
+            try:
+                app_settings = gwy.gwy_app_settings_get()
+            except Exception:
+                app_settings = None
+            if app_settings:
+                for key, val in settings.items():
+                    try:
+                        if isinstance(val, bool):
+                            app_settings.set_boolean_by_name(key, bool(val))
+                        elif isinstance(val, (int, long)):
+                            app_settings.set_int32_by_name(key, int(val))
+                        elif isinstance(val, float):
+                            app_settings.set_double_by_name(key, float(val))
+                        elif isinstance(val, str):
+                            app_settings.set_string_by_name(key, val)
+                    except Exception:
+                        pass
+
+        gwy.gwy_process_func_run(str(func_name), container, gwy.RUN_IMMEDIATE)
+        return True
+    except Exception as exc:
+        sys.stderr.write("WARN: process func '%s' failed: %s\n" % (func_name, exc))
         return False
     finally:
         try:
@@ -2008,7 +2346,7 @@ def _process_with_pygwy(path, processing_mode, mode_def, channel_defaults, manif
             f_pre = _apply_ops_sequence(container, field_id, f_pre, ops, debug_artifacts, trace, trace_stats=stats_debug)
         else:
             # Legacy behavior (defaults differ: particle counting should not plane-level unless requested).
-            plane_default = False if mode == "particle_count_basic" else True
+            plane_default = False if _is_particle_count_mode(mode) else True
             if mode_def.get("plane_level", plane_default):
                 try:
                     pa, pbx, pby = f_pre.fit_plane()
@@ -2033,10 +2371,10 @@ def _process_with_pygwy(path, processing_mode, mode_def, channel_defaults, manif
                 except Exception as exc:
                     _trace_append(trace, "median", False, str(exc))
                     sys.stderr.write("WARN: median filter failed for %s: %s\n" % (path, exc))
-            if mode_def.get("line_level_x"):
-                sys.stderr.write("WARN: line_level_x requested for %s but is not implemented in this runner.\n" % path)
-            if mode_def.get("line_level_y"):
-                sys.stderr.write("WARN: line_level_y requested for %s but is not implemented in this runner.\n" % path)
+        if mode_def.get("line_level_x"):
+            sys.stderr.write("WARN: line_level_x requested for %s but is not implemented in this runner.\n" % path)
+        if mode_def.get("line_level_y"):
+            sys.stderr.write("WARN: line_level_y requested for %s but is not implemented in this runner.\n" % path)
             clip = mode_def.get("clip_percentiles")
             if clip and isinstance(clip, (list, tuple)) and len(clip) == 2:
                 try:
@@ -2051,7 +2389,7 @@ def _process_with_pygwy(path, processing_mode, mode_def, channel_defaults, manif
                     _trace_append(trace, "clip_percentiles", False, str(exc))
                     sys.stderr.write("WARN: clip_percentiles failed for %s: %s\n" % (path, exc))
 
-    if mode not in ("particle_count_basic", "raw_noop"):
+    if (not _is_particle_count_mode(mode)) and mode != "raw_noop":
         f = f_pre if f_pre is not None else field.duplicate()
 
         # Detect units and apply unit normalization *before* masks/filters so any
@@ -2214,21 +2552,20 @@ def _process_with_pygwy(path, processing_mode, mode_def, channel_defaults, manif
         _write_trace_file(manifest, path, trace)
         return applied
 
-    if mode == "particle_count_basic":
+    if _is_particle_count_mode(mode):
         f = f_pre if f_pre is not None else field.duplicate()
-        thresh = mode_def.get("threshold")
-        if thresh is None:
+        try:
+            thresh, thresh_source = _resolve_particle_threshold(f, mode_def or {})
+        except Exception:
             try:
-                thresh = _field_get_avg(f)
+                thresh = float(_field_get_avg(f))
             except Exception:
                 thresh = 0.0
-            thresh_source = "mean"
-        else:
-            thresh = float(thresh)
-            thresh_source = "config"
+            thresh_source = "mean(fallback)"
 
         grains_result = None
         try:
+            centers_nm = []
             mask_field = f.duplicate()
             mask_data = mask_field.get_data()
             for i in range(len(mask_data)):
@@ -2297,6 +2634,56 @@ def _process_with_pygwy(path, processing_mode, mode_def, channel_defaults, manif
                     kept.append(i)
                 kept_idx = kept
 
+            # Centers (nm) for edge exclusion + isolation
+            x_vals, y_vals, center_src = _grain_center_values(f, grains)
+            centers_nm = []
+            if x_vals and y_vals:
+                centers_nm, px_nm2 = _centers_to_nm(x_vals, y_vals, f)
+                if px_nm is None and px_nm2 is not None:
+                    px_nm = px_nm2
+
+            edge_exclude = bool(
+                mode_def.get("edge_exclude")
+                or mode_def.get("exclude_edge")
+                or mode_def.get("particle_edge_exclude")
+            )
+            edge_excluded = 0
+            edge_excluded_idx = set()
+            if edge_exclude and kept_idx:
+                if centers_nm and px_nm:
+                    try:
+                        xres = int(f.get_xres())
+                        yres = int(f.get_yres())
+                    except Exception:
+                        xres = 0
+                        yres = 0
+                    if xres and yres:
+                        kept_no_edge = []
+                        for i in kept_idx:
+                            if i >= len(centers_nm):
+                                continue
+                            try:
+                                cx_nm, cy_nm = centers_nm[i]
+                                cx_px = float(cx_nm) / px_nm
+                                cy_px = float(cy_nm) / px_nm
+                                r_px = float(equiv_diams[i]) / 2.0
+                            except Exception:
+                                kept_no_edge.append(i)
+                                continue
+                            if (
+                                (cx_px - r_px) < 0.0
+                                or (cy_px - r_px) < 0.0
+                                or (cx_px + r_px) > (xres - 1)
+                                or (cy_px + r_px) > (yres - 1)
+                            ):
+                                edge_excluded += 1
+                                edge_excluded_idx.add(i)
+                                continue
+                            kept_no_edge.append(i)
+                        kept_idx = kept_no_edge
+                else:
+                    sys.stderr.write("WARN: edge_exclude requested but centers/px size unavailable; skipping edge filter.\n")
+
             count_total_filtered = len(kept_idx)
             count_total_report = count_total_filtered if filter_applied else count_total_raw
 
@@ -2325,14 +2712,6 @@ def _process_with_pygwy(path, processing_mode, mode_def, channel_defaults, manif
                 std_diam = 0.0
                 mean_diam_nm = 0.0
                 std_diam_nm = 0.0
-
-            # Centers + isolation (nm)
-            x_vals, y_vals, center_src = _grain_center_values(f, grains)
-            centers_nm = []
-            if x_vals and y_vals:
-                centers_nm, px_nm2 = _centers_to_nm(x_vals, y_vals, f)
-                if px_nm is None and px_nm2 is not None:
-                    px_nm = px_nm2
 
             isolated_flags = [False for _ in range(len(equiv_diams))]
             if iso_min_nm is not None and centers_nm and kept_idx:
@@ -2391,6 +2770,70 @@ def _process_with_pygwy(path, processing_mode, mode_def, channel_defaults, manif
                     ])
                 part_dir = os.path.join(manifest.get("output_dir", "."), "particles")
                 _write_particle_table(part_dir, base, particle_rows, 120)
+
+            # Optional per-grain export (Gwyddion grain quantities)
+            grain_cfg = mode_def.get("grain_export") or {}
+            grain_enable = bool(grain_cfg.get("enable"))
+            if grain_enable:
+                use_review_sample = grain_cfg.get("use_review_sample", True)
+                if (not use_review_sample) or _review_should_include(manifest, path):
+                    quantities = _resolve_grain_quantities(grain_cfg.get("quantities"))
+                    grain_vals = _get_grain_values(f, grains, quantities)
+                    header = [
+                        "source_file",
+                        "grain_id",
+                        "area_px",
+                        "diameter_px",
+                        "diameter_nm",
+                        "center_x_px",
+                        "center_y_px",
+                        "center_x_nm",
+                        "center_y_nm",
+                        "kept",
+                        "isolated",
+                        "edge_excluded",
+                    ]
+                    for name, _ in quantities:
+                        header.append("grain_%s" % name)
+                    grain_rows = []
+                    base = os.path.splitext(os.path.basename(path))[0]
+                    for i in range(len(equiv_diams)):
+                        grain_id = i + 1
+                        area_px = sizes_list[i] if i < len(sizes_list) else ""
+                        d_px = float(equiv_diams[i]) if i < len(equiv_diams) else ""
+                        d_nm = float(diam_nm_list[i]) if diam_nm_list and i < len(diam_nm_list) else ""
+                        cx_nm = cy_nm = cx_px = cy_px = ""
+                        if centers_nm and i < len(centers_nm):
+                            try:
+                                cx_nm, cy_nm = centers_nm[i]
+                                if px_nm:
+                                    cx_px = float(cx_nm) / px_nm
+                                    cy_px = float(cy_nm) / px_nm
+                            except Exception:
+                                pass
+                        kept_flag = 1 if i in kept_idx else 0
+                        iso_flag = 1 if (i < len(isolated_flags) and isolated_flags[i]) else 0
+                        edge_flag = 1 if i in edge_excluded_idx else 0
+                        row = [
+                            os.path.basename(path),
+                            grain_id,
+                            area_px,
+                            d_px,
+                            d_nm,
+                            cx_px,
+                            cy_px,
+                            cx_nm,
+                            cy_nm,
+                            kept_flag,
+                            iso_flag,
+                            edge_flag,
+                        ]
+                        for name, _ in quantities:
+                            vals = grain_vals.get(name) or []
+                            row.append(vals[i] if i < len(vals) else "")
+                        grain_rows.append(row)
+                    grain_dir = os.path.join(manifest.get("output_dir", "."), "grains")
+                    _write_grain_table(grain_dir, base, header, grain_rows, 120)
             mean_circ = None
             std_circ = None
             try:
@@ -2420,6 +2863,8 @@ def _process_with_pygwy(path, processing_mode, mode_def, channel_defaults, manif
                 "particle.filter_min_nm": float(diam_min_nm) if diam_min_nm is not None else "",
                 "particle.filter_max_nm": float(diam_max_nm) if diam_max_nm is not None else "",
                 "particle.isolation_min_dist_nm": float(iso_min_nm) if iso_min_nm is not None else "",
+                "particle.edge_exclude_enabled": bool(edge_exclude),
+                "particle.edge_excluded_count": int(edge_excluded),
             }
             if mean_circ is not None:
                 grains_result["particle.mean_circularity"] = float(mean_circ)
@@ -2431,7 +2876,7 @@ def _process_with_pygwy(path, processing_mode, mode_def, channel_defaults, manif
 
         # Optional review pack panel.
         review_cfg = _review_pack_cfg(mode_def)
-        if review_cfg:
+        if review_cfg and _review_should_include(manifest, path):
             base = os.path.splitext(os.path.basename(path))[0]
             out_root = review_cfg.get("out_dir") or os.path.join(manifest.get("output_dir", "."), "review")
             panels_dir = os.path.join(out_root, "panels")
@@ -2698,10 +3143,13 @@ def process_manifest(manifest, dry_run=False):
     review_cfg = _review_pack_cfg(mode_def)
     review_records = []
     review_out_path = None
-    if processing_mode == "particle_count_basic" and review_cfg:
+    if _is_particle_count_mode(processing_mode) and review_cfg:
         review_root = review_cfg.get("out_dir") or os.path.join(out_dir, "review")
         review_csv_name = str(review_cfg.get("csv_name") or "review.csv")
         review_out_path = os.path.join(review_root, review_csv_name)
+        review_allow = _review_allow_set(files, review_cfg)
+        if review_allow is not None:
+            manifest["_review_allow"] = review_allow
     global _DEBUG_SAVED
     for path in files:
         try:
@@ -2710,7 +3158,7 @@ def process_manifest(manifest, dry_run=False):
             if mode_result is None:
                 sys.stderr.write("INFO: Skipped %s due to policy.\n" % path)
                 continue
-            if review_out_path:
+            if review_out_path and _review_should_include(manifest, path):
                 review_records.append(
                     {
                         "source_file": mode_result.get("core.source_file") or os.path.basename(path),
