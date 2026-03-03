@@ -675,6 +675,119 @@ def _shorten_name(name, max_len=None):
     return name[:keep] + "_" + h
 
 
+def _safe_makedirs(path):
+    try:
+        if path and not os.path.isdir(path):
+            os.makedirs(path)
+    except Exception:
+        pass
+
+
+def _grain_center_values(field, grains):
+    try:
+        import gwy  # type: ignore
+    except Exception:
+        return None, None, None
+    candidates = [
+        ("XCENTER", "YCENTER"),
+        ("XPOSITION", "YPOSITION"),
+        ("X", "Y"),
+        ("X0", "Y0"),
+    ]
+    for x_name, y_name in candidates:
+        if not hasattr(gwy.GrainQuantity, x_name):
+            continue
+        if not hasattr(gwy.GrainQuantity, y_name):
+            continue
+        try:
+            x_vals = field.grains_get_values(grains, getattr(gwy.GrainQuantity, x_name))
+            y_vals = field.grains_get_values(grains, getattr(gwy.GrainQuantity, y_name))
+            return list(x_vals)[1:], list(y_vals)[1:], (x_name, y_name)
+        except Exception:
+            continue
+    return None, None, None
+
+
+def _centers_to_nm(x_vals, y_vals, field):
+    if not x_vals or not y_vals:
+        return [], None
+    try:
+        xreal = float(field.get_xreal())
+        yreal = float(field.get_yreal())
+    except Exception:
+        xreal = 0.0
+        yreal = 0.0
+    try:
+        xres = float(field.get_xres())
+        yres = float(field.get_yres())
+    except Exception:
+        xres = 0.0
+        yres = 0.0
+    try:
+        max_x = max([float(v) for v in x_vals]) if x_vals else 0.0
+        max_y = max([float(v) for v in y_vals]) if y_vals else 0.0
+    except Exception:
+        max_x = 0.0
+        max_y = 0.0
+    use_physical = False
+    if xreal and max_x <= xreal * 1.2:
+        use_physical = True
+    elif yreal and max_y <= yreal * 1.2:
+        use_physical = True
+    elif xres and max_x <= xres * 1.2:
+        use_physical = False
+    else:
+        use_physical = True if xreal else False
+    px_nm = None
+    if xreal and xres:
+        try:
+            px_nm = (xreal * 1e9) / float(xres)
+        except Exception:
+            px_nm = None
+    centers_nm = []
+    for xv, yv in zip(x_vals, y_vals):
+        try:
+            xv = float(xv)
+            yv = float(yv)
+        except Exception:
+            continue
+        if use_physical:
+            centers_nm.append((xv * 1e9, yv * 1e9))
+        elif px_nm is not None:
+            centers_nm.append((xv * px_nm, yv * px_nm))
+        else:
+            centers_nm.append((xv, yv))
+    return centers_nm, px_nm
+
+
+def _write_particle_table(out_dir, base_name, rows, max_len):
+    if not rows:
+        return None
+    _safe_makedirs(out_dir)
+    base = _shorten_name(base_name, max_len)
+    path = os.path.join(out_dir, "%s_particles.csv" % base)
+    try:
+        with open(path, "w") as f:
+            writer = csv.writer(f)
+            writer.writerow([
+                "source_file",
+                "particle_id",
+                "diameter_px",
+                "diameter_nm",
+                "center_x_nm",
+                "center_y_nm",
+                "center_x_px",
+                "center_y_px",
+                "kept",
+                "isolated",
+            ])
+            for row in rows:
+                writer.writerow(row)
+        return path
+    except Exception:
+        return None
+
+
 def _apply_python_filters(field, base_mask, filter_cfg):
     """
     Apply optional Python-side value filters after Gwyddion preprocessing.
@@ -2123,7 +2236,70 @@ def _process_with_pygwy(path, processing_mode, mode_def, channel_defaults, manif
             grains = mask_field.number_grains()
             sizes = mask_field.get_grain_sizes(grains)
             sizes_list = list(sizes)[1:] if len(sizes) > 0 else []
-            count_total = len(sizes_list)
+            count_total_raw = len(sizes_list)
+
+            # Pixel size (nm) for diameter/center conversion
+            try:
+                xreal = float(f.get_xreal())
+            except Exception:
+                xreal = 0.0
+            try:
+                xres = float(f.get_xres())
+            except Exception:
+                xres = 0.0
+            px_nm = (xreal * 1e9) / xres if xreal and xres else None
+
+            if sizes_list:
+                equiv_diams = [2.0 * math.sqrt(float(a) / math.pi) for a in sizes_list]
+            else:
+                equiv_diams = []
+
+            # Diameter filter (nm)
+            diam_min_nm = mode_def.get("particle_diameter_min_nm")
+            if diam_min_nm is None:
+                diam_min_nm = mode_def.get("diameter_min_nm")
+            diam_max_nm = mode_def.get("particle_diameter_max_nm")
+            if diam_max_nm is None:
+                diam_max_nm = mode_def.get("diameter_max_nm")
+            iso_min_nm = mode_def.get("isolation_min_dist_nm")
+            if iso_min_nm is None:
+                iso_min_nm = mode_def.get("particle_isolation_min_nm")
+            try:
+                diam_min_nm = float(diam_min_nm) if diam_min_nm is not None else None
+            except Exception:
+                diam_min_nm = None
+            try:
+                diam_max_nm = float(diam_max_nm) if diam_max_nm is not None else None
+            except Exception:
+                diam_max_nm = None
+            try:
+                iso_min_nm = float(iso_min_nm) if iso_min_nm is not None else None
+            except Exception:
+                iso_min_nm = None
+
+            diam_nm_list = []
+            if equiv_diams and px_nm is not None:
+                diam_nm_list = [float(d) * px_nm for d in equiv_diams]
+            elif equiv_diams:
+                diam_nm_list = [0.0 for _ in equiv_diams]
+
+            filter_applied = bool(diam_min_nm is not None or diam_max_nm is not None)
+            kept_idx = list(range(len(equiv_diams)))
+            if filter_applied and px_nm is None:
+                sys.stderr.write("WARN: diameter filtering requested but pixel size unavailable; skipping filter.\n")
+            elif filter_applied:
+                kept = []
+                for i, d_nm in enumerate(diam_nm_list):
+                    if diam_min_nm is not None and d_nm < diam_min_nm:
+                        continue
+                    if diam_max_nm is not None and d_nm > diam_max_nm:
+                        continue
+                    kept.append(i)
+                kept_idx = kept
+
+            count_total_filtered = len(kept_idx)
+            count_total_report = count_total_filtered if filter_applied else count_total_raw
+
             # Prefer physical area for density if available
             try:
                 area_real = float(f.get_xreal() * f.get_yreal())
@@ -2131,14 +2307,90 @@ def _process_with_pygwy(path, processing_mode, mode_def, channel_defaults, manif
                 area_real = 0.0
             pixel_area = float(f.get_xres() * f.get_yres()) if f.get_xres() and f.get_yres() else 0.0
             denom = area_real if area_real > 0 else pixel_area
-            count_density = float(count_total) / denom if denom else 0.0
-            if sizes_list:
-                equiv_diams = [2.0 * math.sqrt(float(a) / math.pi) for a in sizes_list]
-                mean_diam = float(_mean(equiv_diams))
-                std_diam = float(_std(equiv_diams))
+            count_density = float(count_total_report) / denom if denom else 0.0
+
+            if kept_idx:
+                kept_diams_px = [equiv_diams[i] for i in kept_idx]
+                mean_diam = float(_mean(kept_diams_px))
+                std_diam = float(_std(kept_diams_px))
+                if diam_nm_list:
+                    kept_diams_nm = [diam_nm_list[i] for i in kept_idx]
+                    mean_diam_nm = float(_mean(kept_diams_nm))
+                    std_diam_nm = float(_std(kept_diams_nm))
+                else:
+                    mean_diam_nm = 0.0
+                    std_diam_nm = 0.0
             else:
                 mean_diam = 0.0
                 std_diam = 0.0
+                mean_diam_nm = 0.0
+                std_diam_nm = 0.0
+
+            # Centers + isolation (nm)
+            x_vals, y_vals, center_src = _grain_center_values(f, grains)
+            centers_nm = []
+            if x_vals and y_vals:
+                centers_nm, px_nm2 = _centers_to_nm(x_vals, y_vals, f)
+                if px_nm is None and px_nm2 is not None:
+                    px_nm = px_nm2
+
+            isolated_flags = [False for _ in range(len(equiv_diams))]
+            if iso_min_nm is not None and centers_nm and kept_idx:
+                if len(kept_idx) == 1:
+                    isolated_flags[kept_idx[0]] = True
+                else:
+                    for i in kept_idx:
+                        try:
+                            xi, yi = centers_nm[i]
+                        except Exception:
+                            continue
+                        min_d = None
+                        for j in kept_idx:
+                            if j == i:
+                                continue
+                            try:
+                                xj, yj = centers_nm[j]
+                            except Exception:
+                                continue
+                            dx = xi - xj
+                            dy = yi - yj
+                            d = math.sqrt(dx * dx + dy * dy)
+                            if min_d is None or d < min_d:
+                                min_d = d
+                        if min_d is None or min_d >= iso_min_nm:
+                            isolated_flags[i] = True
+            count_isolated = sum(1 for i in kept_idx if i < len(isolated_flags) and isolated_flags[i])
+
+            # Optional per-particle export
+            export_particles = mode_def.get("export_particles", True)
+            if export_particles:
+                particle_rows = []
+                base = os.path.splitext(os.path.basename(path))[0]
+                for i in range(len(equiv_diams)):
+                    d_px = float(equiv_diams[i])
+                    d_nm = float(diam_nm_list[i]) if diam_nm_list else ""
+                    cx_nm = cy_nm = cx_px = cy_px = ""
+                    if centers_nm and i < len(centers_nm):
+                        cx_nm, cy_nm = centers_nm[i]
+                        if px_nm:
+                            cx_px = float(cx_nm) / px_nm
+                            cy_px = float(cy_nm) / px_nm
+                    kept_flag = 1 if i in kept_idx else 0
+                    iso_flag = 1 if (i < len(isolated_flags) and isolated_flags[i]) else 0
+                    particle_rows.append([
+                        os.path.basename(path),
+                        i + 1,
+                        d_px,
+                        d_nm,
+                        cx_nm,
+                        cy_nm,
+                        cx_px,
+                        cy_px,
+                        kept_flag,
+                        iso_flag,
+                    ])
+                part_dir = os.path.join(manifest.get("output_dir", "."), "particles")
+                _write_particle_table(part_dir, base, particle_rows, 120)
             mean_circ = None
             std_circ = None
             try:
@@ -2152,7 +2404,10 @@ def _process_with_pygwy(path, processing_mode, mode_def, channel_defaults, manif
             except Exception:
                 pass
             grains_result = {
-                "particle.count_total": int(count_total),
+                "particle.count_total": int(count_total_report),
+                "particle.count_total_raw": int(count_total_raw),
+                "particle.count_total_filtered": int(count_total_filtered if filter_applied else count_total_raw),
+                "particle.count_isolated": int(count_isolated),
                 "particle.count_density": float(count_density),
                 "particle.density_denom": float(denom) if denom else 0.0,
                 "particle.density_basis": "real" if area_real > 0 else "pixel",
@@ -2160,6 +2415,11 @@ def _process_with_pygwy(path, processing_mode, mode_def, channel_defaults, manif
                 "particle.threshold_source": thresh_source,
                 "particle.mean_diameter_px": float(mean_diam),
                 "particle.std_diameter_px": float(std_diam),
+                "particle.mean_diameter_nm": float(mean_diam_nm),
+                "particle.std_diameter_nm": float(std_diam_nm),
+                "particle.filter_min_nm": float(diam_min_nm) if diam_min_nm is not None else "",
+                "particle.filter_max_nm": float(diam_max_nm) if diam_max_nm is not None else "",
+                "particle.isolation_min_dist_nm": float(iso_min_nm) if iso_min_nm is not None else "",
             }
             if mean_circ is not None:
                 grains_result["particle.mean_circularity"] = float(mean_circ)
