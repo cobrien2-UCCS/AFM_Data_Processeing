@@ -675,7 +675,7 @@ def _save_field(path, field):
         norm = (arr - vmin) / (vmax - vmin)
         norm = np.clip(norm, 0.0, 1.0)
         img = Image.fromarray(np.uint8(norm * 255.0), mode="L")
-        img.save(path)
+        img.save(_long_path(path))
         return True
     except Exception as exc3:
         sys.stderr.write("WARN: debug save fallback (Pillow) failed for %s: %s\n" % (path, exc3))
@@ -769,8 +769,8 @@ def _save_particle_review_panel(out_path, field, mask_field):
 
         out_dir = os.path.dirname(out_path)
         if out_dir and not os.path.isdir(out_dir):
-            os.makedirs(out_dir)
-        panel.save(out_path)
+            os.makedirs(_long_path(out_dir))
+        panel.save(_long_path(out_path))
         return True
     except Exception as exc2:
         sys.stderr.write("WARN: review panel save failed for %s: %s\n" % (out_path, exc2))
@@ -920,9 +920,21 @@ def _shorten_name(name, max_len=None):
 def _safe_makedirs(path):
     try:
         if path and not os.path.isdir(path):
-            os.makedirs(path)
+            os.makedirs(_long_path(path))
     except Exception:
         pass
+
+
+def _long_path(path):
+    try:
+        path = os.path.abspath(path)
+    except Exception:
+        return path
+    if path.startswith("\\\\?\\"):
+        return path
+    if len(path) < 240:
+        return path
+    return "\\\\?\\" + path
 
 
 def _grain_center_values(field, grains):
@@ -2579,8 +2591,10 @@ def _process_with_pygwy(path, processing_mode, mode_def, channel_defaults, manif
             if export_mask:
                 if (not review_only) or _review_should_include(manifest, path):
                     base = os.path.splitext(os.path.basename(path))[0]
+                    base_short = _shorten_name(base, 60)
                     mask_dir = os.path.join(manifest.get("output_dir", "."), "particle_masks")
-                    _save_field(os.path.join(mask_dir, "%s_particle_mask.tiff" % base), mask_field)
+                    _safe_makedirs(mask_dir)
+                    _save_field(os.path.join(mask_dir, "%s_particle_mask.tiff" % base_short), mask_field)
             sizes_list = list(sizes)[1:] if len(sizes) > 0 else []
             count_total_raw = len(sizes_list)
 
@@ -2894,6 +2908,7 @@ def _process_with_pygwy(path, processing_mode, mode_def, channel_defaults, manif
             base_short = _shorten_name(base, name_len)
             panel_name = "%s_particle_panel.%s" % (base_short, fmt)
             panel_path = os.path.join(panels_dir, panel_name)
+            _safe_makedirs(panels_dir)
             ok = _save_particle_review_panel(panel_path, f, mask_field)
             if ok:
                 grains_result["review.panel_file"] = os.path.join("panels", panel_name)

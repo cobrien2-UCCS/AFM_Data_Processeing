@@ -27,7 +27,7 @@ modes:
     export_particle_mask: true
     export_particle_mask_review_only: true
     edge_exclude: true
-    review_pack: { enable: true, sample_limit: 10, seed: 1337 }
+    review_pack: { enable: true, sample_limit: 10, seed: 1337, panel_basename_max_len: 60 }
     grain_export:
       enable: true
       use_review_sample: true
@@ -56,7 +56,7 @@ modes:
     export_particle_mask: true
     export_particle_mask_review_only: true
     edge_exclude: true
-    review_pack: { enable: true, sample_limit: 10, seed: 1337 }
+    review_pack: { enable: true, sample_limit: 10, seed: 1337, panel_basename_max_len: 60 }
     grain_export:
       enable: true
       use_review_sample: true
@@ -85,7 +85,7 @@ modes:
     export_particle_mask: true
     export_particle_mask_review_only: true
     edge_exclude: true
-    review_pack: { enable: true, sample_limit: 10, seed: 1337 }
+    review_pack: { enable: true, sample_limit: 10, seed: 1337, panel_basename_max_len: 60 }
     grain_export:
       enable: true
       use_review_sample: true
@@ -116,7 +116,7 @@ modes:
     export_particle_mask: true
     export_particle_mask_review_only: true
     edge_exclude: true
-    review_pack: { enable: true, sample_limit: 10, seed: 1337 }
+    review_pack: { enable: true, sample_limit: 10, seed: 1337, panel_basename_max_len: 60 }
     grain_export:
       enable: true
       use_review_sample: true
@@ -145,7 +145,7 @@ modes:
     export_particle_mask: true
     export_particle_mask_review_only: true
     edge_exclude: true
-    review_pack: { enable: true, sample_limit: 10, seed: 1337 }
+    review_pack: { enable: true, sample_limit: 10, seed: 1337, panel_basename_max_len: 60 }
     grain_export:
       enable: true
       use_review_sample: true
@@ -174,7 +174,7 @@ modes:
     export_particle_mask: true
     export_particle_mask_review_only: true
     edge_exclude: true
-    review_pack: { enable: true, sample_limit: 10, seed: 1337 }
+    review_pack: { enable: true, sample_limit: 10, seed: 1337, panel_basename_max_len: 60 }
     grain_export:
       enable: true
       use_review_sample: true
@@ -203,7 +203,7 @@ modes:
     export_particle_mask: true
     export_particle_mask_review_only: true
     edge_exclude: true
-    review_pack: { enable: true, sample_limit: 10, seed: 1337 }
+    review_pack: { enable: true, sample_limit: 10, seed: 1337, panel_basename_max_len: 60 }
     grain_export:
       enable: true
       use_review_sample: true
@@ -233,7 +233,7 @@ modes:
     export_particle_mask: true
     export_particle_mask_review_only: true
     edge_exclude: true
-    review_pack: { enable: true, sample_limit: 10, seed: 1337 }
+    review_pack: { enable: true, sample_limit: 10, seed: 1337, panel_basename_max_len: 60 }
     grain_export:
       enable: true
       use_review_sample: true

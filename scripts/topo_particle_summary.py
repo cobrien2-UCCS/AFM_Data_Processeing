@@ -1,6 +1,8 @@
+import argparse
 import csv
 import json
 import math
+import re
 import statistics as stats
 from pathlib import Path
 
@@ -242,7 +244,36 @@ def wrap_label(label, max_len=16, max_lines=2):
     return "\n".join(lines)
 
 
+def _wt_percent_from_sample(sample):
+    if not sample:
+        return None
+    m = re.search(r"tpo(10|25)sinp", sample, re.I)
+    if not m:
+        return None
+    return int(m.group(1))
+
+
+def _parse_row_col(source_file):
+    if not source_file:
+        return None, None
+    m = re.search(r"LOC_RC(?P<row>\d{3})(?P<col>\d{3})", source_file)
+    if not m:
+        return None, None
+    return int(m.group("row")), int(m.group("col"))
+
+
+def parse_args():
+    ap = argparse.ArgumentParser(description="Aggregate topo particle outputs.")
+    ap.add_argument("--out-base", default="", help="Override output base directory.")
+    return ap.parse_args()
+
+
 def main():
+    args = parse_args()
+    global OUT_BASE
+    if args.out_base:
+        OUT_BASE = Path(args.out_base)
+
     inv = read_inventory()
 
     systems = {"pegda": [], "pegda_sinp": []}
@@ -291,12 +322,26 @@ def main():
     rows_by_sample = {}
     counts_by_job = {}
     isolated_by_job = {}
+    grid_counts = {}
+    grid_isolated = {}
+    grid_zero = {}
+    grid_iso_zero = {}
+    wt_grid_counts = {}
+    wt_grid_isolated = {}
+    wt_grid_n = {}
     for row in summary_rows:
         count_total = to_int(row.get("count_total"))
         count_iso = to_int(row.get("count_isolated"))
         sample = row.get("sample", "unknown")
         system = row.get("system", "unknown")
         job = row.get("job", "unknown")
+        row_idx = to_int(row.get("row_idx", -1), -1)
+        col_idx = to_int(row.get("col_idx", -1), -1)
+        if row_idx <= 0 or col_idx <= 0:
+            pr, pc = _parse_row_col(row.get("source_file", ""))
+            if pr and pc:
+                row_idx = pr
+                col_idx = pc
         counts.append(count_total)
         isolated_counts.append(count_iso)
         counts_by_sample.setdefault(sample, []).append(count_total)
@@ -316,7 +361,30 @@ def main():
             "sample": sample,
             "system": system,
             "job": job,
+            "row_idx": row_idx,
+            "col_idx": col_idx,
         })
+        if row_idx > 0 and col_idx > 0:
+            key = (system, sample, job)
+            grid_counts.setdefault(key, {})[(row_idx, col_idx)] = count_total
+            grid_isolated.setdefault(key, {})[(row_idx, col_idx)] = count_iso
+            if count_total == 0:
+                grid_zero.setdefault(key, set()).add((row_idx, col_idx))
+            if count_iso == 0:
+                grid_iso_zero.setdefault(key, set()).add((row_idx, col_idx))
+
+            wt = _wt_percent_from_sample(sample)
+            if wt:
+                wt_key = (wt, job)
+                wt_grid_counts.setdefault(wt_key, {})
+                wt_grid_isolated.setdefault(wt_key, {})
+                wt_grid_n.setdefault(wt_key, {})
+                wt_grid_counts[wt_key].setdefault((row_idx, col_idx), 0.0)
+                wt_grid_isolated[wt_key].setdefault((row_idx, col_idx), 0.0)
+                wt_grid_n[wt_key].setdefault((row_idx, col_idx), 0)
+                wt_grid_counts[wt_key][(row_idx, col_idx)] += float(count_total)
+                wt_grid_isolated[wt_key][(row_idx, col_idx)] += float(count_iso)
+                wt_grid_n[wt_key][(row_idx, col_idx)] += 1
 
     if count_rows:
         write_csv(OUT_BASE / "particle_counts_by_map.csv", count_rows, list(count_rows[0].keys()))
@@ -515,6 +583,137 @@ def main():
         plt.tight_layout()
         plt.savefig(OUT_BASE / "fig_isolated_count_mean_by_job.png", dpi=300)
         plt.close()
+
+    # Grid count maps (per sample/job)
+    if grid_counts:
+        import numpy as np
+        import matplotlib.patches as patches
+
+        area_um2 = float(SCAN_SIZE_UM[0] * SCAN_SIZE_UM[1])
+        fixed_max_per_scan = 12.0
+        fixed_vmax = fixed_max_per_scan / area_um2 if area_um2 else None
+        cmap = plt.cm.cividis.copy()
+        cmap.set_bad(color="lightgray")
+
+        def _plot_grid(grid_raw, grid_density, zero_cells, title, out_path):
+            masked = np.ma.masked_invalid(grid_density)
+            plt.figure(figsize=(6, 5))
+            ax = plt.gca()
+            ax.imshow(masked, origin="lower", aspect="auto", cmap=cmap, vmin=0.0, vmax=fixed_vmax)
+            ax.set_title(title)
+            ax.set_xlabel("Col index")
+            ax.set_ylabel("Row index")
+            cbar = plt.colorbar(ax.images[0], ax=ax)
+            cbar.set_label("Particles per um^2")
+
+            # Annotate counts
+            nrows, ncols = grid_raw.shape
+            ax.set_xticks(list(range(ncols)))
+            ax.set_yticks(list(range(nrows)))
+            ax.set_xticklabels([str(i + 1) for i in range(ncols)], fontsize=6)
+            ax.set_yticklabels([str(i + 1) for i in range(nrows)], fontsize=6)
+            for r in range(nrows):
+                for c in range(ncols):
+                    val = grid_raw[r, c]
+                    if np.isnan(val):
+                        continue
+                    ax.text(
+                        c,
+                        r,
+                        str(int(val)),
+                        ha="center",
+                        va="center",
+                        fontsize=6,
+                        color="white",
+                        bbox=dict(facecolor="black", alpha=0.6, edgecolor="none", boxstyle="round,pad=0.1"),
+                    )
+
+            # Outline zero-count cells (scans present but filtered to zero)
+            for (rr, cc) in zero_cells:
+                rect = patches.Rectangle(
+                    (cc - 1 - 0.5, rr - 1 - 0.5),
+                    1,
+                    1,
+                    linewidth=1.2,
+                    edgecolor="yellow",
+                    facecolor="none",
+                )
+                ax.add_patch(rect)
+
+            plt.tight_layout()
+            plt.savefig(out_path, dpi=300)
+            plt.close()
+
+        for (system, sample, job), cells in grid_counts.items():
+            if not cells:
+                continue
+            max_r = max(r for r, _ in cells.keys())
+            max_c = max(c for _, c in cells.keys())
+            grid_raw = np.full((max_r, max_c), np.nan, dtype=float)
+            grid_raw_iso = np.full((max_r, max_c), np.nan, dtype=float)
+            for (r, c), val in cells.items():
+                grid_raw[r - 1, c - 1] = val
+            for (r, c), val in grid_isolated.get((system, sample, job), {}).items():
+                grid_raw_iso[r - 1, c - 1] = val
+            grid_density = grid_raw / area_um2 if area_um2 else grid_raw
+            grid_iso_density = grid_raw_iso / area_um2 if area_um2 else grid_raw_iso
+            zero_cells = grid_zero.get((system, sample, job), set())
+            iso_zero_cells = grid_iso_zero.get((system, sample, job), set())
+
+            out_dir = OUT_BASE / system / sample / "summary_outputs"
+            out_dir.mkdir(parents=True, exist_ok=True)
+
+            _plot_grid(
+                grid_raw,
+                grid_density,
+                zero_cells,
+                "Particle Density Grid (%s)" % job,
+                out_dir / ("fig_particle_count_grid_%s.png" % job),
+            )
+            _plot_grid(
+                grid_raw_iso,
+                grid_iso_density,
+                iso_zero_cells,
+                "Isolated Particle Density Grid (%s)" % job,
+                out_dir / ("fig_isolated_count_grid_%s.png" % job),
+            )
+
+        # Combined grids per wt%
+        if wt_grid_counts:
+            combined_dir = OUT_BASE / "summary_outputs" / "combined"
+            combined_dir.mkdir(parents=True, exist_ok=True)
+            for (wt, job), cells in wt_grid_counts.items():
+                if not cells:
+                    continue
+                max_r = max(r for r, _ in cells.keys())
+                max_c = max(c for _, c in cells.keys())
+                grid_raw = np.full((max_r, max_c), np.nan, dtype=float)
+                grid_raw_iso = np.full((max_r, max_c), np.nan, dtype=float)
+                for (r, c), total in cells.items():
+                    n = wt_grid_n.get((wt, job), {}).get((r, c), 1)
+                    grid_raw[r - 1, c - 1] = total / float(n) if n else np.nan
+                for (r, c), total in wt_grid_isolated.get((wt, job), {}).items():
+                    n = wt_grid_n.get((wt, job), {}).get((r, c), 1)
+                    grid_raw_iso[r - 1, c - 1] = total / float(n) if n else np.nan
+                grid_density = grid_raw / area_um2 if area_um2 else grid_raw
+                grid_iso_density = grid_raw_iso / area_um2 if area_um2 else grid_raw_iso
+                zero_cells = set()
+                iso_zero_cells = set()
+
+                _plot_grid(
+                    grid_raw,
+                    grid_density,
+                    zero_cells,
+                    "Mean Particle Density Grid (wt%d%%, %s)" % (wt, job),
+                    combined_dir / ("fig_particle_count_grid_wt%d_%s.png" % (wt, job)),
+                )
+                _plot_grid(
+                    grid_raw_iso,
+                    grid_iso_density,
+                    iso_zero_cells,
+                    "Mean Isolated Density Grid (wt%d%%, %s)" % (wt, job),
+                    combined_dir / ("fig_isolated_count_grid_wt%d_%s.png" % (wt, job)),
+                )
 
     per_sample_rows = []
     for sample, sample_counts in counts_by_sample.items():

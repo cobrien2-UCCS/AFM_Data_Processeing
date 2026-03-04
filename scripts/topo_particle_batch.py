@@ -83,6 +83,8 @@ def parse_args():
     ap.add_argument("--config", default=str(DEFAULT_CONFIG), help="Config YAML path.")
     ap.add_argument("--data-list", default=str(DEFAULT_DATA_LIST), help="Text file with input roots.")
     ap.add_argument("--out-base", default=str(DEFAULT_OUT_BASE), help="Output base directory.")
+    ap.add_argument("--jobs", default="", help="Comma-separated job names (override default job list).")
+    ap.add_argument("--only-wt", default="", help="Filter SiNP roots by wt%% (e.g., 10 or 25).")
     return ap.parse_args()
 
 
@@ -91,6 +93,16 @@ def main():
     config_path = Path(args.config)
     data_list = Path(args.data_list)
     out_base = Path(args.out_base)
+    jobs = JOBS
+    if args.jobs:
+        jobs = [j.strip() for j in args.jobs.split(",") if j.strip()]
+    wt_filter = str(args.only_wt).strip()
+    wt_rx = None
+    if wt_filter:
+        if wt_filter == "10":
+            wt_rx = re.compile(r"tpo10sinp", re.I)
+        elif wt_filter == "25":
+            wt_rx = re.compile(r"tpo25sinp", re.I)
 
     out_base.mkdir(parents=True, exist_ok=True)
     inventory_rows = []
@@ -122,10 +134,12 @@ def main():
 
     # Run particle counting for SiNP systems
     for root in sinp_roots:
+        if wt_rx and not wt_rx.search(str(root)):
+            continue
         base = Path(root).name
         out_root = out_base / "PEGDA_SiNP" / base
         out_root.mkdir(parents=True, exist_ok=True)
-        for job_name in JOBS:
+        for job_name in jobs:
             run_particle_job(root, out_root, job_name, config_path)
 
     print("Done.")
