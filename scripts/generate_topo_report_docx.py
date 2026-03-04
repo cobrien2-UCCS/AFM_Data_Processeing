@@ -16,7 +16,17 @@ BASELINE_JOB = "particle_forward_medianbg_mean"
 SYSTEM_SINP = "PEGDA_SiNP"
 TARGET_ISOLATED = 30
 ISOLATION_DIST_NM = 900.0
-DIAMETER_FILTER_NM = "400-500 nm (current comparison runs)"
+DIAMETER_FILTER_NM = "350-550 nm (current runs)"
+JOB_ORDER = [
+    "particle_forward_medianbg_mean",
+    "particle_forward_medianbg_fixed0",
+    "particle_forward_medianbg_p95",
+    "particle_forward_medianbg_max_fixed0_p95",
+    "particle_forward_flatten_mean",
+    "particle_forward_flatten_fixed0",
+    "particle_forward_flatten_p95",
+    "particle_forward_flatten_max_fixed0_p95",
+]
 
 
 def read_csv_dicts(path):
@@ -46,6 +56,66 @@ def add_picture_if_exists(doc, path, width_in=5.5):
         return True
     doc.add_paragraph(f"(Missing figure: {path.name})")
     return False
+
+
+def add_job_histograms(doc, input_bases, job):
+    bases = input_bases or [OUT_BASE]
+    for base in bases:
+        job_dir = base / "summary_outputs" / "job_hists" / job
+        if not job_dir.exists():
+            continue
+        doc.add_paragraph(f"Job histograms for {job} ({base.name}):")
+        for name, label in [
+            ("hist_kept_counts.png", "Kept counts"),
+            ("hist_raw_counts.png", "Raw counts"),
+            ("hist_isolated_counts.png", "Isolated counts"),
+        ]:
+            path = job_dir / name
+            if path.exists():
+                doc.add_paragraph(label)
+                add_picture_if_exists(doc, path, width_in=4.5)
+
+
+def describe_job(job):
+    if "medianbg" in job:
+        preprocess = "align_rows x2 + plane_level + median_level + median(3)"
+    elif "flatten" in job:
+        preprocess = "align_rows x2 + plane_level + flatten_base + median(3)"
+    else:
+        preprocess = "custom/other"
+    if job.endswith("_mean"):
+        threshold = "mean"
+    elif job.endswith("_fixed0"):
+        threshold = "fixed 0.0"
+    elif job.endswith("_p95"):
+        threshold = "percentile 95"
+    elif "max_fixed0_p95" in job:
+        threshold = "max(mean, fixed0, p95)"
+    else:
+        threshold = "custom/other"
+    return preprocess, threshold
+
+
+def collect_debug_stats(bases):
+    rows = []
+    for base in bases:
+        for debug_dir in base.rglob("debug"):
+            if not debug_dir.is_dir():
+                continue
+            counts = {}
+            total = 0
+            for p in debug_dir.rglob("*"):
+                if not p.is_file():
+                    continue
+                total += 1
+                ext = p.suffix.lower() or "no_ext"
+                counts[ext] = counts.get(ext, 0) + 1
+            rows.append({
+                "path": str(debug_dir),
+                "total": total,
+                "counts": counts,
+            })
+    return rows
 
 
 def parse_data_grouped(path):
@@ -85,6 +155,7 @@ def build_sample_group_map(groups):
     mapping = {}
     norm_map = {}
     order = []
+    root_norms = []
     for g in groups:
         label = g["label"]
         order.append(label)
@@ -98,15 +169,20 @@ def build_sample_group_map(groups):
             if stripped and stripped not in mapping:
                 mapping[stripped] = g
                 norm_map[_norm_key(stripped)] = g
-    return mapping, norm_map, order
+            root_norms.append((_norm_key(root), g))
+    return mapping, norm_map, order, root_norms
 
 
-def classify_sample(sample, mapping, norm_map):
+def classify_sample(sample, mapping, norm_map, root_norms=None):
     if sample in mapping:
         return mapping[sample], "exact"
     norm = _norm_key(sample)
     if norm in norm_map:
         return norm_map[norm], "normalized"
+    if root_norms:
+        for root_norm, grp in root_norms:
+            if root_norm and norm and norm in root_norm:
+                return grp, "root"
     best = None
     best_len = 0
     for norm_key, grp in norm_map.items():
@@ -212,13 +288,35 @@ def main():
     )
     doc.add_paragraph(
         "Grid plots: missing scans are shown in gray; scans that exist but were filtered to zero "
-        "particles are outlined in yellow; numbers overlay the raw particle count per scan."
+        "particles are outlined in red; numbers overlay the raw particle count per scan."
+    )
+    doc.add_paragraph(
+        "Unclassified = sample folder name did not match any grouped input roots in the "
+        "File Locations for Data Grouped list."
+    )
+    doc.add_paragraph("Processing methods (explicit):")
+    method_rows = []
+    for job in JOB_ORDER:
+        preprocess, threshold = describe_job(job)
+        method_rows.append([
+            job,
+            preprocess,
+            threshold,
+            ISOLATION_DIST_NM,
+            DIAMETER_FILTER_NM,
+        ])
+    add_table(
+        doc,
+        ["Job", "Preprocess", "Threshold", "Isolation (nm)", "Diameter filter"],
+        method_rows,
     )
 
     doc.add_heading("1. Scan Inventory", level=1)
     inv_rows = read_csv_dicts(OUT_BASE / "scan_inventory.csv")
     groups = parse_data_grouped(DATA_GROUPED) if DATA_GROUPED.exists() else []
-    sample_to_group, norm_group_map, group_order = build_sample_group_map(groups) if groups else ({}, {}, [])
+    sample_to_group, norm_group_map, group_order, root_norms = (
+        build_sample_group_map(groups) if groups else ({}, {}, [], [])
+    )
     inv_by_root = {}
     inv_by_root_norm = {}
     inv_jsons = []
@@ -303,6 +401,8 @@ def main():
     if base_rows:
         counts = [int(float(r.get("count_total", 0) or 0)) for r in base_rows]
         isolated = [int(float(r.get("count_isolated", 0) or 0)) for r in base_rows]
+        raw_counts = [int(float(r.get("count_total_raw", 0) or 0)) for r in base_rows if r.get("count_total_raw")]
+        filtered_counts = [int(float(r.get("count_total_filtered", 0) or 0)) for r in base_rows if r.get("count_total_filtered")]
         total_particles = sum(counts)
         mean_counts = stats.mean(counts)
         std_counts = stats.pstdev(counts) if len(counts) > 1 else 0.0
@@ -322,6 +422,8 @@ def main():
                 ["Std. dev. particles per scan", f"{std_counts:.3f}"],
                 ["Min particles per scan", min_counts],
                 ["Max particles per scan", max_counts],
+                ["Mean raw particles per scan (pre-filter)", f"{stats.mean(raw_counts):.3f}" if raw_counts else "n/a"],
+                ["Mean filtered particles per scan", f"{stats.mean(filtered_counts):.3f}" if filtered_counts else "n/a"],
                 ["Mean isolated particles per scan", f"{mean_iso:.3f}"],
                 ["Std. dev. isolated particles per scan", f"{std_iso:.3f}"],
                 ["% scans with >= 1 isolated particle", f"{pct_iso:.3f}"],
@@ -334,7 +436,7 @@ def main():
         unclassified = set()
         for r in base_rows:
             sample = r.get("sample", "")
-            group, _match_mode = classify_sample(sample, sample_to_group, norm_group_map)
+            group, _match_mode = classify_sample(sample, sample_to_group, norm_group_map, root_norms)
             label = group.get("label", "Unclassified") if group else "Unclassified"
             wt = wt_percent_from_label(label) or wt_percent_from_sample(sample) or "Unknown"
             scan_id = parse_scan_id(r.get("source_file", ""))
@@ -349,31 +451,61 @@ def main():
                 r.get("count_isolated", ""),
             ])
 
-        order = sinp_group_order or sorted(rows_by_group.keys())
-        for label in order:
-            group_rows = rows_by_group.get(label) or []
-            if not group_rows:
+        doc.add_paragraph(
+            "Counts are reported as: total kept particles (after diameter + edge filters) and isolated particles "
+            "(subset meeting the isolation distance). Raw (pre-filter) counts are plotted separately when available."
+        )
+
+        rows_by_wt = {"10%": [], "25%": [], "Unknown": []}
+        for label, group_rows in rows_by_group.items():
+            for r in group_rows:
+                wt = r[0]
+                group_label = r[1]
+                scraped = scraped_status_from_label(group_label)
+                rows_by_wt.setdefault(wt, []).append([
+                    wt,
+                    scraped,
+                    group_label,
+                    r[2],
+                    r[3],
+                    r[4],
+                    r[5],
+                ])
+
+        for wt in ["10%", "25%", "Unknown"]:
+            wt_rows = rows_by_wt.get(wt) or []
+            if not wt_rows:
                 continue
-            doc.add_heading(label, level=3)
+            doc.add_heading(f"SiNP {wt}", level=3)
             add_table(
                 doc,
-                ["SiNP wt%", "Group", "Sample", "Scan ID", "Particles (Total)", "Particles (Isolated)"],
-                group_rows,
+                ["SiNP wt%", "Scraped?", "Group", "Sample", "Scan ID", "Particles (Kept)", "Particles (Isolated)"],
+                wt_rows,
             )
-            # Embed grid plots if available (per sample)
-            samples = sorted({r[2] for r in group_rows})
+            samples = sorted({r[3] for r in wt_rows})
             for sample in samples:
                 count_plot, iso_plot = _find_plot_paths(input_bases, SYSTEM_SINP, sample, BASELINE_JOB)
-                if (count_plot and count_plot.exists()) or (iso_plot and iso_plot.exists()):
+                raw_plot = None
+                for base in (input_bases or [OUT_BASE]):
+                    candidate = (
+                        base / SYSTEM_SINP / sample / "summary_outputs" / f"fig_particle_count_raw_grid_{BASELINE_JOB}.png"
+                    )
+                    if candidate.exists():
+                        raw_plot = candidate
+                        break
+                if (count_plot and count_plot.exists()) or (iso_plot and iso_plot.exists()) or raw_plot:
                     doc.add_paragraph(
                         f"Grid density maps for {sample} ({BASELINE_JOB}); "
                         "counts are normalized per scan area (particles/um^2) with fixed color range "
-                        "equivalent to 0-12 particles per scan."
+                        "equivalent to 0-12 particles per scan. Raw grids (pre-filter) use a higher range."
                     )
                     if count_plot:
                         add_picture_if_exists(doc, count_plot)
                     if iso_plot:
                         add_picture_if_exists(doc, iso_plot)
+                    if raw_plot:
+                        add_picture_if_exists(doc, raw_plot)
+
         if unclassified:
             doc.add_paragraph("Unclassified samples (did not match grouped file list):")
             for sample in sorted(unclassified):
@@ -390,13 +522,19 @@ def main():
         stats_rows = read_csv_dicts(OUT_BASE / "particle_summary_stats.csv")
     mean_d = next((r["value"] for r in stats_rows if r.get("metric") == "mean_diameter_nm"), None)
     std_d = next((r["value"] for r in stats_rows if r.get("metric") == "std_diameter_nm"), None)
+    diam_min_vals = sorted({r.get("diam_min_nm") for r in base_rows if r.get("diam_min_nm")})
+    diam_max_vals = sorted({r.get("diam_max_nm") for r in base_rows if r.get("diam_max_nm")})
+    diam_used = ""
+    if diam_min_vals and diam_max_vals:
+        diam_used = f"{diam_min_vals[0]}-{diam_max_vals[-1]} nm (from data)"
     add_table(
         doc,
         ["Metric", "Value"],
         [
             ["Mean particle diameter (nm)", mean_d or "n/a"],
             ["Std. dev. particle diameter (nm)", std_d or "n/a"],
-            ["Diameter filter", DIAMETER_FILTER_NM],
+            ["Diameter filter (data)", diam_used or "n/a"],
+            ["Diameter filter (target)", DIAMETER_FILTER_NM],
         ],
     )
     doc.add_paragraph(
@@ -421,16 +559,7 @@ def main():
             by_job.extend(read_csv_dicts(base / "particle_summary_stats_by_job.csv"))
     else:
         by_job = read_csv_dicts(OUT_BASE / "particle_summary_stats_by_job.csv")
-    job_order = [
-        "particle_forward_medianbg_mean",
-        "particle_forward_medianbg_fixed0",
-        "particle_forward_medianbg_p95",
-        "particle_forward_medianbg_max_fixed0_p95",
-        "particle_forward_flatten_mean",
-        "particle_forward_flatten_fixed0",
-        "particle_forward_flatten_p95",
-        "particle_forward_flatten_max_fixed0_p95",
-    ]
+    job_order = JOB_ORDER
     job_rows = []
     by_job_map = {r.get("job"): r for r in by_job}
     for job in job_order:
@@ -439,17 +568,25 @@ def main():
             continue
         job_rows.append([
             job,
-            r.get("mean_per_map", ""),
-            r.get("std_per_map", ""),
+            r.get("raw_mean_per_map", "") or r.get("mean_per_map", ""),
+            r.get("filtered_mean_per_map", "") or r.get("mean_per_map", ""),
             r.get("mean_isolated_per_map", ""),
             r.get("std_isolated_per_map", ""),
             r.get("percent_maps_with_isolated", ""),
         ])
     add_table(
         doc,
-        ["Job", "Mean/Scan", "Std/Scan", "Mean Isolated/Scan", "Std Isolated/Scan", "% Scans w/ Iso"],
+        ["Job", "Raw Mean/Scan", "Filtered Mean/Scan", "Mean Isolated/Scan", "Std Isolated/Scan", "% Scans w/ Iso"],
         job_rows,
     )
+    doc.add_paragraph(
+        "Per-job histograms (kept/raw/isolated) are embedded below and also exported under "
+        "summary_outputs/job_hists/<job>/ in each output root."
+    )
+    for job in job_order:
+        if job not in by_job_map:
+            continue
+        add_job_histograms(doc, input_bases, job)
     add_picture_if_exists(doc, OUT_BASE / "fig_particle_count_mean_by_job.png")
     add_picture_if_exists(doc, OUT_BASE / "fig_isolated_count_mean_by_job.png")
 
@@ -492,50 +629,69 @@ def main():
     )
 
     doc.add_heading("7. Statistical Feasibility Statement", level=1)
-    if base_rows:
-        by_group = {}
-        for r in base_rows:
-            sample = r.get("sample", "")
-            group, _match_mode = classify_sample(sample, sample_to_group, norm_group_map)
-            label = group.get("label", "Unclassified") if group else "Unclassified"
-            wt = wt_percent_from_label(label) or wt_percent_from_sample(sample) or "Unknown"
-            by_group.setdefault(wt, []).append(int(float(r.get("count_isolated", 0) or 0)))
-        feas_rows = []
-        for wt, vals in sorted(by_group.items()):
-            mean_iso = stats.mean(vals) if vals else 0.0
+    if count_rows:
+        rows_sinp = [r for r in count_rows if r.get("system") == SYSTEM_SINP]
+        by_job = {}
+        for r in rows_sinp:
+            job = r.get("job", "")
+            iso = int(float(r.get("count_isolated", 0) or 0))
+            by_job.setdefault(job, []).append(iso)
+        base_vals = by_job.get(BASELINE_JOB) or []
+        base_mean = stats.mean(base_vals) if base_vals else 0.0
+
+        method_rows = []
+        scans_needed_list = []
+        mean_iso_list = []
+        for job in JOB_ORDER:
+            vals = by_job.get(job) or []
+            if not vals:
+                continue
+            mean_iso = stats.mean(vals)
             std_iso = stats.pstdev(vals) if len(vals) > 1 else 0.0
             scans_needed = math.ceil(TARGET_ISOLATED / mean_iso) if mean_iso > 0 else None
-            if scans_needed:
-                expected_total = mean_iso * scans_needed
-                std_total = std_iso * math.sqrt(scans_needed)
-                scans_needed_disp = str(scans_needed)
-                expected_disp = f"{expected_total:.1f}"
-                std_disp = f"{std_total:.1f}"
-            else:
-                scans_needed_disp = "n/a"
-                expected_disp = "n/a"
-                std_disp = "n/a"
-            feas_rows.append([wt, f"{mean_iso:.3f}", f"{std_iso:.3f}", scans_needed_disp, expected_disp, std_disp])
+            pct_diff = ((mean_iso - base_mean) / base_mean * 100.0) if base_mean > 0 else None
+            scans_needed_list.append(scans_needed) if scans_needed else None
+            mean_iso_list.append(mean_iso)
+            method_rows.append([
+                job,
+                f"{mean_iso:.3f}",
+                f"{std_iso:.3f}",
+                str(scans_needed) if scans_needed else "n/a",
+                f"{pct_diff:.1f}%" if pct_diff is not None else "n/a",
+            ])
         add_table(
             doc,
-            [
-                "SiNP wt%",
-                "Mean isolated/scan",
-                "Std isolated/scan",
-                "Scans needed for ~30 isolated",
-                "Expected isolated (at N)",
-                "Std isolated (at N)",
-            ],
-            feas_rows,
+            ["Job", "Mean isolated/scan", "Std isolated/scan", "Scans for ~30 isolated", "% diff vs baseline"],
+            method_rows,
+        )
+        if scans_needed_list:
+            mean_scans = stats.mean(scans_needed_list)
+            std_scans = stats.pstdev(scans_needed_list) if len(scans_needed_list) > 1 else 0.0
+        else:
+            mean_scans = 0.0
+            std_scans = 0.0
+        if mean_iso_list:
+            mean_iso_all = stats.mean(mean_iso_list)
+            std_iso_all = stats.pstdev(mean_iso_list) if len(mean_iso_list) > 1 else 0.0
+        else:
+            mean_iso_all = 0.0
+            std_iso_all = 0.0
+        doc.add_paragraph(
+            "Across methods: mean scans needed = %.2f (std %.2f); mean isolated/scan = %.3f (std %.3f)."
+            % (mean_scans, std_scans, mean_iso_all, std_iso_all)
         )
         doc.add_paragraph(
-            "Scans needed are computed per SiNP wt% group (not pooled across all SiNP samples). "
-            "Std for total isolated assumes independent scans (std_total = sqrt(N) * std_per_scan)."
+            "Percent difference is computed as (method - baseline) / baseline * 100 using the baseline job mean isolated/scan."
         )
     else:
         doc.add_paragraph("Feasibility statement could not be computed (no isolated count data).")
 
     doc.add_heading("8. Equations (Summary)", level=1)
+    doc.add_paragraph(
+        "Variables: N = number of scans, x_i = particle count for scan i, x_bar = mean of x_i, "
+        "sigma = population std of x_i, T = target isolated particle count (30), "
+        "N_needed = scans required to reach T in expectation."
+    )
     doc.add_paragraph("Mean per scan: x_bar = (1/N) * sum(x_i)")
     doc.add_paragraph("Population std: sigma = sqrt((1/N) * sum((x_i - x_bar)^2))")
     doc.add_paragraph("Percent scans with isolated: 100 * sum(1[x_i > 0]) / N")
@@ -546,6 +702,55 @@ def main():
 
     doc.add_heading("9. LiTFSI Comparison", level=1)
     doc.add_paragraph("Not applicable (no PEGDA-LiTFSI-SiNP samples in this dataset).")
+
+    doc.add_heading("10. Run Time and Debug Outputs", level=1)
+    timing_rows = []
+    bases_for_timing = input_bases or [OUT_BASE]
+    for base in bases_for_timing:
+        timing_path = base / "run_timing.json"
+        if not timing_path.exists():
+            continue
+        try:
+            import json
+            info = json.loads(timing_path.read_text(encoding="utf-8"))
+            total_s = float(info.get("total_seconds", 0.0))
+            timing_rows.append([
+                base.name,
+                f"{total_s:.1f}",
+                info.get("total_scans", ""),
+                info.get("total_jobs", ""),
+                info.get("roots_processed", ""),
+                info.get("started", ""),
+                info.get("finished", ""),
+            ])
+        except Exception:
+            continue
+    if timing_rows:
+        add_table(
+            doc,
+            ["Output Root", "Total Seconds", "Total Scans", "Jobs", "Roots", "Start", "Finish"],
+            timing_rows,
+        )
+    else:
+        doc.add_paragraph("run_timing.json not found (time data not available for this run).")
+
+    doc.add_paragraph(
+        "Run-time drivers: number of scans x number of methods, Gwyddion preprocessing steps, "
+        "particle detection + grain exports, and debug artifact saves (aligned/leveled/filtered/mask)."
+    )
+
+    debug_stats = collect_debug_stats(bases_for_timing)
+    if debug_stats:
+        doc.add_paragraph("Debug artifact summary (per debug directory):")
+        debug_rows = []
+        for row in debug_stats:
+            counts = ", ".join([f"{k}:{v}" for k, v in sorted(row["counts"].items())])
+            debug_rows.append([row["path"], row["total"], counts])
+        add_table(doc, ["Debug Path", "Total Files", "By Extension"], debug_rows[:20])
+        if len(debug_rows) > 20:
+            doc.add_paragraph(f"... {len(debug_rows) - 20} more debug folders not shown.")
+    else:
+        doc.add_paragraph("No debug folders found under output roots.")
 
     try:
         doc.save(str(REPORT_PATH))

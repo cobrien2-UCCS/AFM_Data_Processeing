@@ -20,14 +20,14 @@ modes:
       - op: median
         params: { size: 3 }
     threshold_strategy: "mean"
-    particle_diameter_min_nm: 400
-    particle_diameter_max_nm: 500
+    particle_diameter_min_nm: 350
+    particle_diameter_max_nm: 550
     isolation_min_dist_nm: 900
     export_particles: true
     export_particle_mask: true
     export_particle_mask_review_only: true
     edge_exclude: true
-    review_pack: { enable: true, sample_limit: 10, seed: 1337, panel_basename_max_len: 60 }
+    review_pack: { enable: true, sample_limit: 5, seed: 1337, panel_basename_max_len: 60 }
     grain_export:
       enable: true
       use_review_sample: true
@@ -49,14 +49,14 @@ modes:
         params: { size: 3 }
     threshold_strategy: "fixed"
     threshold_fixed: 0.0
-    particle_diameter_min_nm: 400
-    particle_diameter_max_nm: 500
+    particle_diameter_min_nm: 350
+    particle_diameter_max_nm: 550
     isolation_min_dist_nm: 900
     export_particles: true
     export_particle_mask: true
     export_particle_mask_review_only: true
     edge_exclude: true
-    review_pack: { enable: true, sample_limit: 10, seed: 1337, panel_basename_max_len: 60 }
+    review_pack: { enable: true, sample_limit: 5, seed: 1337, panel_basename_max_len: 60 }
     grain_export:
       enable: true
       use_review_sample: true
@@ -78,14 +78,14 @@ modes:
         params: { size: 3 }
     threshold_strategy: "percentile"
     threshold_percentile: 95
-    particle_diameter_min_nm: 400
-    particle_diameter_max_nm: 500
+    particle_diameter_min_nm: 350
+    particle_diameter_max_nm: 550
     isolation_min_dist_nm: 900
     export_particles: true
     export_particle_mask: true
     export_particle_mask_review_only: true
     edge_exclude: true
-    review_pack: { enable: true, sample_limit: 10, seed: 1337, panel_basename_max_len: 60 }
+    review_pack: { enable: true, sample_limit: 5, seed: 1337, panel_basename_max_len: 60 }
     grain_export:
       enable: true
       use_review_sample: true
@@ -109,14 +109,14 @@ modes:
     threshold_strategy: "max"
     threshold_fixed: 0.0
     threshold_percentile: 95
-    particle_diameter_min_nm: 400
-    particle_diameter_max_nm: 500
+    particle_diameter_min_nm: 350
+    particle_diameter_max_nm: 550
     isolation_min_dist_nm: 900
     export_particles: true
     export_particle_mask: true
     export_particle_mask_review_only: true
     edge_exclude: true
-    review_pack: { enable: true, sample_limit: 10, seed: 1337, panel_basename_max_len: 60 }
+    review_pack: { enable: true, sample_limit: 5, seed: 1337, panel_basename_max_len: 60 }
     grain_export:
       enable: true
       use_review_sample: true
@@ -138,14 +138,14 @@ modes:
       - op: median
         params: { size: 3 }
     threshold_strategy: "mean"
-    particle_diameter_min_nm: 400
-    particle_diameter_max_nm: 500
+    particle_diameter_min_nm: 350
+    particle_diameter_max_nm: 550
     isolation_min_dist_nm: 900
     export_particles: true
     export_particle_mask: true
     export_particle_mask_review_only: true
     edge_exclude: true
-    review_pack: { enable: true, sample_limit: 10, seed: 1337, panel_basename_max_len: 60 }
+    review_pack: { enable: true, sample_limit: 5, seed: 1337, panel_basename_max_len: 60 }
     grain_export:
       enable: true
       use_review_sample: true
@@ -167,14 +167,14 @@ modes:
         params: { size: 3 }
     threshold_strategy: "fixed"
     threshold_fixed: 0.0
-    particle_diameter_min_nm: 400
-    particle_diameter_max_nm: 500
+    particle_diameter_min_nm: 350
+    particle_diameter_max_nm: 550
     isolation_min_dist_nm: 900
     export_particles: true
     export_particle_mask: true
     export_particle_mask_review_only: true
     edge_exclude: true
-    review_pack: { enable: true, sample_limit: 10, seed: 1337, panel_basename_max_len: 60 }
+    review_pack: { enable: true, sample_limit: 5, seed: 1337, panel_basename_max_len: 60 }
     grain_export:
       enable: true
       use_review_sample: true
@@ -196,14 +196,14 @@ modes:
         params: { size: 3 }
     threshold_strategy: "percentile"
     threshold_percentile: 95
-    particle_diameter_min_nm: 400
-    particle_diameter_max_nm: 500
+    particle_diameter_min_nm: 350
+    particle_diameter_max_nm: 550
     isolation_min_dist_nm: 900
     export_particles: true
     export_particle_mask: true
     export_particle_mask_review_only: true
     edge_exclude: true
-    review_pack: { enable: true, sample_limit: 10, seed: 1337, panel_basename_max_len: 60 }
+    review_pack: { enable: true, sample_limit: 5, seed: 1337, panel_basename_max_len: 60 }
     grain_export:
       enable: true
       use_review_sample: true
@@ -226,14 +226,14 @@ modes:
     threshold_strategy: "max"
     threshold_fixed: 0.0
     threshold_percentile: 95
-    particle_diameter_min_nm: 400
-    particle_diameter_max_nm: 500
+    particle_diameter_min_nm: 350
+    particle_diameter_max_nm: 550
     isolation_min_dist_nm: 900
     export_particles: true
     export_particle_mask: true
     export_particle_mask_review_only: true
     edge_exclude: true
-    review_pack: { enable: true, sample_limit: 10, seed: 1337, panel_basename_max_len: 60 }
+    review_pack: { enable: true, sample_limit: 5, seed: 1337, panel_basename_max_len: 60 }
     grain_export:
       enable: true
       use_review_sample: true
@@ -363,4 +363,19 @@ jobs:
     profile: "flatten_max_fixed0_p95"
     pattern: "**/*Z Height*Forward*.tif;**/*Z Height*Forward*.tiff"
     collect: { enable: true, job: "collect_forward", out_root: "C:/AFM_STAGE" }
+
+
+
+debug:
+  enable: true
+  level: "info"
+  artifacts: []
+  sample_limit: 5
+  out_dir: "out/debug"
+  trace_dir: "out/debug/trace"
+  log_fields: []
+  stats_provenance: false
+  raise_on_warn: false
+  echo_config: false
+
 

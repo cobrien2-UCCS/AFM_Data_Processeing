@@ -4,6 +4,8 @@ import re
 import sys
 import json
 import subprocess
+import time
+from datetime import datetime
 from pathlib import Path
 
 DEFAULT_CONFIG = Path("configs/TEST configs/Example configs/config.topo_particle_2jobs_masking.yaml")
@@ -107,6 +109,14 @@ def main():
     out_base.mkdir(parents=True, exist_ok=True)
     inventory_rows = []
     sinp_roots = []
+    root_counts = {}
+    timing = {
+        "started": datetime.now().isoformat(timespec="seconds"),
+        "config": str(config_path),
+        "jobs": jobs,
+        "entries": [],
+    }
+    t0_all = time.time()
 
     for path in list_input_paths(data_list):
         if not os.path.isdir(path):
@@ -124,6 +134,7 @@ def main():
             "grid_y": GRID[1],
             "resolution_nm_per_px": RES_NM,
         })
+        root_counts[path] = len(files)
         if system == "pegda_sinp":
             sinp_roots.append(path)
 
@@ -140,7 +151,24 @@ def main():
         out_root = out_base / "PEGDA_SiNP" / base
         out_root.mkdir(parents=True, exist_ok=True)
         for job_name in jobs:
+            t0 = time.time()
             run_particle_job(root, out_root, job_name, config_path)
+            timing["entries"].append({
+                "input_root": root,
+                "job": job_name,
+                "scan_count": root_counts.get(root, 0),
+                "seconds": round(time.time() - t0, 3),
+            })
+
+    total_seconds = round(time.time() - t0_all, 3)
+    timing["total_seconds"] = total_seconds
+    timing["finished"] = datetime.now().isoformat(timespec="seconds")
+    timing["total_scans"] = sum(root_counts.get(r, 0) for r in sinp_roots)
+    timing["total_jobs"] = len(jobs)
+    timing["roots_processed"] = len(sinp_roots)
+    timing_path = out_base / "run_timing.json"
+    timing_path.write_text(json.dumps(timing, indent=2), encoding="utf-8")
+    print("Wrote", timing_path)
 
     print("Done.")
 

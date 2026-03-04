@@ -13,8 +13,8 @@ modes:
     expected_units: "count"
     on_unit_mismatch: "warn"
     # Diameter filter (nm) + isolation (center-to-center, nm)
-    particle_diameter_min_nm: 400
-    particle_diameter_max_nm: 500
+    particle_diameter_min_nm: 350
+    particle_diameter_max_nm: 550
     isolation_min_dist_nm: 900
     export_particles: true
 
@@ -29,8 +29,8 @@ modes:
       - op: align_rows
         params: { direction: "horizontal", method: "median" }
       - op: plane_level
-    particle_diameter_min_nm: 400
-    particle_diameter_max_nm: 500
+    particle_diameter_min_nm: 350
+    particle_diameter_max_nm: 550
     isolation_min_dist_nm: 900
     export_particles: true
 
@@ -46,8 +46,8 @@ modes:
         params: { direction: "horizontal", method: "median" }
       - op: plane_level
       - op: flatten_base
-    particle_diameter_min_nm: 400
-    particle_diameter_max_nm: 500
+    particle_diameter_min_nm: 350
+    particle_diameter_max_nm: 550
     isolation_min_dist_nm: 900
     export_particles: true
 
@@ -63,8 +63,8 @@ modes:
         params: { direction: "horizontal", method: "median" }
       - op: plane_level
       - op: median_level
-    particle_diameter_min_nm: 400
-    particle_diameter_max_nm: 500
+    particle_diameter_min_nm: 350
+    particle_diameter_max_nm: 550
     isolation_min_dist_nm: 900
     export_particles: true
 
@@ -213,3 +213,4 @@ jobs:
       enable: true
       job: "collect_forward"
       out_root: "C:/AFM_STAGE"
+

@@ -1,0 +1,135 @@
+[
+  {
+    "info": {
+      "rms": 1.9749162657503696e-07, 
+      "min": -8.237828859100082e-07, 
+      "max": 1.5740209460097397e-07, 
+      "p5": -6.213832374172697e-07, 
+      "p95": 2.997962512720797e-08, 
+      "label": "initial", 
+      "avg": -2.9240945871740753e-07, 
+      "p50": -2.891874615136361e-07
+    }, 
+    "step": "stats_snapshot", 
+    "ok": true
+  }, 
+  {
+    "info": {
+      "direction": "horizontal", 
+      "method": "median"
+    }, 
+    "step": "align_rows", 
+    "ok": true
+  }, 
+  {
+    "info": {
+      "rms": 3.9471702031871e-09, 
+      "min": -3.1408855685612323e-07, 
+      "max": -2.8003029876742013e-07, 
+      "p5": -2.9887927702248556e-07, 
+      "p95": -2.869007911691821e-07, 
+      "label": "after_align_rows", 
+      "avg": -2.9240945871740795e-07, 
+      "p50": -2.9206851497281385e-07
+    }, 
+    "step": "stats_snapshot", 
+    "ok": true
+  }, 
+  {
+    "step": "plane_level", 
+    "ok": true
+  }, 
+  {
+    "info": {
+      "rms": 3.947170203187062e-09, 
+      "min": -2.167909813870231e-08, 
+      "max": 1.2379159949974913e-08, 
+      "p5": -6.4698183050843196e-09, 
+      "p95": 5.5086675482306266e-09, 
+      "label": "after_plane_level", 
+      "avg": 3.7573744682820776e-22, 
+      "p50": 3.409437445966651e-10
+    }, 
+    "step": "stats_snapshot", 
+    "ok": true
+  }, 
+  {
+    "info": {
+      "direction": "horizontal", 
+      "method": "median"
+    }, 
+    "step": "align_rows", 
+    "ok": true
+  }, 
+  {
+    "info": {
+      "rms": 3.947170203187108e-09, 
+      "min": -2.1679098138715485e-08, 
+      "max": 1.2379159949987907e-08, 
+      "p5": -6.469818305077684e-09, 
+      "p95": 5.508667548225694e-09, 
+      "label": "after_align_rows", 
+      "avg": 3.7566545222655367e-22, 
+      "p50": 3.409437445943328e-10
+    }, 
+    "step": "stats_snapshot", 
+    "ok": true
+  }, 
+  {
+    "info": {
+      "func": "median-bg"
+    }, 
+    "step": "median_level", 
+    "ok": true
+  }, 
+  {
+    "info": {
+      "rms": 1.8805299586317624e-09, 
+      "min": -9.512275255085664e-09, 
+      "max": 8.204778540467123e-09, 
+      "p5": -3.0908208481926246e-09, 
+      "p95": 3.0859656004875044e-09, 
+      "label": "after_median_level", 
+      "avg": 5.421649366993689e-12, 
+      "p50": 4.330050436580986e-12
+    }, 
+    "step": "stats_snapshot", 
+    "ok": true
+  }, 
+  {
+    "info": {
+      "size": 3
+    }, 
+    "step": "median", 
+    "ok": true
+  }, 
+  {
+    "info": {
+      "rms": 1.235063304583673e-09, 
+      "min": -6.7692665185308515e-09, 
+      "max": 6.822851265528373e-09, 
+      "p5": -2.006566333486845e-09, 
+      "p95": 2.042907775389904e-09, 
+      "label": "after_median", 
+      "avg": 9.660630920457225e-12, 
+      "p50": 8.298372055508708e-12
+    }, 
+    "step": "stats_snapshot", 
+    "ok": true
+  }, 
+  {
+    "info": {
+      "file": "panels\\PEGDA01TPO025SiNP_Sam01_S2_P__GrID014_LOC_RC002011-_b69251c8_particle_panel.png"
+    }, 
+    "step": "review_panel", 
+    "ok": true
+  }, 
+  {
+    "info": {
+      "threshold": 0.0, 
+      "count_total": 5
+    }, 
+    "step": "particle_count", 
+    "ok": true
+  }
+]

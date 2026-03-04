@@ -1,0 +1,8 @@
+$ErrorActionPreference = 'Stop'
+Start-Transcript -Path "out\run_topo_full_blocking_20260304_065016.transcript.log" | Out-Null
+py -3 scripts/topo_particle_batch.py --config "configs/TEST configs/Example configs/config.topo_particle_2jobs_masking.yaml" --out-base "C:\Users\Conor O'Brien\Dropbox\03_AML\00 IN-BOX\AFM Topo Particle processing OUT\rerun_350_550_full_lightdebug_wt10_20260304_065016" --only-wt 10
+py -3 scripts/topo_particle_summary.py --out-base "C:\Users\Conor O'Brien\Dropbox\03_AML\00 IN-BOX\AFM Topo Particle processing OUT\rerun_350_550_full_lightdebug_wt10_20260304_065016" --config "configs/TEST configs/Example configs/config.topo_particle_summary.yaml"
+py -3 scripts/topo_particle_batch.py --config "configs/TEST configs/Example configs/config.topo_particle_2jobs_masking.yaml" --out-base "C:\Users\Conor O'Brien\Dropbox\03_AML\00 IN-BOX\AFM Topo Particle processing OUT\rerun_350_550_full_lightdebug_wt25_20260304_065016" --only-wt 25
+py -3 scripts/topo_particle_summary.py --out-base "C:\Users\Conor O'Brien\Dropbox\03_AML\00 IN-BOX\AFM Topo Particle processing OUT\rerun_350_550_full_lightdebug_wt25_20260304_065016" --config "configs/TEST configs/Example configs/config.topo_particle_summary.yaml"
+py -3 scripts/generate_topo_report_docx.py --out-base-list "C:\Users\Conor O'Brien\Dropbox\03_AML\00 IN-BOX\AFM Topo Particle processing OUT\rerun_350_550_full_lightdebug_wt10_20260304_065016;C:\Users\Conor O'Brien\Dropbox\03_AML\00 IN-BOX\AFM Topo Particle processing OUT\rerun_350_550_full_lightdebug_wt25_20260304_065016" --report-path "C:\Users\Conor O'Brien\Dropbox\03_AML\00 IN-BOX\AFM Topo Particle processing OUT\topo_particle_report_draft_10pct_25pct_lightdebug_20260304_065016.docx"
+Stop-Transcript | Out-Null

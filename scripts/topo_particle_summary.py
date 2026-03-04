@@ -265,6 +265,12 @@ def _parse_row_col(source_file):
 def parse_args():
     ap = argparse.ArgumentParser(description="Aggregate topo particle outputs.")
     ap.add_argument("--out-base", default="", help="Override output base directory.")
+    ap.add_argument("--config", default="", help="Optional YAML config file with summary_plot overrides.")
+    ap.add_argument("--grid-cmap", default="viridis", help="Colormap for grid plots.")
+    ap.add_argument("--grid-zero-outline-color", default="red", help="Outline color for zero-count scans.")
+    ap.add_argument("--grid-fixed-max", type=float, default=15.0, help="Fixed max particles/scan for filtered grids.")
+    ap.add_argument("--grid-fixed-max-raw", type=float, default=60.0, help="Fixed max particles/scan for raw grids.")
+    ap.add_argument("--grid-raw-job-pattern", default="raw|unfiltered|nomask", help="Regex to treat job as raw.")
     return ap.parse_args()
 
 
@@ -273,6 +279,18 @@ def main():
     global OUT_BASE
     if args.out_base:
         OUT_BASE = Path(args.out_base)
+    if args.config:
+        try:
+            import yaml
+            cfg = yaml.safe_load(Path(args.config).read_text(encoding="utf-8")) or {}
+            plot_cfg = cfg.get("summary_plot") or {}
+            args.grid_cmap = plot_cfg.get("grid_cmap", args.grid_cmap)
+            args.grid_zero_outline_color = plot_cfg.get("grid_zero_outline_color", args.grid_zero_outline_color)
+            args.grid_fixed_max = float(plot_cfg.get("grid_fixed_max", args.grid_fixed_max))
+            args.grid_fixed_max_raw = float(plot_cfg.get("grid_fixed_max_raw", args.grid_fixed_max_raw))
+            args.grid_raw_job_pattern = plot_cfg.get("grid_raw_job_pattern", args.grid_raw_job_pattern)
+        except Exception:
+            pass
 
     inv = read_inventory()
 
@@ -322,15 +340,23 @@ def main():
     rows_by_sample = {}
     counts_by_job = {}
     isolated_by_job = {}
+    counts_raw_by_job = {}
+    counts_filtered_by_job = {}
     grid_counts = {}
     grid_isolated = {}
+    grid_raw_counts = {}
     grid_zero = {}
     grid_iso_zero = {}
     wt_grid_counts = {}
     wt_grid_isolated = {}
+    wt_grid_raw_counts = {}
     wt_grid_n = {}
     for row in summary_rows:
         count_total = to_int(row.get("count_total"))
+        raw_val = row.get("count_total_raw")
+        raw_present = raw_val not in (None, "")
+        count_total_raw = to_int(raw_val)
+        count_total_filtered = to_int(row.get("count_total_filtered"))
         count_iso = to_int(row.get("count_isolated"))
         sample = row.get("sample", "unknown")
         system = row.get("system", "unknown")
@@ -351,9 +377,15 @@ def main():
             sample_system[sample] = system
         counts_by_job.setdefault(job, []).append(count_total)
         isolated_by_job.setdefault(job, []).append(count_iso)
+        if raw_present:
+            counts_raw_by_job.setdefault(job, []).append(count_total_raw)
+        if count_total_filtered:
+            counts_filtered_by_job.setdefault(job, []).append(count_total_filtered)
         count_rows.append({
             "source_file": row.get("source_file", ""),
             "count_total": count_total,
+            "count_total_raw": count_total_raw if raw_present else "",
+            "count_total_filtered": count_total_filtered if count_total_filtered else "",
             "count_isolated": count_iso,
             "diam_min_nm": row.get("diam_min_nm", ""),
             "diam_max_nm": row.get("diam_max_nm", ""),
@@ -368,6 +400,8 @@ def main():
             key = (system, sample, job)
             grid_counts.setdefault(key, {})[(row_idx, col_idx)] = count_total
             grid_isolated.setdefault(key, {})[(row_idx, col_idx)] = count_iso
+            if raw_present:
+                grid_raw_counts.setdefault(key, {})[(row_idx, col_idx)] = count_total_raw
             if count_total == 0:
                 grid_zero.setdefault(key, set()).add((row_idx, col_idx))
             if count_iso == 0:
@@ -378,12 +412,16 @@ def main():
                 wt_key = (wt, job)
                 wt_grid_counts.setdefault(wt_key, {})
                 wt_grid_isolated.setdefault(wt_key, {})
+                wt_grid_raw_counts.setdefault(wt_key, {})
                 wt_grid_n.setdefault(wt_key, {})
                 wt_grid_counts[wt_key].setdefault((row_idx, col_idx), 0.0)
                 wt_grid_isolated[wt_key].setdefault((row_idx, col_idx), 0.0)
+                wt_grid_raw_counts[wt_key].setdefault((row_idx, col_idx), 0.0)
                 wt_grid_n[wt_key].setdefault((row_idx, col_idx), 0)
                 wt_grid_counts[wt_key][(row_idx, col_idx)] += float(count_total)
                 wt_grid_isolated[wt_key][(row_idx, col_idx)] += float(count_iso)
+                if raw_present:
+                    wt_grid_raw_counts[wt_key][(row_idx, col_idx)] += float(count_total_raw)
                 wt_grid_n[wt_key][(row_idx, col_idx)] += 1
 
     if count_rows:
@@ -455,7 +493,7 @@ def main():
     if counts:
         plt.figure(figsize=(6,4))
         plt.hist(counts, bins=20, color="#4C78A8", edgecolor="black")
-        plt.title("Particle Count per Map (all jobs)")
+        plt.title("Kept Particle Count per Scan (all jobs, pre-isolation)")
         plt.xlabel("Particles per map")
         plt.ylabel("Frequency")
         plt.tight_layout()
@@ -475,7 +513,7 @@ def main():
     if isolated_counts:
         plt.figure(figsize=(6,4))
         plt.hist(isolated_counts, bins=20, color="#54A24B", edgecolor="black")
-        plt.title("Isolated Particle Count per Map (all jobs)")
+        plt.title("Isolated Particle Count per Scan (all jobs)")
         plt.xlabel("Isolated particles per map")
         plt.ylabel("Frequency")
         plt.tight_layout()
@@ -485,7 +523,7 @@ def main():
     if counts:
         plt.figure(figsize=(7,4))
         plt.scatter(range(1, len(counts) + 1), counts, s=12, color="#4C78A8", alpha=0.8)
-        plt.title("Particle Count per Map (index order)")
+        plt.title("Kept Particle Count per Scan (index order)")
         plt.xlabel("Map index")
         plt.ylabel("Particles per map")
         plt.tight_layout()
@@ -507,7 +545,7 @@ def main():
         data = [counts_by_sample[s] for s in counts_by_sample.keys()]
         plt.figure(figsize=(8,4))
         plt.boxplot(data, labels=labels, showfliers=True)
-        plt.title("Particle Count per Map by Sample")
+        plt.title("Kept Particle Count per Scan by Sample")
         plt.xlabel("Sample")
         plt.ylabel("Particles per map")
         plt.xticks(rotation=45, ha="right")
@@ -534,7 +572,7 @@ def main():
         stds = [stats.pstdev(v) if len(v) > 1 else 0.0 for v in counts_by_sample.values()]
         plt.figure(figsize=(8,4))
         plt.bar(labels, means, yerr=stds, color="#4C78A8", capsize=4)
-        plt.title("Mean Particle Count per Map by Sample")
+        plt.title("Mean Kept Particle Count per Scan by Sample")
         plt.xlabel("Sample")
         plt.ylabel("Particles per map (mean ± std)")
         plt.xticks(rotation=45, ha="right")
@@ -548,7 +586,7 @@ def main():
         stds = [stats.pstdev(v) if len(v) > 1 else 0.0 for v in isolated_by_sample.values()]
         plt.figure(figsize=(8,4))
         plt.bar(labels, means, yerr=stds, color="#54A24B", capsize=4)
-        plt.title("Mean Isolated Particle Count per Map by Sample")
+        plt.title("Mean Isolated Particle Count per Scan by Sample")
         plt.xlabel("Sample")
         plt.ylabel("Isolated particles per map (mean ± std)")
         plt.xticks(rotation=45, ha="right")
@@ -562,7 +600,7 @@ def main():
         stds = [stats.pstdev(v) if len(v) > 1 else 0.0 for v in counts_by_job.values()]
         plt.figure(figsize=(9,4))
         plt.bar(job_labels, means, yerr=stds, color="#72B7B2", capsize=4)
-        plt.title("Mean Particle Count per Map by Job")
+        plt.title("Mean Kept Particle Count per Scan by Job")
         plt.xlabel("Job")
         plt.ylabel("Particles per map (mean ± std)")
         plt.xticks(rotation=30, ha="right")
@@ -576,7 +614,7 @@ def main():
         stds = [stats.pstdev(v) if len(v) > 1 else 0.0 for v in isolated_by_job.values()]
         plt.figure(figsize=(9,4))
         plt.bar(job_labels, means, yerr=stds, color="#59A14F", capsize=4)
-        plt.title("Mean Isolated Particle Count per Map by Job")
+        plt.title("Mean Isolated Particle Count per Scan by Job")
         plt.xlabel("Job")
         plt.ylabel("Isolated particles per map (mean ± std)")
         plt.xticks(rotation=30, ha="right")
@@ -584,22 +622,58 @@ def main():
         plt.savefig(OUT_BASE / "fig_isolated_count_mean_by_job.png", dpi=300)
         plt.close()
 
+    # Per-job histograms (kept / raw / isolated)
+    if counts_by_job or isolated_by_job:
+        job_hist_dir = OUT_BASE / "summary_outputs" / "job_hists"
+        job_hist_dir.mkdir(parents=True, exist_ok=True)
+        for job, vals in counts_by_job.items():
+            job_dir = job_hist_dir / job
+            job_dir.mkdir(parents=True, exist_ok=True)
+            _plot_hist(
+                vals,
+                "Kept Particle Count (pre-isolation) - %s" % job,
+                "Particles per scan",
+                job_dir / "hist_kept_counts.png",
+                bins=20,
+            )
+            raw_vals = counts_raw_by_job.get(job, [])
+            if raw_vals:
+                _plot_hist(
+                    raw_vals,
+                    "Raw Particle Count (pre-filter) - %s" % job,
+                    "Particles per scan",
+                    job_dir / "hist_raw_counts.png",
+                    bins=20,
+                    color="#E45756",
+                )
+            iso_vals = isolated_by_job.get(job, [])
+            if iso_vals:
+                _plot_hist(
+                    iso_vals,
+                    "Isolated Particle Count - %s" % job,
+                    "Isolated particles per scan",
+                    job_dir / "hist_isolated_counts.png",
+                    bins=20,
+                    color="#54A24B",
+                )
+
     # Grid count maps (per sample/job)
     if grid_counts:
         import numpy as np
         import matplotlib.patches as patches
 
         area_um2 = float(SCAN_SIZE_UM[0] * SCAN_SIZE_UM[1])
-        fixed_max_per_scan = 12.0
-        fixed_vmax = fixed_max_per_scan / area_um2 if area_um2 else None
-        cmap = plt.cm.cividis.copy()
+        fixed_max_per_scan = float(args.grid_fixed_max)
+        fixed_raw_max_per_scan = float(args.grid_fixed_max_raw)
+        raw_job_re = re.compile(args.grid_raw_job_pattern, re.I)
+        cmap = plt.cm.get_cmap(args.grid_cmap).copy()
         cmap.set_bad(color="lightgray")
 
-        def _plot_grid(grid_raw, grid_density, zero_cells, title, out_path):
+        def _plot_grid(grid_raw, grid_density, zero_cells, title, out_path, vmax):
             masked = np.ma.masked_invalid(grid_density)
             plt.figure(figsize=(6, 5))
             ax = plt.gca()
-            ax.imshow(masked, origin="lower", aspect="auto", cmap=cmap, vmin=0.0, vmax=fixed_vmax)
+            ax.imshow(masked, origin="lower", aspect="auto", cmap=cmap, vmin=0.0, vmax=vmax)
             ax.set_title(title)
             ax.set_xlabel("Col index")
             ax.set_ylabel("Row index")
@@ -635,7 +709,7 @@ def main():
                     1,
                     1,
                     linewidth=1.2,
-                    edgecolor="yellow",
+                    edgecolor=args.grid_zero_outline_color,
                     facecolor="none",
                 )
                 ax.add_patch(rect)
@@ -647,14 +721,22 @@ def main():
         for (system, sample, job), cells in grid_counts.items():
             if not cells:
                 continue
+            max_per_scan = fixed_raw_max_per_scan if raw_job_re.search(job) else fixed_max_per_scan
+            vmax = max_per_scan / area_um2 if area_um2 else None
             max_r = max(r for r, _ in cells.keys())
             max_c = max(c for _, c in cells.keys())
             grid_raw = np.full((max_r, max_c), np.nan, dtype=float)
             grid_raw_iso = np.full((max_r, max_c), np.nan, dtype=float)
+            grid_raw_unfiltered = None
+            if (system, sample, job) in grid_raw_counts:
+                grid_raw_unfiltered = np.full((max_r, max_c), np.nan, dtype=float)
             for (r, c), val in cells.items():
                 grid_raw[r - 1, c - 1] = val
             for (r, c), val in grid_isolated.get((system, sample, job), {}).items():
                 grid_raw_iso[r - 1, c - 1] = val
+            if grid_raw_unfiltered is not None:
+                for (r, c), val in grid_raw_counts.get((system, sample, job), {}).items():
+                    grid_raw_unfiltered[r - 1, c - 1] = val
             grid_density = grid_raw / area_um2 if area_um2 else grid_raw
             grid_iso_density = grid_raw_iso / area_um2 if area_um2 else grid_raw_iso
             zero_cells = grid_zero.get((system, sample, job), set())
@@ -667,8 +749,9 @@ def main():
                 grid_raw,
                 grid_density,
                 zero_cells,
-                "Particle Density Grid (%s)" % job,
+                "Kept Particle Density Grid (%s)" % job,
                 out_dir / ("fig_particle_count_grid_%s.png" % job),
+                vmax,
             )
             _plot_grid(
                 grid_raw_iso,
@@ -676,7 +759,21 @@ def main():
                 iso_zero_cells,
                 "Isolated Particle Density Grid (%s)" % job,
                 out_dir / ("fig_isolated_count_grid_%s.png" % job),
+                vmax,
             )
+            if grid_raw_unfiltered is not None:
+                raw_vmax = fixed_raw_max_per_scan / area_um2 if area_um2 else None
+                grid_raw_unfiltered_density = (
+                    grid_raw_unfiltered / area_um2 if area_um2 else grid_raw_unfiltered
+                )
+                _plot_grid(
+                    grid_raw_unfiltered,
+                    grid_raw_unfiltered_density,
+                    set(),
+                    "Raw Particle Density Grid (%s)" % job,
+                    out_dir / ("fig_particle_count_raw_grid_%s.png" % job),
+                    raw_vmax,
+                )
 
         # Combined grids per wt%
         if wt_grid_counts:
@@ -685,16 +782,25 @@ def main():
             for (wt, job), cells in wt_grid_counts.items():
                 if not cells:
                     continue
+                max_per_scan = fixed_raw_max_per_scan if raw_job_re.search(job) else fixed_max_per_scan
+                vmax = max_per_scan / area_um2 if area_um2 else None
                 max_r = max(r for r, _ in cells.keys())
                 max_c = max(c for _, c in cells.keys())
                 grid_raw = np.full((max_r, max_c), np.nan, dtype=float)
                 grid_raw_iso = np.full((max_r, max_c), np.nan, dtype=float)
+                grid_raw_unfiltered = None
+                if wt_grid_raw_counts.get((wt, job)):
+                    grid_raw_unfiltered = np.full((max_r, max_c), np.nan, dtype=float)
                 for (r, c), total in cells.items():
                     n = wt_grid_n.get((wt, job), {}).get((r, c), 1)
                     grid_raw[r - 1, c - 1] = total / float(n) if n else np.nan
                 for (r, c), total in wt_grid_isolated.get((wt, job), {}).items():
                     n = wt_grid_n.get((wt, job), {}).get((r, c), 1)
                     grid_raw_iso[r - 1, c - 1] = total / float(n) if n else np.nan
+                if grid_raw_unfiltered is not None:
+                    for (r, c), total in wt_grid_raw_counts.get((wt, job), {}).items():
+                        n = wt_grid_n.get((wt, job), {}).get((r, c), 1)
+                        grid_raw_unfiltered[r - 1, c - 1] = total / float(n) if n else np.nan
                 grid_density = grid_raw / area_um2 if area_um2 else grid_raw
                 grid_iso_density = grid_raw_iso / area_um2 if area_um2 else grid_raw_iso
                 zero_cells = set()
@@ -704,8 +810,9 @@ def main():
                     grid_raw,
                     grid_density,
                     zero_cells,
-                    "Mean Particle Density Grid (wt%d%%, %s)" % (wt, job),
+                    "Mean Kept Particle Density Grid (wt%d%%, %s)" % (wt, job),
                     combined_dir / ("fig_particle_count_grid_wt%d_%s.png" % (wt, job)),
+                    vmax,
                 )
                 _plot_grid(
                     grid_raw_iso,
@@ -713,7 +820,21 @@ def main():
                     iso_zero_cells,
                     "Mean Isolated Density Grid (wt%d%%, %s)" % (wt, job),
                     combined_dir / ("fig_isolated_count_grid_wt%d_%s.png" % (wt, job)),
+                    vmax,
                 )
+                if grid_raw_unfiltered is not None:
+                    raw_vmax = fixed_raw_max_per_scan / area_um2 if area_um2 else None
+                    grid_raw_unfiltered_density = (
+                        grid_raw_unfiltered / area_um2 if area_um2 else grid_raw_unfiltered
+                    )
+                    _plot_grid(
+                        grid_raw_unfiltered,
+                        grid_raw_unfiltered_density,
+                        set(),
+                        "Mean Raw Particle Density Grid (wt%d%%, %s)" % (wt, job),
+                        combined_dir / ("fig_particle_count_raw_grid_wt%d_%s.png" % (wt, job)),
+                        raw_vmax,
+                    )
 
     per_sample_rows = []
     for sample, sample_counts in counts_by_sample.items():
@@ -799,12 +920,18 @@ def main():
     for job, job_counts in counts_by_job.items():
         job_isolated = isolated_by_job.get(job, [])
         job_diam = diameters_by_job.get(job, [])
+        job_raw = counts_raw_by_job.get(job, [])
+        job_filtered = counts_filtered_by_job.get(job, [])
         per_job_rows.append({
             "job": job,
             "maps": len(job_counts),
             "total_particles": sum(job_counts),
             "mean_per_map": stats.mean(job_counts) if job_counts else 0.0,
             "std_per_map": stats.pstdev(job_counts) if len(job_counts) > 1 else 0.0,
+            "raw_mean_per_map": stats.mean(job_raw) if job_raw else 0.0,
+            "raw_std_per_map": stats.pstdev(job_raw) if len(job_raw) > 1 else 0.0,
+            "filtered_mean_per_map": stats.mean(job_filtered) if job_filtered else 0.0,
+            "filtered_std_per_map": stats.pstdev(job_filtered) if len(job_filtered) > 1 else 0.0,
             "mean_isolated_per_map": stats.mean(job_isolated) if job_isolated else 0.0,
             "std_isolated_per_map": stats.pstdev(job_isolated) if len(job_isolated) > 1 else 0.0,
             "percent_maps_with_isolated": (
