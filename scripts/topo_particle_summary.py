@@ -215,6 +215,33 @@ def short_label(label, max_len=18):
     return label[: max_len - 3] + "..."
 
 
+def wrap_label(label, max_len=16, max_lines=2):
+    if len(label) <= max_len:
+        return label
+    parts = label.split("_")
+    if len(parts) == 1:
+        return short_label(label, max_len)
+    lines = []
+    current = ""
+    for part in parts:
+        if not current:
+            candidate = part
+        else:
+            candidate = current + "_" + part
+        if len(candidate) <= max_len:
+            current = candidate
+            continue
+        lines.append(current if current else part)
+        current = part if current else ""
+        if len(lines) >= max_lines - 1:
+            break
+    if current and len(lines) < max_lines:
+        lines.append(current)
+    if len(lines) > max_lines:
+        lines = lines[:max_lines]
+    return "\n".join(lines)
+
+
 def main():
     inv = read_inventory()
 
@@ -462,7 +489,7 @@ def main():
         plt.close()
 
     if counts_by_job:
-        job_labels = [short_label(j, 24) for j in counts_by_job.keys()]
+        job_labels = [wrap_label(j, 18, 2) for j in counts_by_job.keys()]
         means = [stats.mean(v) if v else 0.0 for v in counts_by_job.values()]
         stds = [stats.pstdev(v) if len(v) > 1 else 0.0 for v in counts_by_job.values()]
         plt.figure(figsize=(9,4))
@@ -476,7 +503,7 @@ def main():
         plt.close()
 
     if isolated_by_job:
-        job_labels = [short_label(j, 24) for j in isolated_by_job.keys()]
+        job_labels = [wrap_label(j, 18, 2) for j in isolated_by_job.keys()]
         means = [stats.mean(v) if v else 0.0 for v in isolated_by_job.values()]
         stds = [stats.pstdev(v) if len(v) > 1 else 0.0 for v in isolated_by_job.values()]
         plt.figure(figsize=(9,4))

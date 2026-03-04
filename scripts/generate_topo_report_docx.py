@@ -1,5 +1,6 @@
 import csv
 import math
+import re
 import statistics as stats
 from datetime import datetime
 from pathlib import Path
@@ -9,6 +10,7 @@ from docx.shared import Inches
 
 OUT_BASE = Path(r"C:\Users\Conor O'Brien\Dropbox\03_AML\00 IN-BOX\AFM Topo Particle processing OUT")
 REPORT_PATH = OUT_BASE / "topo_particle_report_draft.docx"
+DATA_GROUPED = Path("docs/File Locations for Data Grouped.txt")
 
 BASELINE_JOB = "particle_forward_medianbg_mean"
 SYSTEM_SINP = "PEGDA_SiNP"
@@ -46,6 +48,59 @@ def add_picture_if_exists(doc, path, width_in=5.5):
     return False
 
 
+def parse_data_grouped(path):
+    groups = []
+    current_system = None
+    current_label = None
+    for raw in path.read_text(encoding="utf-8").splitlines():
+        line = raw.strip()
+        if not line:
+            continue
+        if line.startswith("# PEGDA Only"):
+            current_system = "PEGDA"
+            current_label = None
+            continue
+        if line.startswith("# PEGDA SiNP"):
+            current_system = "PEGDA_SiNP"
+            current_label = None
+            continue
+        if line.startswith("#"):
+            continue
+        if line.startswith("## "):
+            current_label = line[3:].strip()
+            groups.append({"system": current_system, "label": current_label, "roots": []})
+            continue
+        if line.startswith("C:\\") and groups:
+            groups[-1]["roots"].append(line)
+    return groups
+
+
+def build_sample_group_map(groups):
+    mapping = {}
+    order = []
+    for g in groups:
+        label = g["label"]
+        order.append(label)
+        for root in g["roots"]:
+            sample = Path(root).name
+            mapping[sample] = g
+    return mapping, order
+
+
+def parse_scan_id(source_file):
+    m = re.search(r"LOC_RC(?P<row>\d{3})(?P<col>\d{3})", source_file)
+    if not m:
+        return Path(source_file).stem
+    return "R{}-C{}".format(m.group("row"), m.group("col"))
+
+
+def wt_percent_from_label(label):
+    if not label:
+        return ""
+    m = re.search(r"(10|25)%", label)
+    return f"{m.group(1)}%" if m else ""
+
+
 def main():
     doc = Document()
 
@@ -54,20 +109,54 @@ def main():
     doc.add_paragraph(f"Output root: {OUT_BASE}")
     doc.add_paragraph(f"Baseline job: {BASELINE_JOB}")
     doc.add_paragraph("Map/grid area: 50 um x 50 um (21 x 21 grid, 5% overlap per scan)")
+    if DATA_GROUPED.exists():
+        doc.add_paragraph(f"Grouping source: {DATA_GROUPED}")
 
     doc.add_heading("1. Scan Inventory", level=1)
     inv_rows = read_csv_dicts(OUT_BASE / "scan_inventory.csv")
+    groups = parse_data_grouped(DATA_GROUPED) if DATA_GROUPED.exists() else []
+    sample_to_group, group_order = build_sample_group_map(groups) if groups else ({}, [])
+    inv_by_root = {}
+    inv_json = OUT_BASE / "scan_inventory.json"
+    if inv_json.exists():
+        try:
+            import json
+            inv_by_root = {r.get("input_root"): r for r in json.loads(inv_json.read_text(encoding="utf-8"))}
+        except Exception:
+            inv_by_root = {}
+
     if inv_rows:
-        headers = ["System", "Total scans", "Scan size (um x um)", "Pixel grid", "Resolution (nm/px)"]
+        headers = ["System", "Group", "Total scans", "Scan size (um x um)", "Pixel grid", "Resolution (nm/px)"]
         rows = []
-        for row in inv_rows:
-            rows.append([
-                row.get("system", ""),
-                row.get("total_maps", ""),
-                f"{row.get('scan_um_x','')} x {row.get('scan_um_y','')}",
-                f"{row.get('grid_x','')} x {row.get('grid_y','')}",
-                row.get("resolution_nm_per_px", ""),
-            ])
+        if groups and inv_by_root:
+            for g in groups:
+                sys_name = g.get("system") or ""
+                label = g.get("label") or ""
+                total = 0
+                for root in g.get("roots") or []:
+                    rec = inv_by_root.get(root)
+                    if rec:
+                        total += int(rec.get("map_count", 0))
+                if total == 0:
+                    continue
+                rows.append([
+                    "PEGDA" if sys_name == "PEGDA" else "PEGDA-SiNP",
+                    label,
+                    total,
+                    "5 x 5",
+                    "512 x 512",
+                    "9.7656",
+                ])
+        else:
+            for row in inv_rows:
+                rows.append([
+                    row.get("system", ""),
+                    "All",
+                    row.get("total_maps", ""),
+                    f"{row.get('scan_um_x','')} x {row.get('scan_um_y','')}",
+                    f"{row.get('grid_x','')} x {row.get('grid_y','')}",
+                    row.get("resolution_nm_per_px", ""),
+                ])
         add_table(doc, headers, rows)
     else:
         doc.add_paragraph("scan_inventory.csv not found.")
@@ -106,12 +195,32 @@ def main():
             ],
         )
 
-        doc.add_paragraph("Per-scan particle counts (baseline job)")
-        per_scan_rows = []
+        doc.add_paragraph("Per-scan particle counts (baseline job), grouped by SiNP wt% and scapped status.")
+        rows_by_group = {label: [] for label in group_order} if group_order else {}
         for r in base_rows:
-            source = Path(r.get("source_file", "")).name
-            per_scan_rows.append([source, r.get("count_total", ""), r.get("count_isolated", "")])
-        add_table(doc, ["Scan ID", "Particles (Total)", "Particles (Isolated)"], per_scan_rows)
+            sample = r.get("sample", "")
+            group = sample_to_group.get(sample, {})
+            label = group.get("label", "Unclassified")
+            scan_id = parse_scan_id(r.get("source_file", ""))
+            rows_by_group.setdefault(label, []).append([
+                wt_percent_from_label(label),
+                label,
+                sample,
+                scan_id,
+                r.get("count_total", ""),
+                r.get("count_isolated", ""),
+            ])
+
+        for label in (group_order or sorted(rows_by_group.keys())):
+            group_rows = rows_by_group.get(label) or []
+            if not group_rows:
+                continue
+            doc.add_heading(label, level=3)
+            add_table(
+                doc,
+                ["SiNP wt%", "Group", "Sample", "Scan ID", "Particles (Total)", "Particles (Isolated)"],
+                group_rows,
+            )
     else:
         doc.add_paragraph("No baseline rows found in particle_counts_by_map.csv.")
 
@@ -191,20 +300,65 @@ def main():
             r.get("grain_kept", ""),
             r.get("grain_isolated", ""),
             r.get("kept_mean_diameter_nm", ""),
+            r.get("kept_std_diameter_nm", ""),
             r.get("isolated_mean_diameter_nm", ""),
+            r.get("isolated_std_diameter_nm", ""),
         ])
     add_table(
         doc,
-        ["Job", "Grain Total", "Grain Kept", "Grain Isolated", "Kept Mean Diam (nm)", "Isolated Mean Diam (nm)"],
+        [
+            "Job",
+            "Grain Total",
+            "Grain Kept",
+            "Grain Isolated",
+            "Kept Mean Diam (nm)",
+            "Kept Std Diam (nm)",
+            "Isolated Mean Diam (nm)",
+            "Isolated Std Diam (nm)",
+        ],
         grain_table_rows,
     )
 
     doc.add_heading("7. Statistical Feasibility Statement", level=1)
-    if base_rows and mean_iso > 0:
-        scans_needed = math.ceil(TARGET_ISOLATED / mean_iso)
+    if base_rows:
+        by_group = {}
+        for r in base_rows:
+            sample = r.get("sample", "")
+            group = sample_to_group.get(sample, {})
+            label = group.get("label", "Unclassified")
+            wt = wt_percent_from_label(label) or "Unknown"
+            by_group.setdefault(wt, []).append(int(float(r.get("count_isolated", 0) or 0)))
+        feas_rows = []
+        for wt, vals in sorted(by_group.items()):
+            mean_iso = stats.mean(vals) if vals else 0.0
+            std_iso = stats.pstdev(vals) if len(vals) > 1 else 0.0
+            scans_needed = math.ceil(TARGET_ISOLATED / mean_iso) if mean_iso > 0 else None
+            if scans_needed:
+                expected_total = mean_iso * scans_needed
+                std_total = std_iso * math.sqrt(scans_needed)
+                scans_needed_disp = str(scans_needed)
+                expected_disp = f"{expected_total:.1f}"
+                std_disp = f"{std_total:.1f}"
+            else:
+                scans_needed_disp = "n/a"
+                expected_disp = "n/a"
+                std_disp = "n/a"
+            feas_rows.append([wt, f"{mean_iso:.3f}", f"{std_iso:.3f}", scans_needed_disp, expected_disp, std_disp])
+        add_table(
+            doc,
+            [
+                "SiNP wt%",
+                "Mean isolated/scan",
+                "Std isolated/scan",
+                "Scans needed for ~30 isolated",
+                "Expected isolated (at N)",
+                "Std isolated (at N)",
+            ],
+            feas_rows,
+        )
         doc.add_paragraph(
-            f"Based on the observed mean isolated count per scan, approximately {scans_needed} scans "
-            f"are required to obtain ~{TARGET_ISOLATED} isolated particles."
+            "Scans needed are computed per SiNP wt% group (not pooled across all SiNP samples). "
+            "Std for total isolated assumes independent scans (std_total = sqrt(N) * std_per_scan)."
         )
     else:
         doc.add_paragraph("Feasibility statement could not be computed (no isolated count data).")
@@ -214,6 +368,8 @@ def main():
     doc.add_paragraph("Population std: σ = sqrt((1/N) * sum((x_i - x̄)^2))")
     doc.add_paragraph("Percent scans with isolated: 100 * sum(1[x_i > 0]) / N")
     doc.add_paragraph("Scans needed: ceil(T / mean_isolated_per_scan), with T = 30")
+    doc.add_paragraph("Expected isolated for N scans: N * mean_isolated_per_scan")
+    doc.add_paragraph("Std of isolated total for N scans: sqrt(N) * std_isolated_per_scan")
     doc.add_paragraph("Resolution: 5000 nm / 512 = 9.7656 nm/px")
 
     doc.add_heading("9. LiTFSI Comparison", level=1)

@@ -24,6 +24,8 @@ modes:
     particle_diameter_max_nm: 550
     isolation_min_dist_nm: 900
     export_particles: true
+    export_particle_mask: true
+    export_particle_mask_review_only: true
     edge_exclude: true
     review_pack: { enable: true, sample_limit: 10, seed: 1337 }
     grain_export:
@@ -51,6 +53,8 @@ modes:
     particle_diameter_max_nm: 550
     isolation_min_dist_nm: 900
     export_particles: true
+    export_particle_mask: true
+    export_particle_mask_review_only: true
     edge_exclude: true
     review_pack: { enable: true, sample_limit: 10, seed: 1337 }
     grain_export:
@@ -78,6 +82,8 @@ modes:
     particle_diameter_max_nm: 550
     isolation_min_dist_nm: 900
     export_particles: true
+    export_particle_mask: true
+    export_particle_mask_review_only: true
     edge_exclude: true
     review_pack: { enable: true, sample_limit: 10, seed: 1337 }
     grain_export:
@@ -107,6 +113,8 @@ modes:
     particle_diameter_max_nm: 550
     isolation_min_dist_nm: 900
     export_particles: true
+    export_particle_mask: true
+    export_particle_mask_review_only: true
     edge_exclude: true
     review_pack: { enable: true, sample_limit: 10, seed: 1337 }
     grain_export:
@@ -134,6 +142,8 @@ modes:
     particle_diameter_max_nm: 550
     isolation_min_dist_nm: 900
     export_particles: true
+    export_particle_mask: true
+    export_particle_mask_review_only: true
     edge_exclude: true
     review_pack: { enable: true, sample_limit: 10, seed: 1337 }
     grain_export:
@@ -161,6 +171,8 @@ modes:
     particle_diameter_max_nm: 550
     isolation_min_dist_nm: 900
     export_particles: true
+    export_particle_mask: true
+    export_particle_mask_review_only: true
     edge_exclude: true
     review_pack: { enable: true, sample_limit: 10, seed: 1337 }
     grain_export:
@@ -188,6 +200,8 @@ modes:
     particle_diameter_max_nm: 550
     isolation_min_dist_nm: 900
     export_particles: true
+    export_particle_mask: true
+    export_particle_mask_review_only: true
     edge_exclude: true
     review_pack: { enable: true, sample_limit: 10, seed: 1337 }
     grain_export:
@@ -216,6 +230,8 @@ modes:
     particle_diameter_max_nm: 550
     isolation_min_dist_nm: 900
     export_particles: true
+    export_particle_mask: true
+    export_particle_mask_review_only: true
     edge_exclude: true
     review_pack: { enable: true, sample_limit: 10, seed: 1337 }
     grain_export:

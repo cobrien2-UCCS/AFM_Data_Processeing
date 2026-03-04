@@ -1010,23 +1010,6 @@ def _centers_to_nm(x_vals, y_vals, field):
 def _write_particle_table(out_dir, base_name, rows, max_len):
     if not rows:
         return None
-
-
-def _write_grain_table(out_dir, base_name, header, rows, max_len):
-    if not rows:
-        return None
-    _safe_makedirs(out_dir)
-    base = _shorten_name(base_name, max_len)
-    path = os.path.join(out_dir, "%s_grains.csv" % base)
-    try:
-        with open(path, "w") as f:
-            writer = csv.writer(f)
-            writer.writerow(header)
-            for row in rows:
-                writer.writerow(row)
-        return path
-    except Exception:
-        return None
     _safe_makedirs(out_dir)
     base = _shorten_name(base_name, max_len)
     path = os.path.join(out_dir, "%s_particles.csv" % base)
@@ -1045,6 +1028,23 @@ def _write_grain_table(out_dir, base_name, header, rows, max_len):
                 "kept",
                 "isolated",
             ])
+            for row in rows:
+                writer.writerow(row)
+        return path
+    except Exception:
+        return None
+
+
+def _write_grain_table(out_dir, base_name, header, rows, max_len):
+    if not rows:
+        return None
+    _safe_makedirs(out_dir)
+    base = _shorten_name(base_name, max_len)
+    path = os.path.join(out_dir, "%s_grains.csv" % base)
+    try:
+        with open(path, "w") as f:
+            writer = csv.writer(f)
+            writer.writerow(header)
             for row in rows:
                 writer.writerow(row)
         return path
@@ -2572,6 +2572,15 @@ def _process_with_pygwy(path, processing_mode, mode_def, channel_defaults, manif
                 mask_data[i] = 1.0 if mask_data[i] > thresh else 0.0
             grains = mask_field.number_grains()
             sizes = mask_field.get_grain_sizes(grains)
+
+            # Optional particle mask export (uses the thresholded mask_field)
+            export_mask = bool(mode_def.get("export_particle_mask"))
+            review_only = bool(mode_def.get("export_particle_mask_review_only", True))
+            if export_mask:
+                if (not review_only) or _review_should_include(manifest, path):
+                    base = os.path.splitext(os.path.basename(path))[0]
+                    mask_dir = os.path.join(manifest.get("output_dir", "."), "particle_masks")
+                    _save_field(os.path.join(mask_dir, "%s_particle_mask.tiff" % base), mask_field)
             sizes_list = list(sizes)[1:] if len(sizes) > 0 else []
             count_total_raw = len(sizes_list)
 

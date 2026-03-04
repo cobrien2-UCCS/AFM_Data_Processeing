@@ -2,15 +2,15 @@ File Locations for Data Grouped:
 
 # PEGDA Only:
 
-## Non-Scappred
+## Non-Scraped
 
 C:\Users\Conor O'Brien\Dropbox\03_AML\03 References and Materials\RAW DATA Files\AFM Scans\Particle Density for Fracture Surfaces Verification\100225-CRO\DATA\PEGDA1TPO00SiNP_Sam01_S1
 
-## Non-Scapped with High spots cut off and cleaned with ethanol (Contact scans but this has topo)
+## Non-Scraped with High spots cut off and cleaned with ethanol (Contact scans but this has topo)
 C:\Users\Conor O'Brien\Dropbox\03_AML\03 References and Materials\RAW DATA Files\AFM Scans\Particle Density for Fracture Surfaces Verification\102025-CRO\DATA\PEGDA1TPO00SiNP_Sam01_S1
 
 
-## Scapped and Cleaned with Ethonol
+## Scraped and Cleaned with Ethonol
 
 C:\Users\Conor O'Brien\Dropbox\03_AML\03 References and Materials\RAW DATA Files\AFM Scans\Particle Density for Fracture Surfaces Verification\100825-CRO\PEGDA1TPO25SiNP_Sam01_S2
 
@@ -18,29 +18,29 @@ C:\Users\Conor O'Brien\Dropbox\03_AML\03 References and Materials\RAW DATA Files
 
 # PEGDA SiNP:
 
-## 10% SiNP - Non-Scapped Samples
+## 10% SiNP - Non-Scraped Samples
 C:\Users\Conor O'Brien\Dropbox\03_AML\03 References and Materials\RAW DATA Files\AFM Scans\Particle Density for Fracture Surfaces Verification\092525-CRO\Data\PEGDA1TPO10SiNP_Sa1_Si1-
 
 C:\Users\Conor O'Brien\Dropbox\03_AML\03 References and Materials\RAW DATA Files\AFM Scans\Particle Density for Fracture Surfaces Verification\092925-CRO\Data\PEGDA1TPO10SiNP_Sa1_Si2
 
 
-## 10% SiNP - Scapped Samples
+## 10% SiNP - Scraped Samples
 
 C:\Users\Conor O'Brien\Dropbox\03_AML\03 References and Materials\RAW DATA Files\AFM Scans\Particle Density for Fracture Surfaces Verification\093025-CRO\DATA\PEGDA1TPO10SiNP_Sam02_S1
 
 C:\Users\Conor O'Brien\Dropbox\03_AML\03 References and Materials\RAW DATA Files\AFM Scans\Particle Density for Fracture Surfaces Verification\100125-CRO\DATA\PEGDA1TPO10SiNP_Sam02_S2
 
-## 25% SiNP -Non Scapped Samples Celaned with Ethonol
+## 25% SiNP -Non Scraped Samples Celaned with Ethonol
 
 C:\Users\Conor O'Brien\Dropbox\03_AML\03 References and Materials\RAW DATA Files\AFM Scans\Particle Density for Fracture Surfaces Verification\101425-CRO\DATA\PEGDA1TPO25SiNP_Sam02_S2
 
-## 25% SiNP - Non Scapped Samples with High Spots cut off and cleaned with  Ethonol
+## 25% SiNP - Non Scraped Samples with High Spots cut off and cleaned with  Ethonol
 
 C:\Users\Conor O'Brien\Dropbox\03_AML\03 References and Materials\RAW DATA Files\AFM Scans\Particle Density for Fracture Surfaces Verification\101525-CRO\DATA\PEGDA1TPO25SiNP_Sam03_S1
 
 C:\Users\Conor O'Brien\Dropbox\03_AML\03 References and Materials\RAW DATA Files\AFM Scans\Particle Density for Fracture Surfaces Verification\101725-CRO\DATA\PEGDA1TPO25SiNP_Sam03_S2
 
-## 25% SiNP - Scapped Samles Cleaned with Ethonol
+## 25% SiNP - Scraped Samles Cleaned with Ethonol
 
 C:\Users\Conor O'Brien\Dropbox\03_AML\03 References and Materials\RAW DATA Files\AFM Scans\Particle Density for Fracture Surfaces Verification\100825-CRO\PEGDA1TPO25SiNP_Sam01_S2
 
