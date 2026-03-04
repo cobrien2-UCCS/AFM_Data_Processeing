@@ -1,3 +1,4 @@
+import argparse
 import os
 import re
 import sys
@@ -5,9 +6,9 @@ import json
 import subprocess
 from pathlib import Path
 
-CONFIG_PATH = Path("configs/TEST configs/Example configs/config.topo_particle_2jobs_masking.yaml")
-DATA_LIST = Path("docs/File Locations for Data Grouped.txt")
-OUT_BASE = Path(r"C:\Users\Conor O'Brien\Dropbox\03_AML\00 IN-BOX\AFM Topo Particle processing OUT")
+DEFAULT_CONFIG = Path("configs/TEST configs/Example configs/config.topo_particle_2jobs_masking.yaml")
+DEFAULT_DATA_LIST = Path("docs/File Locations for Data Grouped.txt")
+DEFAULT_OUT_BASE = Path(r"C:\Users\Conor O'Brien\Dropbox\03_AML\00 IN-BOX\AFM Topo Particle processing OUT")
 PATTERN = "*Z Height*Forward*.tif;*Z Height*Forward*.tiff"
 
 JOBS = [
@@ -39,9 +40,9 @@ def classify_system(path):
     return "unknown"
 
 
-def list_input_paths():
+def list_input_paths(data_list):
     paths = []
-    for line in DATA_LIST.read_text(encoding="utf-8").splitlines():
+    for line in data_list.read_text(encoding="utf-8").splitlines():
         line = line.strip()
         if not line:
             continue
@@ -62,11 +63,11 @@ def find_files(root):
     return sorted({str(p.resolve()) for p in files if p.is_file()})
 
 
-def run_particle_job(input_root, output_root, job_name):
+def run_particle_job(input_root, output_root, job_name, config_path):
     cmd = [
         sys.executable,
         "scripts/run_job.py",
-        "--config", str(CONFIG_PATH),
+        "--config", str(config_path),
         "--job", job_name,
         "--input-root", str(input_root),
         "--output-root", str(output_root),
@@ -77,12 +78,25 @@ def run_particle_job(input_root, output_root, job_name):
         raise RuntimeError("run_job failed for %s" % input_root)
 
 
+def parse_args():
+    ap = argparse.ArgumentParser(description="Batch run topo particle jobs for SiNP systems.")
+    ap.add_argument("--config", default=str(DEFAULT_CONFIG), help="Config YAML path.")
+    ap.add_argument("--data-list", default=str(DEFAULT_DATA_LIST), help="Text file with input roots.")
+    ap.add_argument("--out-base", default=str(DEFAULT_OUT_BASE), help="Output base directory.")
+    return ap.parse_args()
+
+
 def main():
-    OUT_BASE.mkdir(parents=True, exist_ok=True)
+    args = parse_args()
+    config_path = Path(args.config)
+    data_list = Path(args.data_list)
+    out_base = Path(args.out_base)
+
+    out_base.mkdir(parents=True, exist_ok=True)
     inventory_rows = []
     sinp_roots = []
 
-    for path in list_input_paths():
+    for path in list_input_paths(data_list):
         if not os.path.isdir(path):
             print("SKIP (missing):", path)
             continue
@@ -102,17 +116,17 @@ def main():
             sinp_roots.append(path)
 
     # Save inventory
-    inv_path = OUT_BASE / "scan_inventory.json"
+    inv_path = out_base / "scan_inventory.json"
     inv_path.write_text(json.dumps(inventory_rows, indent=2), encoding="utf-8")
     print("Wrote", inv_path)
 
     # Run particle counting for SiNP systems
     for root in sinp_roots:
         base = Path(root).name
-        out_root = OUT_BASE / "PEGDA_SiNP" / base
+        out_root = out_base / "PEGDA_SiNP" / base
         out_root.mkdir(parents=True, exist_ok=True)
         for job_name in JOBS:
-            run_particle_job(root, out_root, job_name)
+            run_particle_job(root, out_root, job_name, config_path)
 
     print("Done.")
 

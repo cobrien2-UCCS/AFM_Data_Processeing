@@ -20,8 +20,8 @@ modes:
       - op: median
         params: { size: 3 }
     threshold_strategy: "mean"
-    particle_diameter_min_nm: 400
-    particle_diameter_max_nm: 500
+    particle_diameter_min_nm: 250
+    particle_diameter_max_nm: 550
     isolation_min_dist_nm: 900
     export_particles: true
     edge_exclude: true
@@ -47,8 +47,8 @@ modes:
         params: { size: 3 }
     threshold_strategy: "fixed"
     threshold_fixed: 0.0
-    particle_diameter_min_nm: 400
-    particle_diameter_max_nm: 500
+    particle_diameter_min_nm: 250
+    particle_diameter_max_nm: 550
     isolation_min_dist_nm: 900
     export_particles: true
     edge_exclude: true
@@ -74,8 +74,8 @@ modes:
         params: { size: 3 }
     threshold_strategy: "percentile"
     threshold_percentile: 95
-    particle_diameter_min_nm: 400
-    particle_diameter_max_nm: 500
+    particle_diameter_min_nm: 250
+    particle_diameter_max_nm: 550
     isolation_min_dist_nm: 900
     export_particles: true
     edge_exclude: true
@@ -103,8 +103,8 @@ modes:
     threshold_strategy: "max"
     threshold_fixed: 0.0
     threshold_percentile: 95
-    particle_diameter_min_nm: 400
-    particle_diameter_max_nm: 500
+    particle_diameter_min_nm: 250
+    particle_diameter_max_nm: 550
     isolation_min_dist_nm: 900
     export_particles: true
     edge_exclude: true
@@ -130,8 +130,8 @@ modes:
       - op: median
         params: { size: 3 }
     threshold_strategy: "mean"
-    particle_diameter_min_nm: 400
-    particle_diameter_max_nm: 500
+    particle_diameter_min_nm: 250
+    particle_diameter_max_nm: 550
     isolation_min_dist_nm: 900
     export_particles: true
     edge_exclude: true
@@ -157,8 +157,8 @@ modes:
         params: { size: 3 }
     threshold_strategy: "fixed"
     threshold_fixed: 0.0
-    particle_diameter_min_nm: 400
-    particle_diameter_max_nm: 500
+    particle_diameter_min_nm: 250
+    particle_diameter_max_nm: 550
     isolation_min_dist_nm: 900
     export_particles: true
     edge_exclude: true
@@ -184,8 +184,8 @@ modes:
         params: { size: 3 }
     threshold_strategy: "percentile"
     threshold_percentile: 95
-    particle_diameter_min_nm: 400
-    particle_diameter_max_nm: 500
+    particle_diameter_min_nm: 250
+    particle_diameter_max_nm: 550
     isolation_min_dist_nm: 900
     export_particles: true
     edge_exclude: true
@@ -212,8 +212,8 @@ modes:
     threshold_strategy: "max"
     threshold_fixed: 0.0
     threshold_percentile: 95
-    particle_diameter_min_nm: 400
-    particle_diameter_max_nm: 500
+    particle_diameter_min_nm: 250
+    particle_diameter_max_nm: 550
     isolation_min_dist_nm: 900
     export_particles: true
     edge_exclude: true

@@ -11,12 +11,13 @@ Use this template to assemble the final Word document. Fill in values from the p
 - Scan size: 5 um x 5 um
 - Pixel grid: 512 x 512
 - Lateral resolution: 9.7656 nm/px
+- Map/grid area: 50 um x 50 um (21 x 21 grid, 5% overlap per scan)
 - Processing config: `configs/TEST configs/Example configs/config.topo_particle_2jobs_masking.yaml`
 - Baseline comparison method: `particle_forward_medianbg_mean` (used for the primary reported values)
 - LiTFSI: not applicable (no LiTFSI samples in this dataset)
 
 ## Definitions
-- Map (grid): the full scan grid for a sample (collection of scan positions).
+- Map (grid): the full scan grid for a sample (collection of scan positions), covering 50 um x 50 um with a 21 x 21 grid and 5% overlap per scan.
 - Scan: a single AFM image at one grid index (one scan location).
 - Isolated particle: center-to-center distance >= 900 nm from any other detected particle (per config isolation distance).
 
