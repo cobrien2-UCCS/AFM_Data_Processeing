@@ -1,0 +1,132 @@
+# TPL-CROgpt-Roles_Objectives
+# Version: v3A — 041225
+# Purpose: Define and clarify primary life roles to guide alignment, review, and system design.
+# Format: Markdown-structured for `.txt` use and Notepad++ readability
+
+---
+
+## 🔧 1. Engineer-Builder
+
+**Purpose:**  
+Designs, prototypes, and validates high-integrity physical systems across domains of thermal-fluids, materials, and interface mechanics.
+
+**Primary Drives:**  
+- Bridge theory and fabrication  
+- Develop modular solutions under real-world constraints  
+- Use design, testing, and simulation as parallel disciplines  
+- Operate under vocational integrity and system resilience
+
+**Operational Domains:**  
+- Thermo/fluids and interface behavior  
+- AFM, shock testing, COMSOL, MATLAB, SolidWorks  
+- Fabrication, CNC, GD&T, experimental R&D  
+- Aerospace, defense, small-batch tool design
+
+**Key Responsibilities:**  
+- Model systems across scales (bond graphs, COMSOL, FEA)  
+- Build testable prototypes using toleranced machining and CAD  
+- Integrate control and material behavior models  
+- Contribute to real-world problem solving in mission-aligned sectors
+
+---
+
+## 🧭 2. Faith-Based Steward
+
+**Purpose:**  
+Govern time, tools, relationships, and self through a theological lens of purpose, vocation, and relational design.
+
+**Primary Drives:**  
+- Faith-driven integrity in work, rest, giving, and decision-making  
+- View every domain of life as a matter of stewardship  
+- Build with intentional legacy in mind
+
+**Operational Domains:**  
+- Budget and financial systems (MMEX, giving principles)  
+- Calendar planning with rest rhythms  
+- Relationship design (esp. Phoebe)  
+- Church and community commitments
+
+**Key Responsibilities:**  
+- Use SOPs and project planning to honor stewardship  
+- Create containers for rest, margin, generosity, and wisdom  
+- Evaluate all commitments through the lens of biblical alignment
+
+---
+
+## 🛠 3. System Architect
+
+**Purpose:**  
+Build and maintain frameworks for executing, thinking, documenting, and reflecting across all life and mission domains.
+
+**Primary Drives:**  
+- Structure over sprawl  
+- File-driven workflows over app dependence  
+- Design for clarity and reproducibility
+
+**Operational Domains:**  
+- GTD planning & Notepad++ `.txt` structure  
+- Staging Bay, Inbox Processing, Weekly/Monthly Review  
+- Project templates, naming conventions, SOPs
+
+**Key Responsibilities:**  
+- Create and refine scalable planning systems  
+- Offload cognitive load via structure  
+- Design decision-making scaffolds and process checkpoints  
+- Maintain assistant behavior via command templates
+
+---
+
+## 💬 4. Communicator-Scholar
+
+**Purpose:**  
+Translate complexity into clarity through teaching, writing, and technical documentation.
+
+**Primary Drives:**  
+- Bridge expert-level concepts with accessible output  
+- Develop clarity-driven deliverables (R&R, LaTeX, specs)  
+- Use writing to sharpen thought and preserve work
+
+**Operational Domains:**  
+- Read & Review workflows  
+- Academic writing, LaTeX-based resumes and documentation  
+- Teaching and mentoring (Help Center, future roles)  
+- Language systems (IPA/Shavian)
+
+**Key Responsibilities:**  
+- Document work in reproducible formats  
+- Build re-usable content (templates, guides, logs)  
+- Communicate across technical, faith-based, and personal channels
+
+---
+
+## 💞 5. Relational Strategist
+
+**Purpose:**  
+Design and nurture resilient, God-centered relationships — especially the long-term growth of the household being built with Phoebe.
+
+**Primary Drives:**  
+- Intentionality over assumption  
+- Love through structure, reflection, and proactive design  
+- Support, protect, and grow with integrity
+
+**Operational Domains:**  
+- Shared calendars and planning tools  
+- Roles, conflict frameworks, expectations mapping  
+- Journaling, reviews, gift cycles, margin planning
+
+**Key Responsibilities:**  
+- Co-architect relational SOPs and rhythms  
+- Support Phoebe’s growth, rest, and vocational clarity  
+- Prioritize emotional integrity, spiritual alignment, and long-haul thinking
+
+---
+
+# ⛔ Failure Modes (Cross-Role)
+
+- Trading reflection for motion  
+- Optimizing before clarifying intent  
+- Defaulting to survival mode under stress  
+- Separating identity from system
+
+---
+

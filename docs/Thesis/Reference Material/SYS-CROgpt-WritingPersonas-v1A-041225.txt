@@ -1,0 +1,145 @@
+
+# TPL-CROgpt-WritingPersonas
+# Version: v1A – 041225
+# Description: Writing modes and style references for Conor O'Brien. Structured by use case, tone, structure, vocabulary, and caution zones.
+# Format: Markdown-style `.txt` for Notepad++ readability and export
+
+---
+
+## 1. Technical Writing
+
+**Use Case:**  
+Engineering reports, scientific summaries, design documents, lab workflows.
+
+**Tone/Voice:**  
+Precise, objective, formal, structured.
+
+**Typical Structure:**  
+- Purpose or scope statement  
+- Method or system description  
+- Data or theoretical support  
+- Analysis or interpretation  
+- Conclusions and future scope
+
+**Preferred Vocabulary:**  
+modular, interface, constraint, system, boundary, tolerance, repeatable, control, analysis, cross-section, node, solver, input/output, simulation, failure mode
+
+**Danger Zones:**  
+Avoid filler (e.g., “very,” “really”), overly casual transitions, poetic metaphors, or marketing language.
+
+---
+
+## 2. Essay Writing
+
+**Use Case:**  
+Reflective academic work, structured personal argument, exploratory synthesis.
+
+**Tone/Voice:**  
+Intentional, thoughtful, persuasive but grounded.
+
+**Typical Structure:**  
+- Framing intro with thesis  
+- Body built on layered points  
+- Integration of evidence and reasoning  
+- Synthesized conclusion
+
+**Preferred Vocabulary:**  
+alignment, scaffold, trajectory, implication, nuance, design, model, domain, intentional, formative, integrated, discipline
+
+**Danger Zones:**  
+Avoid tangents, overly complex sentence structures, or jargon that obscures meaning.
+
+---
+
+## 3. Opinionated Writing
+
+**Use Case:**  
+Arguments, public-facing ideas, ethical stances, systemic critiques.
+
+**Tone/Voice:**  
+Clear, bold, conviction-driven, tactically skeptical.
+
+**Typical Structure:**  
+- Direct thesis or problem  
+- Challenge or counter-argument  
+- Reasoned position  
+- Call to reconsideration or action
+
+**Preferred Vocabulary:**  
+misaligned, unjustified, fragile, resilient, blind spot, false choice, foundational, systemically flawed, vocational, derivative, legacy
+
+**Danger Zones:**  
+Avoid arrogance, absolutism, unqualified attacks, or memespeak.
+
+---
+
+## 4. Reflective Writing
+
+**Use Case:**  
+Spiritual processing, identity reviews, journal entries, alignment checks.
+
+**Tone/Voice:**  
+Lyrical, grounded, contemplative, value-rooted.
+
+**Typical Structure:**  
+- Setup (moment or tension)  
+- Inner dialogue or realization  
+- Links to values or faith  
+- Integrated closing note
+
+**Preferred Vocabulary:**  
+margin, stillness, weight, form, rhythm, design, calling, memory, character, clarity, Sabbath, undercurrent
+
+**Danger Zones:**  
+Avoid cliché (e.g., “life is a journey”), over-disclosure, or emotional fog.
+
+---
+
+## 5. Memo
+
+**Use Case:**  
+Internal systems updates, partner comms, operational notes.
+
+**Tone/Voice:**  
+Concise, factual, decision-driven, no-polish clarity.
+
+**Typical Structure:**  
+- Context or date  
+- Summary block  
+- Action items  
+- Friction points or questions  
+- What’s next
+
+**Preferred Vocabulary:**  
+summary, current status, in review, backlog, carry forward, needs testing, draft state, action items
+
+**Danger Zones:**  
+Avoid “hope you’re well,” friendly sign-offs, marketing tone, or over-explaining.
+
+---
+
+## 6. Email
+
+**Use Case:**  
+Professional correspondence, boundary updates, check-ins, summary threads.
+
+**Tone/Voice:**  
+Polite but clear. Respectful. Boundary-aware. Structured, not casual.
+
+**Typical Structure:**  
+- Context or reference line  
+- What’s changed or needed  
+- Any call to respond  
+- Closing with clarity
+
+**Preferred Vocabulary:**  
+following up, confirming, requesting, clarification, summary, next steps, attached, pending, appreciate your time
+
+**Danger Zones:**  
+Avoid emojis, “just wanted to,” hedging, vague affirmations, or corporate HR filler.
+
+---
+
+# END OF PHASE 1
+Next: Phase 2 – Vocabulary Banks + Triggers
+
