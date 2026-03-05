@@ -158,11 +158,11 @@ def parse_data_grouped(path):
             current_system = "PEGDA_SiNP"
             current_label = None
             continue
-        if line.startswith("#"):
-            continue
         if line.startswith("## "):
             current_label = line[3:].strip()
             groups.append({"system": current_system, "label": current_label, "roots": []})
+            continue
+        if line.startswith("#"):
             continue
         if line.startswith("C:\\") and groups:
             groups[-1]["roots"].append(line)
@@ -234,7 +234,8 @@ def parse_specimen_metadata(name):
     m = re.search(r"^(?P<spec>[^_]+)", name)
     if m:
         specimen = m.group("spec")
-    meta = {"polymer": "", "tpo": "", "sinp": "", "litfsi": "", "coating": ""}
+    # Coating metadata is not encoded for this project; assume none unless explicitly provided elsewhere.
+    meta = {"polymer": "", "tpo": "", "sinp": "", "litfsi": "", "coating": "none"}
     m = re.search(r"^(?P<polymer>[A-Za-z]+)(?P<tpo>\\d+)?TPO(?P<sinp>\\d+)?SiNP", specimen, re.I)
     if m:
         meta["polymer"] = m.group("polymer") or ""
@@ -245,8 +246,6 @@ def parse_specimen_metadata(name):
     m = re.search(r"LiTFSI(?P<litfsi>\\d+)", specimen, re.I)
     if m:
         meta["litfsi"] = m.group("litfsi").lstrip("0") or m.group("litfsi")
-    if re.search(r"coat|coated|silane|peg", specimen, re.I):
-        meta["coating"] = "yes"
     return meta
 
 
@@ -325,6 +324,7 @@ def main():
         REPORT_PATH = OUT_BASE / "topo_particle_report_draft.docx"
 
     doc = Document()
+    job_order = JOB_ORDER
 
     doc.add_heading("Topo Particle Summary Report (Draft)", level=0)
     doc.add_paragraph(f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M')}")
@@ -363,7 +363,7 @@ def main():
         "particles are outlined in red; numbers overlay the raw particle count per scan."
     )
     doc.add_paragraph(
-        "Grid scales: kept/isolated grids use 0–15 particles per scan; raw grids use 0–60 particles per scan."
+        "Grid scales: kept/isolated grids use 0-15 particles per scan; raw grids use 0-60 particles per scan."
     )
     doc.add_paragraph(
         "Unclassified = sample folder name did not match any grouped input roots in the "
@@ -664,7 +664,7 @@ def main():
                         f"Grid density maps for {sample} ({BASELINE_JOB})\n"
                         f"{meta_str}\n"
                         "Counts are normalized per scan area (particles/um^2) with fixed color range "
-                        "equivalent to 0–15 particles per scan. Raw grids (pre-filter) use 0–60."
+                        "equivalent to 0-15 particles per scan. Raw grids (pre-filter) use 0-60."
                     )
                     if count_plot:
                         add_picture_if_exists(doc, count_plot)
@@ -753,33 +753,98 @@ def main():
     )
     add_picture_if_exists(doc, OUT_BASE / "fig_isolated_count_hist.png")
 
-    doc.add_heading("5. Method Comparison", level=1)
-    by_job = []
-    if input_bases:
-        for base in input_bases:
-            by_job.extend(read_csv_dicts(base / "particle_summary_stats_by_job.csv"))
+    doc.add_heading("5. Method Comparison (By wt%)", level=1)
+    if not count_rows:
+        doc.add_paragraph("No particle_counts_by_map.csv rows available for method comparison.")
     else:
-        by_job = read_csv_dicts(OUT_BASE / "particle_summary_stats_by_job.csv")
-    job_order = JOB_ORDER
-    job_rows = []
-    by_job_map = {r.get("job"): r for r in by_job}
-    for job in job_order:
-        r = by_job_map.get(job)
-        if not r:
-            continue
-        job_rows.append([
-            job,
-            r.get("raw_mean_per_map", "") or r.get("mean_per_map", ""),
-            r.get("filtered_mean_per_map", "") or r.get("mean_per_map", ""),
-            r.get("mean_isolated_per_map", ""),
-            r.get("std_isolated_per_map", ""),
-            r.get("percent_maps_with_isolated", ""),
-        ])
-    add_table(
-        doc,
-        ["Job", "Raw Mean/Scan", "Filtered Mean/Scan", "Mean Isolated/Scan", "Std Isolated/Scan", "% Scans w/ Iso"],
-        job_rows,
-    )
+        # Use per-scan rows to compute per-wt, per-job summary. This avoids key-collisions when combining multiple roots.
+        rows_sinp = [r for r in count_rows if r.get("system") == SYSTEM_SINP]
+        by_wt_job_rows = {}
+        for r in rows_sinp:
+            wt = r.get("wt_percent") or "Unknown"
+            job = r.get("job") or ""
+            if not job:
+                continue
+            by_wt_job_rows.setdefault((wt, job), []).append(r)
+
+        # Determine baseline job per wt% (fallback to first present method).
+        wt_to_baseline = {}
+        for (wt, job), rows_list in by_wt_job_rows.items():
+            if wt not in wt_to_baseline:
+                wt_to_baseline[wt] = None
+            if job == BASELINE_JOB:
+                wt_to_baseline[wt] = BASELINE_JOB
+        for wt in list(wt_to_baseline.keys()):
+            if wt_to_baseline[wt]:
+                continue
+            for j in JOB_ORDER:
+                if (wt, j) in by_wt_job_rows:
+                    wt_to_baseline[wt] = j
+                    break
+
+        for wt in sorted({k[0] for k in by_wt_job_rows.keys()}):
+            baseline = wt_to_baseline.get(wt) or BASELINE_JOB
+            doc.add_heading(f"Method Comparison: {wt} (baseline={baseline})", level=3)
+
+            baseline_rows = by_wt_job_rows.get((wt, baseline), [])
+            base_iso_mean = stats.mean([int(float(r.get('count_isolated', 0) or 0)) for r in baseline_rows]) if baseline_rows else 0.0
+
+            rows = []
+            for job in JOB_ORDER:
+                rows_list = by_wt_job_rows.get((wt, job), [])
+                if not rows_list:
+                    continue
+                totals = [int(float(r.get("count_total", 0) or 0)) for r in rows_list]
+                raw = [int(float(r.get("count_total_raw", 0) or 0)) for r in rows_list if r.get("count_total_raw") not in ("", None)]
+                filt = [int(float(r.get("count_total_filtered", 0) or 0)) for r in rows_list if r.get("count_total_filtered") not in ("", None)]
+                iso = [int(float(r.get("count_isolated", 0) or 0)) for r in rows_list]
+                mean_iso = stats.mean(iso) if iso else 0.0
+                std_iso = stats.pstdev(iso) if len(iso) > 1 else 0.0
+                pct_iso = 100.0 * sum(1 for v in iso if v > 0) / float(len(iso)) if iso else 0.0
+                pct_diff_iso = ((mean_iso - base_iso_mean) / base_iso_mean * 100.0) if base_iso_mean > 0 else None
+
+                wt_num = None
+                m = re.search(r"(\\d+)", wt)
+                if m:
+                    wt_num = float(m.group(1))
+                norm_yield = (mean_iso / wt_num) if wt_num and wt_num > 0 else None
+                load_cost = (wt_num / mean_iso) if wt_num and mean_iso > 0 else None
+
+                rows.append([
+                    wt,
+                    job,
+                    f"{stats.mean(raw):.3f}" if raw else "n/a",
+                    f"{stats.mean(totals):.3f}" if totals else "n/a",
+                    f"{stats.mean(filt):.3f}" if filt else "n/a",
+                    f"{mean_iso:.3f}",
+                    f"{std_iso:.3f}",
+                    f"{pct_iso:.1f}%",
+                    f"{pct_diff_iso:.1f}%" if pct_diff_iso is not None else "n/a",
+                    f"{norm_yield:.4f}" if norm_yield is not None else "n/a",
+                    f"{load_cost:.3f}" if load_cost is not None else "n/a",
+                ])
+
+            add_table(
+                doc,
+                [
+                    "wt%",
+                    "Job",
+                    "Raw mean/scan",
+                    "Kept mean/scan",
+                    "Filtered mean/scan",
+                    "Mean isolated/scan",
+                    "Std isolated/scan",
+                    "% scans w/ iso",
+                    "% diff iso vs baseline",
+                    "Normalized isolation yield (iso/scan/%wt)",
+                    "Loading cost (%wt/(iso/scan))",
+                ],
+                rows,
+            )
+            doc.add_paragraph(
+                "Table note: Normalized isolation yield = (mean isolated particles per scan) divided by SiNP wt%. "
+                "Loading cost is the inverse: SiNP wt% divided by mean isolated particles per scan."
+            )
     # Per-wt bar plots (if available)
     for base in (input_bases or [OUT_BASE]):
         plot_dir = base / "summary_outputs" / "compare_by_wt"
@@ -848,7 +913,7 @@ def main():
         "summary_outputs/job_hists/<job>/ in each output root."
     )
     doc.add_paragraph(
-        "Box plots: center line = median; box = interquartile range (Q1–Q3); whiskers extend to "
+        "Box plots: center line = median; box = interquartile range (Q1-Q3); whiskers extend to "
         "1.5×IQR; points beyond whiskers are outliers."
     )
     # Method histogram sensitivity tables (from fit outputs)
@@ -889,12 +954,20 @@ def main():
                 ["Metric", "Jobs", "Mean", "Variance", "Std", "Min", "Max"],
                 rows,
             )
+    present_jobs = set()
+    if count_rows:
+        present_jobs = {r.get("job") for r in count_rows if r.get("job")}
     for job in job_order:
-        if job not in by_job_map:
+        if present_jobs and job not in present_jobs:
             continue
         add_job_histograms(doc, input_bases, job)
-    add_picture_if_exists(doc, OUT_BASE / "fig_particle_count_mean_by_job.png")
-    add_picture_if_exists(doc, OUT_BASE / "fig_isolated_count_mean_by_job.png")
+    for base in (input_bases or [OUT_BASE]):
+        p1 = base / "fig_particle_count_mean_by_job.png"
+        p2 = base / "fig_isolated_count_mean_by_job.png"
+        if p1.exists() or p2.exists():
+            doc.add_paragraph(f"Per-job means ({base.name}):")
+        add_picture_if_exists(doc, p1)
+        add_picture_if_exists(doc, p2)
 
     doc.add_heading("6. Grain Summary (Selected Fields)", level=1)
     doc.add_paragraph("Grain exports are enabled in the particle modes for this report.")
@@ -903,9 +976,9 @@ def main():
         if not trend_dir.exists():
             continue
         for name, label in [
-            ("fig_grain_diameter_nm_kept_mean_by_job.png", "Grain diameter trend (kept): mean ± std by job"),
+            ("fig_grain_diameter_nm_kept_mean_by_job.png", "Grain diameter trend (kept): mean +/- std by job"),
             ("fig_grain_diameter_nm_kept_box_by_job.png", "Grain diameter distribution (kept): box plot by job"),
-            ("fig_grain_diameter_nm_isolated_mean_by_job.png", "Grain diameter trend (isolated): mean ± std by job"),
+            ("fig_grain_diameter_nm_isolated_mean_by_job.png", "Grain diameter trend (isolated): mean +/- std by job"),
             ("fig_grain_diameter_nm_isolated_box_by_job.png", "Grain diameter distribution (isolated): box plot by job"),
         ]:
             path = trend_dir / name
@@ -971,6 +1044,7 @@ def main():
             kept = [float(r.get("grain_kept", 0) or 0) for r in rows_list]
             iso = [float(r.get("grain_isolated", 0) or 0) for r in rows_list]
             kept_mean = [float(r.get("kept_mean_diameter_nm", 0) or 0) for r in rows_list]
+            kept_std = [float(r.get("kept_std_diameter_nm", 0) or 0) for r in rows_list]
             rows.append([
                 wt,
                 job,
@@ -978,12 +1052,26 @@ def main():
                 f"{stats.mean(kept):.1f}" if kept else "n/a",
                 f"{stats.mean(iso):.1f}" if iso else "n/a",
                 f"{stats.mean(kept_mean):.2f}" if kept_mean else "n/a",
+                f"{stats.mean(kept_std):.2f}" if kept_std else "n/a",
             ])
         add_table(
             doc,
-            ["SiNP wt%", "Job", "Grain Total (mean)", "Grain Kept (mean)", "Grain Isolated (mean)", "Kept Mean Diam (nm)"],
+            ["SiNP wt%", "Job", "Grain Total (mean)", "Grain Kept (mean)", "Grain Isolated (mean)", "Kept Mean Diam (nm)", "Kept Std Diam (nm)"],
             rows,
         )
+        # Optional: embed grain diameter histograms by job if available
+        for base in (input_bases or [OUT_BASE]):
+            plots_dir = base / "grain_plots"
+            if not plots_dir.exists():
+                continue
+            for job in job_order:
+                job_dir = plots_dir / job
+                if not job_dir.exists():
+                    continue
+                kept_hist = job_dir / "grain_diameter_nm_kept.png"
+                if kept_hist.exists():
+                    doc.add_paragraph(f"Grain diameter histogram (kept): {job} ({base.name})")
+                    add_picture_if_exists(doc, kept_hist, width_in=5.5)
     else:
         doc.add_paragraph(
             "Grain exports were not available for this run. "

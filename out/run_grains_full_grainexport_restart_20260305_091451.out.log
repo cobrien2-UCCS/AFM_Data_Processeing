@@ -830,3 +830,147 @@ Copied root: C:\AFM_STAGE\collect_20260305_124519_collect_forward\copied
 Manifest: C:\AFM_STAGE\collect_20260305_124519_collect_forward\copy_manifest.csv
 Metadata: C:\AFM_STAGE\collect_20260305_124519_collect_forward\run_metadata.json
 Wrote manifest to C:\Users\Conor O'Brien\Dropbox\03_AML\00 IN-BOX\AFM Topo Particle processing OUT\run_grains_full_wt25_20260304_145519\PEGDA_SiNP\PEGDA1TPO25SiNP_Sam02_S2\particle_forward_medianbg_p95\job_manifest.json with 34 files
+Processing_mode: particle_count_align_medianbg_p95
+CSV_mode: particle_metrics_full
+Files: 34
+Output dir: C:\Users\Conor O'Brien\Dropbox\03_AML\00 IN-BOX\AFM Topo Particle processing OUT\run_grains_full_wt25_20260304_145519\PEGDA_SiNP\PEGDA1TPO25SiNP_Sam02_S2\particle_forward_medianbg_p95
+Output CSV: C:\Users\Conor O'Brien\Dropbox\03_AML\00 IN-BOX\AFM Topo Particle processing OUT\run_grains_full_wt25_20260304_145519\PEGDA_SiNP\PEGDA1TPO25SiNP_Sam02_S2\particle_forward_medianbg_p95\summary.csv
+Wrote summary CSV: C:\Users\Conor O'Brien\Dropbox\03_AML\00 IN-BOX\AFM Topo Particle processing OUT\run_grains_full_wt25_20260304_145519\PEGDA_SiNP\PEGDA1TPO25SiNP_Sam02_S2\particle_forward_medianbg_p95\summary.csv
+C:\Users\Conor O'Brien\AppData\Local\Python\pythoncore-3.14-64\python.exe scripts/collect_files.py --config configs\TEST configs\Example configs\config.topo_particle_2jobs_masking.yaml --job collect_forward --input-root C:\Users\Conor O'Brien\Dropbox\03_AML\03 References and Materials\RAW DATA Files\AFM Scans\Particle Density for Fracture Surfaces Verification\101425-CRO\DATA\PEGDA1TPO25SiNP_Sam02_S2 --out-root C:/AFM_STAGE
+C:\Users\Conor O'Brien\AppData\Local\Python\pythoncore-3.14-64\python.exe scripts/make_job_manifest.py --config configs\TEST configs\Example configs\config.topo_particle_2jobs_masking.yaml --input-root C:\AFM_STAGE\collect_20260305_124519_collect_forward\copied --output-dir C:\Users\Conor O'Brien\Dropbox\03_AML\00 IN-BOX\AFM Topo Particle processing OUT\run_grains_full_wt25_20260304_145519\PEGDA_SiNP\PEGDA1TPO25SiNP_Sam02_S2\particle_forward_medianbg_p95 --processing-mode particle_count_align_medianbg_p95 --csv-mode particle_metrics_full --out C:\Users\Conor O'Brien\Dropbox\03_AML\00 IN-BOX\AFM Topo Particle processing OUT\run_grains_full_wt25_20260304_145519\PEGDA_SiNP\PEGDA1TPO25SiNP_Sam02_S2\particle_forward_medianbg_p95\job_manifest.json --pattern **/*Z Height*Forward*.tif;**/*Z Height*Forward*.tiff --profile medianbg_p95
+C:\Python27\python.exe scripts/run_pygwy_job.py --manifest C:\Users\Conor O'Brien\Dropbox\03_AML\00 IN-BOX\AFM Topo Particle processing OUT\run_grains_full_wt25_20260304_145519\PEGDA_SiNP\PEGDA1TPO25SiNP_Sam02_S2\particle_forward_medianbg_p95\job_manifest.json
+Done. Output dir: C:\Users\Conor O'Brien\Dropbox\03_AML\00 IN-BOX\AFM Topo Particle processing OUT\run_grains_full_wt25_20260304_145519\PEGDA_SiNP\PEGDA1TPO25SiNP_Sam02_S2\particle_forward_medianbg_p95
+Considered: 68
+Matched: 34
+Copied: 34 (dry_run=False)
+Out dir: C:\AFM_STAGE\collect_20260305_124720_collect_forward
+Copied root: C:\AFM_STAGE\collect_20260305_124720_collect_forward\copied
+Manifest: C:\AFM_STAGE\collect_20260305_124720_collect_forward\copy_manifest.csv
+Metadata: C:\AFM_STAGE\collect_20260305_124720_collect_forward\run_metadata.json
+Wrote manifest to C:\Users\Conor O'Brien\Dropbox\03_AML\00 IN-BOX\AFM Topo Particle processing OUT\run_grains_full_wt25_20260304_145519\PEGDA_SiNP\PEGDA1TPO25SiNP_Sam02_S2\particle_forward_medianbg_max_fixed0_p95\job_manifest.json with 34 files
+Processing_mode: particle_count_align_medianbg_max_fixed0_p95
+CSV_mode: particle_metrics_full
+Files: 34
+Output dir: C:\Users\Conor O'Brien\Dropbox\03_AML\00 IN-BOX\AFM Topo Particle processing OUT\run_grains_full_wt25_20260304_145519\PEGDA_SiNP\PEGDA1TPO25SiNP_Sam02_S2\particle_forward_medianbg_max_fixed0_p95
+Output CSV: C:\Users\Conor O'Brien\Dropbox\03_AML\00 IN-BOX\AFM Topo Particle processing OUT\run_grains_full_wt25_20260304_145519\PEGDA_SiNP\PEGDA1TPO25SiNP_Sam02_S2\particle_forward_medianbg_max_fixed0_p95\summary.csv
+Wrote summary CSV: C:\Users\Conor O'Brien\Dropbox\03_AML\00 IN-BOX\AFM Topo Particle processing OUT\run_grains_full_wt25_20260304_145519\PEGDA_SiNP\PEGDA1TPO25SiNP_Sam02_S2\particle_forward_medianbg_max_fixed0_p95\summary.csv
+C:\Users\Conor O'Brien\AppData\Local\Python\pythoncore-3.14-64\python.exe scripts/collect_files.py --config configs\TEST configs\Example configs\config.topo_particle_2jobs_masking.yaml --job collect_forward --input-root C:\Users\Conor O'Brien\Dropbox\03_AML\03 References and Materials\RAW DATA Files\AFM Scans\Particle Density for Fracture Surfaces Verification\101425-CRO\DATA\PEGDA1TPO25SiNP_Sam02_S2 --out-root C:/AFM_STAGE
+C:\Users\Conor O'Brien\AppData\Local\Python\pythoncore-3.14-64\python.exe scripts/make_job_manifest.py --config configs\TEST configs\Example configs\config.topo_particle_2jobs_masking.yaml --input-root C:\AFM_STAGE\collect_20260305_124720_collect_forward\copied --output-dir C:\Users\Conor O'Brien\Dropbox\03_AML\00 IN-BOX\AFM Topo Particle processing OUT\run_grains_full_wt25_20260304_145519\PEGDA_SiNP\PEGDA1TPO25SiNP_Sam02_S2\particle_forward_medianbg_max_fixed0_p95 --processing-mode particle_count_align_medianbg_max_fixed0_p95 --csv-mode particle_metrics_full --out C:\Users\Conor O'Brien\Dropbox\03_AML\00 IN-BOX\AFM Topo Particle processing OUT\run_grains_full_wt25_20260304_145519\PEGDA_SiNP\PEGDA1TPO25SiNP_Sam02_S2\particle_forward_medianbg_max_fixed0_p95\job_manifest.json --pattern **/*Z Height*Forward*.tif;**/*Z Height*Forward*.tiff --profile medianbg_max_fixed0_p95
+C:\Python27\python.exe scripts/run_pygwy_job.py --manifest C:\Users\Conor O'Brien\Dropbox\03_AML\00 IN-BOX\AFM Topo Particle processing OUT\run_grains_full_wt25_20260304_145519\PEGDA_SiNP\PEGDA1TPO25SiNP_Sam02_S2\particle_forward_medianbg_max_fixed0_p95\job_manifest.json
+Done. Output dir: C:\Users\Conor O'Brien\Dropbox\03_AML\00 IN-BOX\AFM Topo Particle processing OUT\run_grains_full_wt25_20260304_145519\PEGDA_SiNP\PEGDA1TPO25SiNP_Sam02_S2\particle_forward_medianbg_max_fixed0_p95
+Considered: 68
+Matched: 34
+Copied: 34 (dry_run=False)
+Out dir: C:\AFM_STAGE\collect_20260305_124914_collect_forward
+Copied root: C:\AFM_STAGE\collect_20260305_124914_collect_forward\copied
+Manifest: C:\AFM_STAGE\collect_20260305_124914_collect_forward\copy_manifest.csv
+Metadata: C:\AFM_STAGE\collect_20260305_124914_collect_forward\run_metadata.json
+Wrote manifest to C:\Users\Conor O'Brien\Dropbox\03_AML\00 IN-BOX\AFM Topo Particle processing OUT\run_grains_full_wt25_20260304_145519\PEGDA_SiNP\PEGDA1TPO25SiNP_Sam02_S2\particle_forward_flatten_mean\job_manifest.json with 34 files
+Processing_mode: particle_count_align_flatten_mean
+CSV_mode: particle_metrics_full
+Files: 34
+Output dir: C:\Users\Conor O'Brien\Dropbox\03_AML\00 IN-BOX\AFM Topo Particle processing OUT\run_grains_full_wt25_20260304_145519\PEGDA_SiNP\PEGDA1TPO25SiNP_Sam02_S2\particle_forward_flatten_mean
+Output CSV: C:\Users\Conor O'Brien\Dropbox\03_AML\00 IN-BOX\AFM Topo Particle processing OUT\run_grains_full_wt25_20260304_145519\PEGDA_SiNP\PEGDA1TPO25SiNP_Sam02_S2\particle_forward_flatten_mean\summary.csv
+Wrote summary CSV: C:\Users\Conor O'Brien\Dropbox\03_AML\00 IN-BOX\AFM Topo Particle processing OUT\run_grains_full_wt25_20260304_145519\PEGDA_SiNP\PEGDA1TPO25SiNP_Sam02_S2\particle_forward_flatten_mean\summary.csv
+C:\Users\Conor O'Brien\AppData\Local\Python\pythoncore-3.14-64\python.exe scripts/collect_files.py --config configs\TEST configs\Example configs\config.topo_particle_2jobs_masking.yaml --job collect_forward --input-root C:\Users\Conor O'Brien\Dropbox\03_AML\03 References and Materials\RAW DATA Files\AFM Scans\Particle Density for Fracture Surfaces Verification\101425-CRO\DATA\PEGDA1TPO25SiNP_Sam02_S2 --out-root C:/AFM_STAGE
+C:\Users\Conor O'Brien\AppData\Local\Python\pythoncore-3.14-64\python.exe scripts/make_job_manifest.py --config configs\TEST configs\Example configs\config.topo_particle_2jobs_masking.yaml --input-root C:\AFM_STAGE\collect_20260305_124914_collect_forward\copied --output-dir C:\Users\Conor O'Brien\Dropbox\03_AML\00 IN-BOX\AFM Topo Particle processing OUT\run_grains_full_wt25_20260304_145519\PEGDA_SiNP\PEGDA1TPO25SiNP_Sam02_S2\particle_forward_flatten_mean --processing-mode particle_count_align_flatten_mean --csv-mode particle_metrics_full --out C:\Users\Conor O'Brien\Dropbox\03_AML\00 IN-BOX\AFM Topo Particle processing OUT\run_grains_full_wt25_20260304_145519\PEGDA_SiNP\PEGDA1TPO25SiNP_Sam02_S2\particle_forward_flatten_mean\job_manifest.json --pattern **/*Z Height*Forward*.tif;**/*Z Height*Forward*.tiff --profile flatten_mean
+C:\Python27\python.exe scripts/run_pygwy_job.py --manifest C:\Users\Conor O'Brien\Dropbox\03_AML\00 IN-BOX\AFM Topo Particle processing OUT\run_grains_full_wt25_20260304_145519\PEGDA_SiNP\PEGDA1TPO25SiNP_Sam02_S2\particle_forward_flatten_mean\job_manifest.json
+Done. Output dir: C:\Users\Conor O'Brien\Dropbox\03_AML\00 IN-BOX\AFM Topo Particle processing OUT\run_grains_full_wt25_20260304_145519\PEGDA_SiNP\PEGDA1TPO25SiNP_Sam02_S2\particle_forward_flatten_mean
+Considered: 68
+Matched: 34
+Copied: 34 (dry_run=False)
+Out dir: C:\AFM_STAGE\collect_20260305_125044_collect_forward
+Copied root: C:\AFM_STAGE\collect_20260305_125044_collect_forward\copied
+Manifest: C:\AFM_STAGE\collect_20260305_125044_collect_forward\copy_manifest.csv
+Metadata: C:\AFM_STAGE\collect_20260305_125044_collect_forward\run_metadata.json
+Wrote manifest to C:\Users\Conor O'Brien\Dropbox\03_AML\00 IN-BOX\AFM Topo Particle processing OUT\run_grains_full_wt25_20260304_145519\PEGDA_SiNP\PEGDA1TPO25SiNP_Sam02_S2\particle_forward_flatten_fixed0\job_manifest.json with 34 files
+Processing_mode: particle_count_align_flatten_fixed0
+CSV_mode: particle_metrics_full
+Files: 34
+Output dir: C:\Users\Conor O'Brien\Dropbox\03_AML\00 IN-BOX\AFM Topo Particle processing OUT\run_grains_full_wt25_20260304_145519\PEGDA_SiNP\PEGDA1TPO25SiNP_Sam02_S2\particle_forward_flatten_fixed0
+Output CSV: C:\Users\Conor O'Brien\Dropbox\03_AML\00 IN-BOX\AFM Topo Particle processing OUT\run_grains_full_wt25_20260304_145519\PEGDA_SiNP\PEGDA1TPO25SiNP_Sam02_S2\particle_forward_flatten_fixed0\summary.csv
+Wrote summary CSV: C:\Users\Conor O'Brien\Dropbox\03_AML\00 IN-BOX\AFM Topo Particle processing OUT\run_grains_full_wt25_20260304_145519\PEGDA_SiNP\PEGDA1TPO25SiNP_Sam02_S2\particle_forward_flatten_fixed0\summary.csv
+C:\Users\Conor O'Brien\AppData\Local\Python\pythoncore-3.14-64\python.exe scripts/collect_files.py --config configs\TEST configs\Example configs\config.topo_particle_2jobs_masking.yaml --job collect_forward --input-root C:\Users\Conor O'Brien\Dropbox\03_AML\03 References and Materials\RAW DATA Files\AFM Scans\Particle Density for Fracture Surfaces Verification\101425-CRO\DATA\PEGDA1TPO25SiNP_Sam02_S2 --out-root C:/AFM_STAGE
+C:\Users\Conor O'Brien\AppData\Local\Python\pythoncore-3.14-64\python.exe scripts/make_job_manifest.py --config configs\TEST configs\Example configs\config.topo_particle_2jobs_masking.yaml --input-root C:\AFM_STAGE\collect_20260305_125044_collect_forward\copied --output-dir C:\Users\Conor O'Brien\Dropbox\03_AML\00 IN-BOX\AFM Topo Particle processing OUT\run_grains_full_wt25_20260304_145519\PEGDA_SiNP\PEGDA1TPO25SiNP_Sam02_S2\particle_forward_flatten_fixed0 --processing-mode particle_count_align_flatten_fixed0 --csv-mode particle_metrics_full --out C:\Users\Conor O'Brien\Dropbox\03_AML\00 IN-BOX\AFM Topo Particle processing OUT\run_grains_full_wt25_20260304_145519\PEGDA_SiNP\PEGDA1TPO25SiNP_Sam02_S2\particle_forward_flatten_fixed0\job_manifest.json --pattern **/*Z Height*Forward*.tif;**/*Z Height*Forward*.tiff --profile flatten_fixed0
+C:\Python27\python.exe scripts/run_pygwy_job.py --manifest C:\Users\Conor O'Brien\Dropbox\03_AML\00 IN-BOX\AFM Topo Particle processing OUT\run_grains_full_wt25_20260304_145519\PEGDA_SiNP\PEGDA1TPO25SiNP_Sam02_S2\particle_forward_flatten_fixed0\job_manifest.json
+Done. Output dir: C:\Users\Conor O'Brien\Dropbox\03_AML\00 IN-BOX\AFM Topo Particle processing OUT\run_grains_full_wt25_20260304_145519\PEGDA_SiNP\PEGDA1TPO25SiNP_Sam02_S2\particle_forward_flatten_fixed0
+Considered: 68
+Matched: 34
+Copied: 34 (dry_run=False)
+Out dir: C:\AFM_STAGE\collect_20260305_125214_collect_forward
+Copied root: C:\AFM_STAGE\collect_20260305_125214_collect_forward\copied
+Manifest: C:\AFM_STAGE\collect_20260305_125214_collect_forward\copy_manifest.csv
+Metadata: C:\AFM_STAGE\collect_20260305_125214_collect_forward\run_metadata.json
+Wrote manifest to C:\Users\Conor O'Brien\Dropbox\03_AML\00 IN-BOX\AFM Topo Particle processing OUT\run_grains_full_wt25_20260304_145519\PEGDA_SiNP\PEGDA1TPO25SiNP_Sam02_S2\particle_forward_flatten_p95\job_manifest.json with 34 files
+Processing_mode: particle_count_align_flatten_p95
+CSV_mode: particle_metrics_full
+Files: 34
+Output dir: C:\Users\Conor O'Brien\Dropbox\03_AML\00 IN-BOX\AFM Topo Particle processing OUT\run_grains_full_wt25_20260304_145519\PEGDA_SiNP\PEGDA1TPO25SiNP_Sam02_S2\particle_forward_flatten_p95
+Output CSV: C:\Users\Conor O'Brien\Dropbox\03_AML\00 IN-BOX\AFM Topo Particle processing OUT\run_grains_full_wt25_20260304_145519\PEGDA_SiNP\PEGDA1TPO25SiNP_Sam02_S2\particle_forward_flatten_p95\summary.csv
+Wrote summary CSV: C:\Users\Conor O'Brien\Dropbox\03_AML\00 IN-BOX\AFM Topo Particle processing OUT\run_grains_full_wt25_20260304_145519\PEGDA_SiNP\PEGDA1TPO25SiNP_Sam02_S2\particle_forward_flatten_p95\summary.csv
+C:\Users\Conor O'Brien\AppData\Local\Python\pythoncore-3.14-64\python.exe scripts/collect_files.py --config configs\TEST configs\Example configs\config.topo_particle_2jobs_masking.yaml --job collect_forward --input-root C:\Users\Conor O'Brien\Dropbox\03_AML\03 References and Materials\RAW DATA Files\AFM Scans\Particle Density for Fracture Surfaces Verification\101425-CRO\DATA\PEGDA1TPO25SiNP_Sam02_S2 --out-root C:/AFM_STAGE
+C:\Users\Conor O'Brien\AppData\Local\Python\pythoncore-3.14-64\python.exe scripts/make_job_manifest.py --config configs\TEST configs\Example configs\config.topo_particle_2jobs_masking.yaml --input-root C:\AFM_STAGE\collect_20260305_125214_collect_forward\copied --output-dir C:\Users\Conor O'Brien\Dropbox\03_AML\00 IN-BOX\AFM Topo Particle processing OUT\run_grains_full_wt25_20260304_145519\PEGDA_SiNP\PEGDA1TPO25SiNP_Sam02_S2\particle_forward_flatten_p95 --processing-mode particle_count_align_flatten_p95 --csv-mode particle_metrics_full --out C:\Users\Conor O'Brien\Dropbox\03_AML\00 IN-BOX\AFM Topo Particle processing OUT\run_grains_full_wt25_20260304_145519\PEGDA_SiNP\PEGDA1TPO25SiNP_Sam02_S2\particle_forward_flatten_p95\job_manifest.json --pattern **/*Z Height*Forward*.tif;**/*Z Height*Forward*.tiff --profile flatten_p95
+C:\Python27\python.exe scripts/run_pygwy_job.py --manifest C:\Users\Conor O'Brien\Dropbox\03_AML\00 IN-BOX\AFM Topo Particle processing OUT\run_grains_full_wt25_20260304_145519\PEGDA_SiNP\PEGDA1TPO25SiNP_Sam02_S2\particle_forward_flatten_p95\job_manifest.json
+Done. Output dir: C:\Users\Conor O'Brien\Dropbox\03_AML\00 IN-BOX\AFM Topo Particle processing OUT\run_grains_full_wt25_20260304_145519\PEGDA_SiNP\PEGDA1TPO25SiNP_Sam02_S2\particle_forward_flatten_p95
+Considered: 68
+Matched: 34
+Copied: 34 (dry_run=False)
+Out dir: C:\AFM_STAGE\collect_20260305_125427_collect_forward
+Copied root: C:\AFM_STAGE\collect_20260305_125427_collect_forward\copied
+Manifest: C:\AFM_STAGE\collect_20260305_125427_collect_forward\copy_manifest.csv
+Metadata: C:\AFM_STAGE\collect_20260305_125427_collect_forward\run_metadata.json
+Wrote manifest to C:\Users\Conor O'Brien\Dropbox\03_AML\00 IN-BOX\AFM Topo Particle processing OUT\run_grains_full_wt25_20260304_145519\PEGDA_SiNP\PEGDA1TPO25SiNP_Sam02_S2\particle_forward_flatten_max_fixed0_p95\job_manifest.json with 34 files
+Processing_mode: particle_count_align_flatten_max_fixed0_p95
+CSV_mode: particle_metrics_full
+Files: 34
+Output dir: C:\Users\Conor O'Brien\Dropbox\03_AML\00 IN-BOX\AFM Topo Particle processing OUT\run_grains_full_wt25_20260304_145519\PEGDA_SiNP\PEGDA1TPO25SiNP_Sam02_S2\particle_forward_flatten_max_fixed0_p95
+Output CSV: C:\Users\Conor O'Brien\Dropbox\03_AML\00 IN-BOX\AFM Topo Particle processing OUT\run_grains_full_wt25_20260304_145519\PEGDA_SiNP\PEGDA1TPO25SiNP_Sam02_S2\particle_forward_flatten_max_fixed0_p95\summary.csv
+Wrote summary CSV: C:\Users\Conor O'Brien\Dropbox\03_AML\00 IN-BOX\AFM Topo Particle processing OUT\run_grains_full_wt25_20260304_145519\PEGDA_SiNP\PEGDA1TPO25SiNP_Sam02_S2\particle_forward_flatten_max_fixed0_p95\summary.csv
+C:\Users\Conor O'Brien\AppData\Local\Python\pythoncore-3.14-64\python.exe scripts/collect_files.py --config configs\TEST configs\Example configs\config.topo_particle_2jobs_masking.yaml --job collect_forward --input-root C:\Users\Conor O'Brien\Dropbox\03_AML\03 References and Materials\RAW DATA Files\AFM Scans\Particle Density for Fracture Surfaces Verification\101425-CRO\DATA\PEGDA1TPO25SiNP_Sam02_S2 --out-root C:/AFM_STAGE
+C:\Users\Conor O'Brien\AppData\Local\Python\pythoncore-3.14-64\python.exe scripts/make_job_manifest.py --config configs\TEST configs\Example configs\config.topo_particle_2jobs_masking.yaml --input-root C:\AFM_STAGE\collect_20260305_125427_collect_forward\copied --output-dir C:\Users\Conor O'Brien\Dropbox\03_AML\00 IN-BOX\AFM Topo Particle processing OUT\run_grains_full_wt25_20260304_145519\PEGDA_SiNP\PEGDA1TPO25SiNP_Sam02_S2\particle_forward_flatten_max_fixed0_p95 --processing-mode particle_count_align_flatten_max_fixed0_p95 --csv-mode particle_metrics_full --out C:\Users\Conor O'Brien\Dropbox\03_AML\00 IN-BOX\AFM Topo Particle processing OUT\run_grains_full_wt25_20260304_145519\PEGDA_SiNP\PEGDA1TPO25SiNP_Sam02_S2\particle_forward_flatten_max_fixed0_p95\job_manifest.json --pattern **/*Z Height*Forward*.tif;**/*Z Height*Forward*.tiff --profile flatten_max_fixed0_p95
+C:\Python27\python.exe scripts/run_pygwy_job.py --manifest C:\Users\Conor O'Brien\Dropbox\03_AML\00 IN-BOX\AFM Topo Particle processing OUT\run_grains_full_wt25_20260304_145519\PEGDA_SiNP\PEGDA1TPO25SiNP_Sam02_S2\particle_forward_flatten_max_fixed0_p95\job_manifest.json
+Done. Output dir: C:\Users\Conor O'Brien\Dropbox\03_AML\00 IN-BOX\AFM Topo Particle processing OUT\run_grains_full_wt25_20260304_145519\PEGDA_SiNP\PEGDA1TPO25SiNP_Sam02_S2\particle_forward_flatten_max_fixed0_p95
+Considered: 210
+Matched: 105
+Copied: 105 (dry_run=False)
+Out dir: C:\AFM_STAGE\collect_20260305_125650_collect_forward
+Copied root: C:\AFM_STAGE\collect_20260305_125650_collect_forward\copied
+Manifest: C:\AFM_STAGE\collect_20260305_125650_collect_forward\copy_manifest.csv
+Metadata: C:\AFM_STAGE\collect_20260305_125650_collect_forward\run_metadata.json
+Wrote manifest to C:\Users\Conor O'Brien\Dropbox\03_AML\00 IN-BOX\AFM Topo Particle processing OUT\run_grains_full_wt25_20260304_145519\PEGDA_SiNP\PEGDA1TPO25SiNP_Sam03_S1\particle_forward_medianbg_mean\job_manifest.json with 105 files
+Processing_mode: particle_count_align_medianbg_mean
+CSV_mode: particle_metrics_full
+Files: 105
+Output dir: C:\Users\Conor O'Brien\Dropbox\03_AML\00 IN-BOX\AFM Topo Particle processing OUT\run_grains_full_wt25_20260304_145519\PEGDA_SiNP\PEGDA1TPO25SiNP_Sam03_S1\particle_forward_medianbg_mean
+Output CSV: C:\Users\Conor O'Brien\Dropbox\03_AML\00 IN-BOX\AFM Topo Particle processing OUT\run_grains_full_wt25_20260304_145519\PEGDA_SiNP\PEGDA1TPO25SiNP_Sam03_S1\particle_forward_medianbg_mean\summary.csv
+Wrote summary CSV: C:\Users\Conor O'Brien\Dropbox\03_AML\00 IN-BOX\AFM Topo Particle processing OUT\run_grains_full_wt25_20260304_145519\PEGDA_SiNP\PEGDA1TPO25SiNP_Sam03_S1\particle_forward_medianbg_mean\summary.csv
+C:\Users\Conor O'Brien\AppData\Local\Python\pythoncore-3.14-64\python.exe scripts/collect_files.py --config configs\TEST configs\Example configs\config.topo_particle_2jobs_masking.yaml --job collect_forward --input-root C:\Users\Conor O'Brien\Dropbox\03_AML\03 References and Materials\RAW DATA Files\AFM Scans\Particle Density for Fracture Surfaces Verification\101525-CRO\DATA\PEGDA1TPO25SiNP_Sam03_S1 --out-root C:/AFM_STAGE
+C:\Users\Conor O'Brien\AppData\Local\Python\pythoncore-3.14-64\python.exe scripts/make_job_manifest.py --config configs\TEST configs\Example configs\config.topo_particle_2jobs_masking.yaml --input-root C:\AFM_STAGE\collect_20260305_125650_collect_forward\copied --output-dir C:\Users\Conor O'Brien\Dropbox\03_AML\00 IN-BOX\AFM Topo Particle processing OUT\run_grains_full_wt25_20260304_145519\PEGDA_SiNP\PEGDA1TPO25SiNP_Sam03_S1\particle_forward_medianbg_mean --processing-mode particle_count_align_medianbg_mean --csv-mode particle_metrics_full --out C:\Users\Conor O'Brien\Dropbox\03_AML\00 IN-BOX\AFM Topo Particle processing OUT\run_grains_full_wt25_20260304_145519\PEGDA_SiNP\PEGDA1TPO25SiNP_Sam03_S1\particle_forward_medianbg_mean\job_manifest.json --pattern **/*Z Height*Forward*.tif;**/*Z Height*Forward*.tiff --profile medianbg_mean
+C:\Python27\python.exe scripts/run_pygwy_job.py --manifest C:\Users\Conor O'Brien\Dropbox\03_AML\00 IN-BOX\AFM Topo Particle processing OUT\run_grains_full_wt25_20260304_145519\PEGDA_SiNP\PEGDA1TPO25SiNP_Sam03_S1\particle_forward_medianbg_mean\job_manifest.json
+Done. Output dir: C:\Users\Conor O'Brien\Dropbox\03_AML\00 IN-BOX\AFM Topo Particle processing OUT\run_grains_full_wt25_20260304_145519\PEGDA_SiNP\PEGDA1TPO25SiNP_Sam03_S1\particle_forward_medianbg_mean
+Considered: 210
+Matched: 105
+Copied: 105 (dry_run=False)
+Out dir: C:\AFM_STAGE\collect_20260305_130121_collect_forward
+Copied root: C:\AFM_STAGE\collect_20260305_130121_collect_forward\copied
+Manifest: C:\AFM_STAGE\collect_20260305_130121_collect_forward\copy_manifest.csv
+Metadata: C:\AFM_STAGE\collect_20260305_130121_collect_forward\run_metadata.json
+Wrote manifest to C:\Users\Conor O'Brien\Dropbox\03_AML\00 IN-BOX\AFM Topo Particle processing OUT\run_grains_full_wt25_20260304_145519\PEGDA_SiNP\PEGDA1TPO25SiNP_Sam03_S1\particle_forward_medianbg_fixed0\job_manifest.json with 105 files
+Processing_mode: particle_count_align_medianbg_fixed0
+CSV_mode: particle_metrics_full
+Files: 105
+Output dir: C:\Users\Conor O'Brien\Dropbox\03_AML\00 IN-BOX\AFM Topo Particle processing OUT\run_grains_full_wt25_20260304_145519\PEGDA_SiNP\PEGDA1TPO25SiNP_Sam03_S1\particle_forward_medianbg_fixed0
+Output CSV: C:\Users\Conor O'Brien\Dropbox\03_AML\00 IN-BOX\AFM Topo Particle processing OUT\run_grains_full_wt25_20260304_145519\PEGDA_SiNP\PEGDA1TPO25SiNP_Sam03_S1\particle_forward_medianbg_fixed0\summary.csv
+Wrote summary CSV: C:\Users\Conor O'Brien\Dropbox\03_AML\00 IN-BOX\AFM Topo Particle processing OUT\run_grains_full_wt25_20260304_145519\PEGDA_SiNP\PEGDA1TPO25SiNP_Sam03_S1\particle_forward_medianbg_fixed0\summary.csv
+C:\Users\Conor O'Brien\AppData\Local\Python\pythoncore-3.14-64\python.exe scripts/collect_files.py --config configs\TEST configs\Example configs\config.topo_particle_2jobs_masking.yaml --job collect_forward --input-root C:\Users\Conor O'Brien\Dropbox\03_AML\03 References and Materials\RAW DATA Files\AFM Scans\Particle Density for Fracture Surfaces Verification\101525-CRO\DATA\PEGDA1TPO25SiNP_Sam03_S1 --out-root C:/AFM_STAGE
+C:\Users\Conor O'Brien\AppData\Local\Python\pythoncore-3.14-64\python.exe scripts/make_job_manifest.py --config configs\TEST configs\Example configs\config.topo_particle_2jobs_masking.yaml --input-root C:\AFM_STAGE\collect_20260305_130121_collect_forward\copied --output-dir C:\Users\Conor O'Brien\Dropbox\03_AML\00 IN-BOX\AFM Topo Particle processing OUT\run_grains_full_wt25_20260304_145519\PEGDA_SiNP\PEGDA1TPO25SiNP_Sam03_S1\particle_forward_medianbg_fixed0 --processing-mode particle_count_align_medianbg_fixed0 --csv-mode particle_metrics_full --out C:\Users\Conor O'Brien\Dropbox\03_AML\00 IN-BOX\AFM Topo Particle processing OUT\run_grains_full_wt25_20260304_145519\PEGDA_SiNP\PEGDA1TPO25SiNP_Sam03_S1\particle_forward_medianbg_fixed0\job_manifest.json --pattern **/*Z Height*Forward*.tif;**/*Z Height*Forward*.tiff --profile medianbg_fixed0
+C:\Python27\python.exe scripts/run_pygwy_job.py --manifest C:\Users\Conor O'Brien\Dropbox\03_AML\00 IN-BOX\AFM Topo Particle processing OUT\run_grains_full_wt25_20260304_145519\PEGDA_SiNP\PEGDA1TPO25SiNP_Sam03_S1\particle_forward_medianbg_fixed0\job_manifest.json
+Done. Output dir: C:\Users\Conor O'Brien\Dropbox\03_AML\00 IN-BOX\AFM Topo Particle processing OUT\run_grains_full_wt25_20260304_145519\PEGDA_SiNP\PEGDA1TPO25SiNP_Sam03_S1\particle_forward_medianbg_fixed0
+Considered: 210
+Matched: 105
+Copied: 105 (dry_run=False)
+Out dir: C:\AFM_STAGE\collect_20260305_130605_collect_forward
+Copied root: C:\AFM_STAGE\collect_20260305_130605_collect_forward\copied
+Manifest: C:\AFM_STAGE\collect_20260305_130605_collect_forward\copy_manifest.csv
+Metadata: C:\AFM_STAGE\collect_20260305_130605_collect_forward\run_metadata.json
+Wrote manifest to C:\Users\Conor O'Brien\Dropbox\03_AML\00 IN-BOX\AFM Topo Particle processing OUT\run_grains_full_wt25_20260304_145519\PEGDA_SiNP\PEGDA1TPO25SiNP_Sam03_S1\particle_forward_medianbg_p95\job_manifest.json with 105 files

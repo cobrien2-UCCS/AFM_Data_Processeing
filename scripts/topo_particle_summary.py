@@ -272,24 +272,69 @@ def parse_data_grouped(path):
             current_system = "pegda_sinp"
             current_label = None
             continue
-        if line.startswith("#"):
-            continue
         if line.startswith("## "):
             current_label = line[3:].strip()
             groups.append({"system": current_system, "label": current_label, "roots": []})
+            continue
+        if line.startswith("#"):
             continue
         if line.startswith("C:\\") and groups:
             groups[-1]["roots"].append(line)
     return groups
 
 
+def _norm_key(value):
+    if not value:
+        return ""
+    return re.sub(r"[^a-z0-9]+", "", value.lower())
+
+
 def build_sample_group_map(groups):
+    """
+    Build a mapping from sample folder name -> grouped metadata.
+
+    We keep:
+    - exact map: sample -> group
+    - normalized map: norm(sample) -> group
+    - root norms: norm(full_root_path) -> group (for substring matches)
+    """
     mapping = {}
+    norm_map = {}
+    root_norms = []
     for g in groups:
         for root in g["roots"]:
             sample = Path(root).name
             mapping[sample] = g
-    return mapping
+            n = _norm_key(sample)
+            if n:
+                norm_map[n] = g
+            root_norms.append((_norm_key(root), g))
+    return mapping, norm_map, root_norms
+
+
+def classify_sample(sample, mapping, norm_map, root_norms):
+    if sample in mapping:
+        return mapping[sample]
+    norm = _norm_key(sample)
+    if norm in norm_map:
+        return norm_map[norm]
+    # Prefer root path substring match: root_norm in norm(sample) or norm(sample) in root_norm
+    for root_norm, g in root_norms or []:
+        if not root_norm or not norm:
+            continue
+        if root_norm in norm or norm in root_norm:
+            return g
+    # Last resort: fuzzy contains
+    best = None
+    best_len = 0
+    for k, g in norm_map.items():
+        if not k or not norm:
+            continue
+        if k in norm or norm in k:
+            if len(k) > best_len:
+                best_len = len(k)
+                best = g
+    return best or {}
 
 
 def scraped_status_from_label(label):
@@ -452,6 +497,9 @@ def main():
     if args.out_base:
         OUT_BASE = Path(args.out_base)
     cfg = {}
+    # Some attributes are only populated when a config file is loaded; default them for direct CLI use.
+    if not hasattr(args, "job_order"):
+        args.job_order = []
     if args.config:
         try:
             import yaml
@@ -468,7 +516,7 @@ def main():
 
     inv = read_inventory()
     groups = parse_data_grouped(DATA_GROUPED)
-    sample_to_group = build_sample_group_map(groups)
+    sample_to_group, norm_group_map, root_norms = build_sample_group_map(groups)
 
     systems = {"pegda": [], "pegda_sinp": []}
     for r in inv:
@@ -518,7 +566,7 @@ def main():
         sample = row.get("sample", "unknown")
         system = row.get("system", "unknown")
         job = row.get("job", "unknown")
-        group = sample_to_group.get(sample, {})
+        group = classify_sample(sample, sample_to_group, norm_group_map, root_norms)
         group_label = group.get("label", "")
         wt_label = wt_percent_from_label(group_label) or (f"{_wt_percent_from_sample(sample)}%" if _wt_percent_from_sample(sample) else "")
         scraped = scraped_status_from_label(group_label)
@@ -837,7 +885,7 @@ def main():
         plt.close()
 
     if counts_by_job:
-        job_order = args.job_order or list(counts_by_job.keys())
+    job_order = (args.job_order or []) or list(counts_by_job.keys())
         job_labels = [wrap_label(j, 18, 2) for j in job_order]
         means = [stats.mean(counts_by_job.get(j, [])) if counts_by_job.get(j) else 0.0 for j in job_order]
         stds = [stats.pstdev(counts_by_job.get(j, [])) if len(counts_by_job.get(j, [])) > 1 else 0.0 for j in job_order]
