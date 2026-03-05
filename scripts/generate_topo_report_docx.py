@@ -339,7 +339,7 @@ def main():
     else:
         doc.add_paragraph(f"Output root: {OUT_BASE}")
     doc.add_paragraph(f"Baseline job: {BASELINE_JOB}")
-    doc.add_paragraph("Particle coding: none (no per-particle coding in filenames).")
+    doc.add_paragraph("Particle coating: yes (coded when present in filenames).")
     doc.add_paragraph("Map/grid area: 50 um x 50 um (21 x 21 grid, 5% overlap per scan)")
     if DATA_GROUPED.exists():
         doc.add_paragraph(f"Grouping source: {DATA_GROUPED}")
@@ -538,6 +538,12 @@ def main():
                 "The probability of at least one non-zero scan across n scans is approximately "
                 "1 - (zero_rate_obs)^n (independence assumption)."
             )
+        # Aggregate uncertainty plots (Poisson)
+        for base in (input_bases or [OUT_BASE]):
+            fit_dir = base / "summary_outputs" / "fits"
+            for path in sorted(fit_dir.glob("risk_aggregate_*_poisson.png")):
+                doc.add_paragraph(f"Aggregate Poisson uncertainty: {path.name}")
+                add_picture_if_exists(doc, path, width_in=5.5)
 
     count_rows = []
     if input_bases:
@@ -822,9 +828,16 @@ def main():
                 ["Job", "Mean Isolated/Scan", "Std Isolated/Scan", "% diff vs baseline", "Mean Isolated/Scan per wt%"],
                 rows,
             )
+            doc.add_paragraph(
+                "Mean isolated/scan per wt% is computed as (mean isolated per scan) / (SiNP wt%)."
+            )
     doc.add_paragraph(
         "Per-job histograms (kept/raw/isolated) are embedded below and also exported under "
         "summary_outputs/job_hists/<job>/ in each output root."
+    )
+    doc.add_paragraph(
+        "Box plots: center line = median; box = interquartile range (Q1–Q3); whiskers extend to "
+        "1.5×IQR; points beyond whiskers are outliers."
     )
     # Method histogram sensitivity tables (from fit outputs)
     if fit_summary_rows:
@@ -946,7 +959,11 @@ def main():
             rows,
         )
     else:
-        doc.add_paragraph("Grain exports were not available for this run (grain_export disabled).")
+        doc.add_paragraph(
+            "Grain exports were not available for this run. "
+            "Expected *_grains.csv outputs were missing; rerun pygwy with grain_export enabled "
+            "and use_review_sample=false to populate grain tables."
+        )
 
     doc.add_heading("7. Statistical Feasibility Statement", level=1)
     if count_rows:

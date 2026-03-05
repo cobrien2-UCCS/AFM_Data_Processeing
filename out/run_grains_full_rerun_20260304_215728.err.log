@@ -1,0 +1,8 @@
+Config configs\TEST configs\Example configs\config.topo_particle_2jobs_masking.yaml missing sections: result_schemas, plotting_modes
+Config configs\TEST configs\Example configs\config.topo_particle_2jobs_masking.yaml missing sections: result_schemas, plotting_modes
+
+** (python.exe:21600): WARNING **: Trying to register gtype 'GMountMountFlags' as enum when in fact it is of type 'GFlags'
+
+** (python.exe:21600): WARNING **: Trying to register gtype 'GDriveStartFlags' as enum when in fact it is of type 'GFlags'
+
+** (python.exe:21600): WARNING **: Trying to register gtype 'GSocketMsgFlags' as enum when in fact it is of type 'GFlags'

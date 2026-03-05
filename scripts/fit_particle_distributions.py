@@ -467,6 +467,9 @@ def main():
     hist_max_bin = plot_cfg.get("hist_max_bin", None)
     combine_models = plot_cfg.get("combine_models", True)
     combine_uncertainty = plot_cfg.get("combine_uncertainty", False)
+    aggregate_plot = plot_cfg.get("aggregate_uncertainty", True)
+    aggregate_by = plot_cfg.get("aggregate_by", ["wt_percent", "scraped"])
+    aggregate_model = plot_cfg.get("aggregate_model", "poisson")
     unc_cfg = fit_cfg.get("uncertainty", {})
     unc_enable = unc_cfg.get("enable", True)
     unc_bootstrap = int(unc_cfg.get("bootstrap", 200))
@@ -513,6 +516,7 @@ def main():
         curve_rows = []
         model_curves = {}
         model_bands = {}
+        group_meta = {}
         for key, payload in groups.items():
             values = payload["values"]
             meta = payload["meta"]
@@ -524,6 +528,7 @@ def main():
             var_val = stats.pvariance(values) if len(values) > 1 else 0.0
 
             zero_rate_obs = sum(1 for v in values if v == 0) / float(len(values)) if values else 0.0
+            group_meta[label] = meta
             for model in count_models:
                 curve = None
                 checks = {}
@@ -566,7 +571,7 @@ def main():
                         values,
                         pmf_func,
                         out_dir / ("hist_%s_%s.png" % (safe_label, model)),
-                        "Counts per scan (%s | %s)" % (label, model),
+                        "Counts per scan\n(%s | %s)" % (label, model),
                         max_bin=hist_max_bin,
                     )
                 if plot_enable and plot_risk:
@@ -574,7 +579,7 @@ def main():
                         curve,
                         reliability_levels,
                         out_dir / ("risk_%s_%s.png" % (safe_label, model)),
-                        "P(total >= %d) vs scans (%s | %s)" % (target_total, label, model),
+                        "P(total >= %d) vs scans\n(%s | %s)" % (target_total, label, model),
                     )
 
                 if unc_enable and model in unc_models and unc_bootstrap > 0:
@@ -587,7 +592,7 @@ def main():
                             band,
                             reliability_levels,
                             out_dir / ("risk_band_%s_%s.png" % (safe_label, model)),
-                            "P(total >= %d) w/ uncertainty (%s | %s)" % (target_total, label, model),
+                            "P(total >= %d) w/ uncertainty\n(%s | %s)" % (target_total, label, model),
                         )
 
                 model_curves[(label, model)] = curve
@@ -632,7 +637,7 @@ def main():
                     plt.plot(xs, ys, linewidth=2, label=model)
                 for level in reliability_levels:
                     plt.axhline(level, color="#999999", linestyle="--", linewidth=1)
-                plt.title("P(total >= %d) vs scans (%s | compare)" % (target_total, label))
+                plt.title("P(total >= %d) vs scans\n(%s | compare)" % (target_total, label))
                 plt.xlabel("Number of scans")
                 plt.ylabel("P(total isolated >= target)")
                 plt.ylim(0.0, 1.0)
@@ -657,13 +662,48 @@ def main():
                         plt.fill_between(xs, lower, upper, alpha=0.15)
                 for level in reliability_levels:
                     plt.axhline(level, color="#999999", linestyle="--", linewidth=1)
-                plt.title("P(total >= %d) with uncertainty (%s)" % (target_total, label))
+                plt.title("P(total >= %d) with uncertainty\n(%s)" % (target_total, label))
                 plt.xlabel("Number of scans")
                 plt.ylabel("P(total isolated >= target)")
                 plt.ylim(0.0, 1.0)
                 plt.legend()
                 plt.tight_layout()
                 plt.savefig(out_dir / ("risk_compare_uncertainty_%s.png" % safe_label), dpi=160)
+                plt.close()
+
+        if plot_enable and aggregate_plot:
+            model = aggregate_model.lower()
+            grouped = {}
+            for (label, m), curve in model_curves.items():
+                if m != model:
+                    continue
+                meta = group_meta.get(label, {})
+                group_key = tuple(meta.get(f, "") for f in aggregate_by)
+                job = meta.get("job", label)
+                grouped.setdefault(group_key, []).append((label, job, curve))
+            for group_key, items in grouped.items():
+                plt.figure(figsize=(9, 5))
+                for label, job, curve in items:
+                    xs = [row["n_scans"] for row in curve]
+                    ys = [row["success_prob"] for row in curve]
+                    plt.plot(xs, ys, linewidth=1.8, label=job)
+                    band = model_bands.get((label, model))
+                    if band:
+                        lower = [b["p_low"] for b in band]
+                        upper = [b["p_high"] for b in band]
+                        plt.fill_between(xs, lower, upper, alpha=0.12)
+                for level in reliability_levels:
+                    plt.axhline(level, color="#999999", linestyle="--", linewidth=1)
+                group_label = ", ".join("%s=%s" % (f, v) for f, v in zip(aggregate_by, group_key) if f)
+                title = "P(total >= %d) with uncertainty\n(%s | %s)" % (target_total, group_label, model)
+                plt.title(title)
+                plt.xlabel("Number of scans")
+                plt.ylabel("P(total isolated >= target)")
+                plt.ylim(0.0, 1.0)
+                plt.legend(fontsize=8)
+                plt.tight_layout()
+                out_name = "risk_aggregate_%s_%s.png" % (slugify(group_label or "all"), model)
+                plt.savefig(out_dir / out_name, dpi=160)
                 plt.close()
 
         if summary_rows:

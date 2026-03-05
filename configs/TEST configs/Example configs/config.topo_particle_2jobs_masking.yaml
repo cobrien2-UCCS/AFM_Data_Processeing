@@ -30,7 +30,7 @@ modes:
     review_pack: { enable: false, sample_limit: 0, seed: 1337, panel_basename_max_len: 60 }
     grain_export:
       enable: true
-      use_review_sample: true
+      use_review_sample: false
       quantities: ["center_x", "center_y", "pixel_area", "projected_area", "surface_area", "mean", "max", "min", "rms", "equiv_disc_radius", "equiv_square_side", "equiv_ellipse_major", "equiv_ellipse_minor", "circumcircle_r", "inscribed_disc_r"]
 
   particle_count_align_medianbg_fixed0:
@@ -59,7 +59,7 @@ modes:
     review_pack: { enable: false, sample_limit: 0, seed: 1337, panel_basename_max_len: 60 }
     grain_export:
       enable: true
-      use_review_sample: true
+      use_review_sample: false
       quantities: ["center_x", "center_y", "pixel_area", "projected_area", "surface_area", "mean", "max", "min", "rms", "equiv_disc_radius", "equiv_square_side", "equiv_ellipse_major", "equiv_ellipse_minor", "circumcircle_r", "inscribed_disc_r"]
 
   particle_count_align_medianbg_p95:
@@ -88,7 +88,7 @@ modes:
     review_pack: { enable: false, sample_limit: 0, seed: 1337, panel_basename_max_len: 60 }
     grain_export:
       enable: true
-      use_review_sample: true
+      use_review_sample: false
       quantities: ["center_x", "center_y", "pixel_area", "projected_area", "surface_area", "mean", "max", "min", "rms", "equiv_disc_radius", "equiv_square_side", "equiv_ellipse_major", "equiv_ellipse_minor", "circumcircle_r", "inscribed_disc_r"]
 
   particle_count_align_medianbg_max_fixed0_p95:
@@ -119,7 +119,7 @@ modes:
     review_pack: { enable: false, sample_limit: 0, seed: 1337, panel_basename_max_len: 60 }
     grain_export:
       enable: true
-      use_review_sample: true
+      use_review_sample: false
       quantities: ["center_x", "center_y", "pixel_area", "projected_area", "surface_area", "mean", "max", "min", "rms", "equiv_disc_radius", "equiv_square_side", "equiv_ellipse_major", "equiv_ellipse_minor", "circumcircle_r", "inscribed_disc_r"]
 
   # --- Flatten Base preprocessing (2x align + plane + flatten_base) ---
@@ -148,7 +148,7 @@ modes:
     review_pack: { enable: false, sample_limit: 0, seed: 1337, panel_basename_max_len: 60 }
     grain_export:
       enable: true
-      use_review_sample: true
+      use_review_sample: false
       quantities: ["center_x", "center_y", "pixel_area", "projected_area", "surface_area", "mean", "max", "min", "rms", "equiv_disc_radius", "equiv_square_side", "equiv_ellipse_major", "equiv_ellipse_minor", "circumcircle_r", "inscribed_disc_r"]
 
   particle_count_align_flatten_fixed0:
@@ -177,7 +177,7 @@ modes:
     review_pack: { enable: false, sample_limit: 0, seed: 1337, panel_basename_max_len: 60 }
     grain_export:
       enable: true
-      use_review_sample: true
+      use_review_sample: false
       quantities: ["center_x", "center_y", "pixel_area", "projected_area", "surface_area", "mean", "max", "min", "rms", "equiv_disc_radius", "equiv_square_side", "equiv_ellipse_major", "equiv_ellipse_minor", "circumcircle_r", "inscribed_disc_r"]
 
   particle_count_align_flatten_p95:
@@ -206,7 +206,7 @@ modes:
     review_pack: { enable: false, sample_limit: 0, seed: 1337, panel_basename_max_len: 60 }
     grain_export:
       enable: true
-      use_review_sample: true
+      use_review_sample: false
       quantities: ["center_x", "center_y", "pixel_area", "projected_area", "surface_area", "mean", "max", "min", "rms", "equiv_disc_radius", "equiv_square_side", "equiv_ellipse_major", "equiv_ellipse_minor", "circumcircle_r", "inscribed_disc_r"]
 
   particle_count_align_flatten_max_fixed0_p95:
@@ -236,7 +236,7 @@ modes:
     review_pack: { enable: false, sample_limit: 0, seed: 1337, panel_basename_max_len: 60 }
     grain_export:
       enable: true
-      use_review_sample: true
+      use_review_sample: false
       quantities: ["center_x", "center_y", "pixel_area", "projected_area", "surface_area", "mean", "max", "min", "rms", "equiv_disc_radius", "equiv_square_side", "equiv_ellipse_major", "equiv_ellipse_minor", "circumcircle_r", "inscribed_disc_r"]
 
 grid:
