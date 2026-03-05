@@ -462,6 +462,7 @@ def main():
             args.grid_fixed_max = float(plot_cfg.get("grid_fixed_max", args.grid_fixed_max))
             args.grid_fixed_max_raw = float(plot_cfg.get("grid_fixed_max_raw", args.grid_fixed_max_raw))
             args.grid_raw_job_pattern = plot_cfg.get("grid_raw_job_pattern", args.grid_raw_job_pattern)
+            args.job_order = plot_cfg.get("job_order", [])
         except Exception:
             pass
 
@@ -836,9 +837,10 @@ def main():
         plt.close()
 
     if counts_by_job:
-        job_labels = [wrap_label(j, 18, 2) for j in counts_by_job.keys()]
-        means = [stats.mean(v) if v else 0.0 for v in counts_by_job.values()]
-        stds = [stats.pstdev(v) if len(v) > 1 else 0.0 for v in counts_by_job.values()]
+        job_order = args.job_order or list(counts_by_job.keys())
+        job_labels = [wrap_label(j, 18, 2) for j in job_order]
+        means = [stats.mean(counts_by_job.get(j, [])) if counts_by_job.get(j) else 0.0 for j in job_order]
+        stds = [stats.pstdev(counts_by_job.get(j, [])) if len(counts_by_job.get(j, [])) > 1 else 0.0 for j in job_order]
         plt.figure(figsize=(9,4))
         plt.bar(job_labels, means, yerr=stds, color="#72B7B2", capsize=4)
         plt.title("Mean Kept Particle Count per Scan\nby Job")
@@ -850,9 +852,10 @@ def main():
         plt.close()
 
     if isolated_by_job:
-        job_labels = [wrap_label(j, 18, 2) for j in isolated_by_job.keys()]
-        means = [stats.mean(v) if v else 0.0 for v in isolated_by_job.values()]
-        stds = [stats.pstdev(v) if len(v) > 1 else 0.0 for v in isolated_by_job.values()]
+        job_order = args.job_order or list(isolated_by_job.keys())
+        job_labels = [wrap_label(j, 18, 2) for j in job_order]
+        means = [stats.mean(isolated_by_job.get(j, [])) if isolated_by_job.get(j) else 0.0 for j in job_order]
+        stds = [stats.pstdev(isolated_by_job.get(j, [])) if len(isolated_by_job.get(j, [])) > 1 else 0.0 for j in job_order]
         plt.figure(figsize=(9,4))
         plt.bar(job_labels, means, yerr=stds, color="#59A14F", capsize=4)
         plt.title("Mean Isolated Particle Count per Scan\nby Job")
@@ -869,11 +872,11 @@ def main():
         out_dir.mkdir(parents=True, exist_ok=True)
         wt_groups = sorted({wt for (_, wt) in counts_by_job_wt.keys()})
         for wt in wt_groups:
-            jobs = sorted({job for (job, w) in counts_by_job_wt.keys() if w == wt})
+            jobs = args.job_order or sorted({job for (job, w) in counts_by_job_wt.keys() if w == wt})
             if not jobs:
                 continue
-            means = [stats.mean(counts_by_job_wt[(job, wt)]) for job in jobs]
-            stds = [stats.pstdev(counts_by_job_wt[(job, wt)]) if len(counts_by_job_wt[(job, wt)]) > 1 else 0.0 for job in jobs]
+            means = [stats.mean(counts_by_job_wt.get((job, wt), [])) if counts_by_job_wt.get((job, wt)) else 0.0 for job in jobs]
+            stds = [stats.pstdev(counts_by_job_wt.get((job, wt), [])) if len(counts_by_job_wt.get((job, wt), [])) > 1 else 0.0 for job in jobs]
             labels = [wrap_label(j, 18, 2) for j in jobs]
             plt.figure(figsize=(9,4))
             plt.bar(labels, means, yerr=stds, color="#4C78A8", capsize=4)
@@ -885,8 +888,8 @@ def main():
             plt.savefig(out_dir / ("fig_particle_count_mean_by_job_%s.png" % wt.replace("%","pct")), dpi=300)
             plt.close()
 
-            iso_means = [stats.mean(isolated_by_job_wt[(job, wt)]) for job in jobs]
-            iso_stds = [stats.pstdev(isolated_by_job_wt[(job, wt)]) if len(isolated_by_job_wt[(job, wt)]) > 1 else 0.0 for job in jobs]
+            iso_means = [stats.mean(isolated_by_job_wt.get((job, wt), [])) if isolated_by_job_wt.get((job, wt)) else 0.0 for job in jobs]
+            iso_stds = [stats.pstdev(isolated_by_job_wt.get((job, wt), [])) if len(isolated_by_job_wt.get((job, wt), [])) > 1 else 0.0 for job in jobs]
             plt.figure(figsize=(9,4))
             plt.bar(labels, iso_means, yerr=iso_stds, color="#54A24B", capsize=4)
             plt.title("Mean Isolated Particle Count per Scan\nby Job (%s)" % wt)

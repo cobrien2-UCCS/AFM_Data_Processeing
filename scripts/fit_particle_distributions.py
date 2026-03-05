@@ -32,6 +32,15 @@ def load_config(path):
 
 def write_csv(path, rows, fieldnames):
     path.parent.mkdir(parents=True, exist_ok=True)
+    if rows and (not fieldnames or len(fieldnames) == 0):
+        fieldnames = sorted({k for row in rows for k in row.keys()})
+    if rows and fieldnames:
+        all_keys = set()
+        for row in rows:
+            all_keys.update(row.keys())
+        for key in sorted(all_keys):
+            if key not in fieldnames:
+                fieldnames.append(key)
     with path.open("w", newline="", encoding="utf-8") as f:
         writer = csv.DictWriter(f, fieldnames=fieldnames)
         writer.writeheader()
@@ -514,6 +523,7 @@ def main():
             mean_val = stats.mean(values)
             var_val = stats.pvariance(values) if len(values) > 1 else 0.0
 
+            zero_rate_obs = sum(1 for v in values if v == 0) / float(len(values)) if values else 0.0
             for model in count_models:
                 curve = None
                 checks = {}
@@ -525,11 +535,13 @@ def main():
                     checks = compute_checks(values, fit["mean"], checks_cfg)
                     curve = compute_risk_curve(fit["mean"], target_total, max_scans)
                     params = {"lambda": fit["lambda"]}
+                    params["p0_model"] = math.exp(-fit["lambda"]) if fit["lambda"] >= 0 else 0.0
                     pmf_func = lambda k, lam=fit["lambda"]: poisson_pmf(k, lam)
                 elif model == "nb":
                     nb_params = nb_params_from_mean_var(mean_val, var_val)
                     curve, nb_params_used = compute_nb_risk_curve(mean_val, var_val, target_total, max_scans)
                     params = {"nb_r": nb_params_used["r"], "nb_p": nb_params_used["p"], "nb_underdisp": nb_params_used["underdispersed"]}
+                    params["p0_model"] = (nb_params_used["p"] ** nb_params_used["r"]) if nb_params_used["r"] > 0 else 1.0
                     pmf_func = lambda k, r=nb_params_used["r"], p=nb_params_used["p"]: nb_pmf(k, r, p)
                 elif model == "zinb":
                     nb_params = nb_params_from_mean_var(mean_val, var_val)
@@ -542,6 +554,7 @@ def main():
                         "zinb_p0_obs": zinb["p0_obs"],
                         "zinb_p0_nb": zinb["p0_nb"],
                     }
+                    params["p0_model"] = zinb["pi"] + (1.0 - zinb["pi"]) * (nb_params["p"] ** nb_params["r"]) if nb_params["r"] > 0 else 1.0
                     pmf_func = lambda k, r=nb_params["r"], p=nb_params["p"], pi=zinb["pi"]: zinb_pmf(k, r, p, pi)
                 else:
                     continue
@@ -585,6 +598,7 @@ def main():
                     "n_scans": len(values),
                     "mean_per_scan": mean_val,
                     "variance_per_scan": var_val,
+                    "zero_rate_obs": zero_rate_obs,
                     "min_per_scan": min(values),
                     "max_per_scan": max(values),
                     "target_total": target_total,

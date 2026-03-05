@@ -146,6 +146,15 @@ summary_plot:
   grid_fixed_max: 15
   grid_fixed_max_raw: 60
   grid_raw_job_pattern: raw|unfiltered|nomask
+  job_order:
+    - particle_forward_medianbg_mean
+    - particle_forward_medianbg_fixed0
+    - particle_forward_medianbg_p95
+    - particle_forward_medianbg_max_fixed0_p95
+    - particle_forward_flatten_mean
+    - particle_forward_flatten_fixed0
+    - particle_forward_flatten_p95
+    - particle_forward_flatten_max_fixed0_p95
 
 
 run_ui:

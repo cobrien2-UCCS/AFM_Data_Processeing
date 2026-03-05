@@ -17,6 +17,7 @@ SYSTEM_SINP = "PEGDA_SiNP"
 TARGET_ISOLATED = 30
 ISOLATION_DIST_NM = 900.0
 DIAMETER_FILTER_NM = "350-550 nm (current runs)"
+RISK_SCAN_COUNTS = [5, 10, 20, 30, 40]
 JOB_ORDER = [
     "particle_forward_medianbg_mean",
     "particle_forward_medianbg_fixed0",
@@ -98,6 +99,25 @@ def describe_job(job):
     else:
         threshold = "custom/other"
     return preprocess, threshold
+
+
+def _load_fit_rows(input_bases):
+    bases = input_bases or [OUT_BASE]
+    summary_rows = []
+    curve_rows = []
+    for base in bases:
+        fit_dir = base / "summary_outputs" / "fits"
+        summary_rows.extend(read_csv_dicts(fit_dir / "fit_summary.csv"))
+        curve_rows.extend(read_csv_dicts(fit_dir / "fit_risk_curves.csv"))
+    return summary_rows, curve_rows
+
+
+def _risk_prob_at(curve_rows, match, n_scans):
+    for r in curve_rows:
+        if all(r.get(k, "") == v for k, v in match.items()):
+            if int(float(r.get("n_scans", 0))) == n_scans:
+                return r.get("success_prob", "")
+    return ""
 
 
 def collect_debug_stats(bases):
@@ -319,6 +339,7 @@ def main():
     else:
         doc.add_paragraph(f"Output root: {OUT_BASE}")
     doc.add_paragraph(f"Baseline job: {BASELINE_JOB}")
+    doc.add_paragraph("Particle coding: none (no per-particle coding in filenames).")
     doc.add_paragraph("Map/grid area: 50 um x 50 um (21 x 21 grid, 5% overlap per scan)")
     if DATA_GROUPED.exists():
         doc.add_paragraph(f"Grouping source: {DATA_GROUPED}")
@@ -475,6 +496,49 @@ def main():
         doc.add_paragraph("scan_inventory.csv not found.")
 
     doc.add_heading("2. Particle Count Data (PEGDA-SiNP)", level=1)
+    fit_summary_rows, fit_curve_rows = _load_fit_rows(input_bases)
+    if fit_summary_rows:
+        doc.add_paragraph("Scan sufficiency and zero-rate summary (all jobs).")
+        fit_headers = ["SiNP wt%", "Scraped?", "Job", "Model", "Zero-rate (obs)", "P0 (model)"]
+        for n in RISK_SCAN_COUNTS:
+            fit_headers.append(f"P(total >= {TARGET_ISOLATED}) @ {n} scans")
+        fit_rows = []
+        for r in fit_summary_rows:
+            if r.get("count_field") != "count_isolated":
+                continue
+            model = r.get("count_model", "")
+            wt = r.get("wt_percent", "")
+            scraped = r.get("scraped", "")
+            job = r.get("job", "")
+            match = {
+                "count_model": model,
+                "job": job,
+                "wt_percent": wt,
+                "scraped": scraped,
+                "count_field": "count_isolated",
+            }
+            row = [
+                wt,
+                scraped,
+                job,
+                model,
+                r.get("zero_rate_obs", ""),
+                r.get("p0_model", ""),
+            ]
+            for n in RISK_SCAN_COUNTS:
+                row.append(_risk_prob_at(fit_curve_rows, match, n))
+            fit_rows.append(row)
+        if fit_rows:
+            add_table(doc, fit_headers, fit_rows)
+            doc.add_paragraph(
+                "P0 (model) is the fitted probability of zero isolated particles in a scan. "
+                "Zero-rate (obs) is the empirical fraction of zero-count scans."
+            )
+            doc.add_paragraph(
+                "The probability of at least one non-zero scan across n scans is approximately "
+                "1 - (zero_rate_obs)^n (independence assumption)."
+            )
+
     count_rows = []
     if input_bases:
         for base in input_bases:
@@ -737,6 +801,7 @@ def main():
             rows = []
             base_vals = job_map.get(BASELINE_JOB) or []
             base_mean = stats.mean(base_vals) if base_vals else 0.0
+            wt_val = float(wt.replace("%", "")) if wt and wt.replace("%", "").isdigit() else None
             for job in job_order:
                 vals = job_map.get(job) or []
                 if not vals:
@@ -744,16 +809,61 @@ def main():
                 mean_iso = stats.mean(vals)
                 std_iso = stats.pstdev(vals) if len(vals) > 1 else 0.0
                 pct_diff = ((mean_iso - base_mean) / base_mean * 100.0) if base_mean > 0 else None
-                rows.append([job, f"{mean_iso:.3f}", f"{std_iso:.3f}", f"{pct_diff:.1f}%" if pct_diff is not None else "n/a"])
+                ratio = (mean_iso / wt_val) if wt_val and wt_val > 0 else None
+                rows.append([
+                    job,
+                    f"{mean_iso:.3f}",
+                    f"{std_iso:.3f}",
+                    f"{pct_diff:.1f}%" if pct_diff is not None else "n/a",
+                    f"{ratio:.4f}" if ratio is not None else "n/a",
+                ])
             add_table(
                 doc,
-                ["Job", "Mean Isolated/Scan", "Std Isolated/Scan", "% diff vs baseline"],
+                ["Job", "Mean Isolated/Scan", "Std Isolated/Scan", "% diff vs baseline", "Mean Isolated/Scan per wt%"],
                 rows,
             )
     doc.add_paragraph(
         "Per-job histograms (kept/raw/isolated) are embedded below and also exported under "
         "summary_outputs/job_hists/<job>/ in each output root."
     )
+    # Method histogram sensitivity tables (from fit outputs)
+    if fit_summary_rows:
+        doc.add_paragraph("Method histogram sensitivity (from fit outputs).")
+        method_dist = []
+        method_var = []
+        for base in (input_bases or [OUT_BASE]):
+            fit_dir = base / "summary_outputs" / "fits"
+            method_dist.extend(read_csv_dicts(fit_dir / "method_histogram_distances.csv"))
+            method_var.extend(read_csv_dicts(fit_dir / "method_variance_summary.csv"))
+        if method_dist:
+            method_dist_sorted = sorted(method_dist, key=lambda r: float(r.get("js_divergence", 0) or 0), reverse=True)
+            rows = []
+            for r in method_dist_sorted[:10]:
+                rows.append([
+                    r.get("job_a", ""),
+                    r.get("job_b", ""),
+                    r.get("js_divergence", ""),
+                    r.get("l1_distance", ""),
+                    r.get("wasserstein1", ""),
+                ])
+            add_table(doc, ["Job A", "Job B", "JS Divergence", "L1 Distance", "Wasserstein-1"], rows)
+        if method_var:
+            rows = []
+            for r in method_var:
+                rows.append([
+                    r.get("metric", ""),
+                    r.get("job_count", ""),
+                    r.get("mean", ""),
+                    r.get("variance", ""),
+                    r.get("std", ""),
+                    r.get("min", ""),
+                    r.get("max", ""),
+                ])
+            add_table(
+                doc,
+                ["Metric", "Jobs", "Mean", "Variance", "Std", "Min", "Max"],
+                rows,
+            )
     for job in job_order:
         if job not in by_job_map:
             continue
@@ -762,6 +872,7 @@ def main():
     add_picture_if_exists(doc, OUT_BASE / "fig_isolated_count_mean_by_job.png")
 
     doc.add_heading("6. Grain Summary (Selected Fields)", level=1)
+    doc.add_paragraph("Grain exports are enabled in the particle modes for this report.")
     grain_rows = []
     if input_bases:
         for base in input_bases:
