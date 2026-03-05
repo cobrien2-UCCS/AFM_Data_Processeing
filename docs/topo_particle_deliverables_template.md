@@ -18,7 +18,7 @@ Use this template to assemble the final Word document. Fill in values from the p
 - Isolated particle: center-to-center distance >= 900 nm from any other detected particle (per config isolation distance).
 
 ## 1) Scan Inventory
-> **Note:** Use `grid_issues_by_sample.csv` to flag incomplete grids or duplicates. If `summary.grid_policy` is not `keep_all`, note the policy used and any excluded samples.
+> **Note:** Default grid policy is `manual_review`. Use `grid_issues_by_sample.csv` to flag incomplete grids or duplicates. If `summary.grid_policy` is not `keep_all`, note the policy used and any excluded samples.
 
 ### PEGDA
 > **Table Callout:** Insert "Scan Inventory - PEGDA" table here.
