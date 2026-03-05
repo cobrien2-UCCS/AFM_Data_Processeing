@@ -372,6 +372,10 @@ def parse_args():
     ap.add_argument("--grid-fixed-max", type=float, default=15.0, help="Fixed max particles/scan for filtered grids.")
     ap.add_argument("--grid-fixed-max-raw", type=float, default=60.0, help="Fixed max particles/scan for raw grids.")
     ap.add_argument("--grid-raw-job-pattern", default="raw|unfiltered|nomask", help="Regex to treat job as raw.")
+    ap.add_argument("--fast", action="store_true", help="Skip slow plotting (for quick iteration).")
+    ap.add_argument("--skip-grid-plots", action="store_true", help="Skip grid heatmap plots.")
+    ap.add_argument("--skip-grain-hist-plots", action="store_true", help="Skip per-job grain histogram plots.")
+    ap.add_argument("--skip-grain-trend-plots", action="store_true", help="Skip grain trend plots by job.")
     return ap.parse_args()
 
 
@@ -500,6 +504,10 @@ def main():
     # Some attributes are only populated when a config file is loaded; default them for direct CLI use.
     if not hasattr(args, "job_order"):
         args.job_order = []
+    # "fast" implies skipping the slowest plots unless explicitly requested.
+    if getattr(args, "fast", False):
+        args.skip_grid_plots = True
+        args.skip_grain_hist_plots = True
     if args.config:
         try:
             import yaml
@@ -511,6 +519,13 @@ def main():
             args.grid_fixed_max_raw = float(plot_cfg.get("grid_fixed_max_raw", args.grid_fixed_max_raw))
             args.grid_raw_job_pattern = plot_cfg.get("grid_raw_job_pattern", args.grid_raw_job_pattern)
             args.job_order = plot_cfg.get("job_order", [])
+            # Optional toggles (defaults preserve existing behavior).
+            if "enable_grid_plots" in plot_cfg:
+                args.skip_grid_plots = not bool(plot_cfg.get("enable_grid_plots"))
+            if "enable_grain_hist_plots" in plot_cfg:
+                args.skip_grain_hist_plots = not bool(plot_cfg.get("enable_grain_hist_plots"))
+            if "enable_grain_trend_plots" in plot_cfg:
+                args.skip_grain_trend_plots = not bool(plot_cfg.get("enable_grain_trend_plots"))
         except Exception:
             pass
 
@@ -864,7 +879,7 @@ def main():
         plt.bar(labels, means, yerr=stds, color="#4C78A8", capsize=4)
         plt.title("Mean Kept Particle Count per Scan\nby Sample")
         plt.xlabel("Sample")
-        plt.ylabel("Particles per map (mean ± std)")
+        plt.ylabel("Particles per map (mean +/- std)")
         plt.xticks(rotation=45, ha="right")
         plt.tight_layout()
         plt.savefig(OUT_BASE / "fig_particle_count_mean_by_sample.png", dpi=300)
@@ -878,14 +893,14 @@ def main():
         plt.bar(labels, means, yerr=stds, color="#54A24B", capsize=4)
         plt.title("Mean Isolated Particle Count per Scan\nby Sample")
         plt.xlabel("Sample")
-        plt.ylabel("Isolated particles per map (mean ± std)")
+        plt.ylabel("Isolated particles per map (mean +/- std)")
         plt.xticks(rotation=45, ha="right")
         plt.tight_layout()
         plt.savefig(OUT_BASE / "fig_isolated_count_mean_by_sample.png", dpi=300)
         plt.close()
 
     if counts_by_job:
-    job_order = (args.job_order or []) or list(counts_by_job.keys())
+        job_order = (args.job_order or []) or list(counts_by_job.keys())
         job_labels = [wrap_label(j, 18, 2) for j in job_order]
         means = [stats.mean(counts_by_job.get(j, [])) if counts_by_job.get(j) else 0.0 for j in job_order]
         stds = [stats.pstdev(counts_by_job.get(j, [])) if len(counts_by_job.get(j, [])) > 1 else 0.0 for j in job_order]
@@ -893,14 +908,14 @@ def main():
         plt.bar(job_labels, means, yerr=stds, color="#72B7B2", capsize=4)
         plt.title("Mean Kept Particle Count per Scan\nby Job")
         plt.xlabel("Job")
-        plt.ylabel("Particles per map (mean ± std)")
+        plt.ylabel("Particles per map (mean +/- std)")
         plt.xticks(rotation=30, ha="right")
         plt.tight_layout()
         plt.savefig(OUT_BASE / "fig_particle_count_mean_by_job.png", dpi=300)
         plt.close()
 
     if isolated_by_job:
-        job_order = args.job_order or list(isolated_by_job.keys())
+        job_order = (args.job_order or []) or list(isolated_by_job.keys())
         job_labels = [wrap_label(j, 18, 2) for j in job_order]
         means = [stats.mean(isolated_by_job.get(j, [])) if isolated_by_job.get(j) else 0.0 for j in job_order]
         stds = [stats.pstdev(isolated_by_job.get(j, [])) if len(isolated_by_job.get(j, [])) > 1 else 0.0 for j in job_order]
@@ -908,7 +923,7 @@ def main():
         plt.bar(job_labels, means, yerr=stds, color="#59A14F", capsize=4)
         plt.title("Mean Isolated Particle Count per Scan\nby Job")
         plt.xlabel("Job")
-        plt.ylabel("Isolated particles per map (mean ± std)")
+        plt.ylabel("Isolated particles per map (mean +/- std)")
         plt.xticks(rotation=30, ha="right")
         plt.tight_layout()
         plt.savefig(OUT_BASE / "fig_isolated_count_mean_by_job.png", dpi=300)
@@ -930,7 +945,7 @@ def main():
             plt.bar(labels, means, yerr=stds, color="#4C78A8", capsize=4)
             plt.title("Mean Kept Particle Count per Scan\nby Job (%s)" % wt)
             plt.xlabel("Job")
-            plt.ylabel("Particles per scan (mean ± std)")
+            plt.ylabel("Particles per scan (mean +/- std)")
             plt.xticks(rotation=30, ha="right")
             plt.tight_layout()
             plt.savefig(out_dir / ("fig_particle_count_mean_by_job_%s.png" % wt.replace("%","pct")), dpi=300)
@@ -942,7 +957,7 @@ def main():
             plt.bar(labels, iso_means, yerr=iso_stds, color="#54A24B", capsize=4)
             plt.title("Mean Isolated Particle Count per Scan\nby Job (%s)" % wt)
             plt.xlabel("Job")
-            plt.ylabel("Isolated particles per scan (mean ± std)")
+            plt.ylabel("Isolated particles per scan (mean +/- std)")
             plt.xticks(rotation=30, ha="right")
             plt.tight_layout()
             plt.savefig(out_dir / ("fig_isolated_count_mean_by_job_%s.png" % wt.replace("%","pct")), dpi=300)
@@ -984,7 +999,7 @@ def main():
                 )
 
     # Grid count maps (per sample/job)
-    if grid_counts:
+    if grid_counts and not getattr(args, "skip_grid_plots", False):
         import numpy as np
         import matplotlib.patches as patches
 
@@ -1351,54 +1366,55 @@ def main():
                 write_csv(OUT_BASE / "grain_summary_by_sample_job.csv", sample_job_rows, list(sample_job_rows[0].keys()))
 
             # Per-grain plots (by job) for key fields if available.
-            plots_dir = OUT_BASE / "grain_plots"
-            plots_dir.mkdir(parents=True, exist_ok=True)
-            key_fields = []
-            for f in ("diameter_nm", "area_px", "grain_projected_area", "grain_surface_area"):
-                if f in numeric_fields:
-                    key_fields.append(f)
-            if not key_fields:
-                key_fields = numeric_fields[:2]
+            if not getattr(args, "skip_grain_hist_plots", False):
+                plots_dir = OUT_BASE / "grain_plots"
+                plots_dir.mkdir(parents=True, exist_ok=True)
+                key_fields = []
+                for f in ("diameter_nm", "area_px", "grain_projected_area", "grain_surface_area"):
+                    if f in numeric_fields:
+                        key_fields.append(f)
+                if not key_fields:
+                    key_fields = numeric_fields[:2]
 
-            for job, rows in rows_by_job.items():
-                job_dir = plots_dir / job
-                job_dir.mkdir(parents=True, exist_ok=True)
-                for field_name in key_fields:
-                    vals_all = []
-                    vals_kept = []
-                    vals_iso = []
-                    for r in rows:
-                        v = to_float_or_none(r.get(field_name))
-                        if v is None:
-                            continue
-                        vals_all.append(v)
-                        if to_int(r.get("kept", 0)) == 1:
-                            vals_kept.append(v)
-                        if to_int(r.get("isolated", 0)) == 1:
-                            vals_iso.append(v)
-                    _plot_hist(
-                        vals_all,
-                        "Grain %s (all) - %s" % (field_name, job),
-                        field_name,
-                        job_dir / ("grain_%s_all.png" % field_name),
-                    )
-                    _plot_hist(
-                        vals_kept,
-                        "Grain %s (kept) - %s" % (field_name, job),
-                        field_name,
-                        job_dir / ("grain_%s_kept.png" % field_name),
-                        color="#F58518",
-                    )
-                    _plot_hist(
-                        vals_iso,
-                        "Grain %s (isolated) - %s" % (field_name, job),
-                        field_name,
-                        job_dir / ("grain_%s_isolated.png" % field_name),
-                        color="#54A24B",
-                    )
+                for job, rows in rows_by_job.items():
+                    job_dir = plots_dir / job
+                    job_dir.mkdir(parents=True, exist_ok=True)
+                    for field_name in key_fields:
+                        vals_all = []
+                        vals_kept = []
+                        vals_iso = []
+                        for r in rows:
+                            v = to_float_or_none(r.get(field_name))
+                            if v is None:
+                                continue
+                            vals_all.append(v)
+                            if to_int(r.get("kept", 0)) == 1:
+                                vals_kept.append(v)
+                            if to_int(r.get("isolated", 0)) == 1:
+                                vals_iso.append(v)
+                        _plot_hist(
+                            vals_all,
+                            "Grain %s (all) - %s" % (field_name, job),
+                            field_name,
+                            job_dir / ("grain_%s_all.png" % field_name),
+                        )
+                        _plot_hist(
+                            vals_kept,
+                            "Grain %s (kept) - %s" % (field_name, job),
+                            field_name,
+                            job_dir / ("grain_%s_kept.png" % field_name),
+                            color="#F58518",
+                        )
+                        _plot_hist(
+                            vals_iso,
+                            "Grain %s (isolated) - %s" % (field_name, job),
+                            field_name,
+                            job_dir / ("grain_%s_isolated.png" % field_name),
+                            color="#54A24B",
+                        )
 
             # Cross-method grain trends (diameter) across jobs (and by wt% if available).
-            if "diameter_nm" in numeric_fields:
+            if "diameter_nm" in numeric_fields and not getattr(args, "skip_grain_trend_plots", False):
                 trend_dir = OUT_BASE / "summary_outputs" / "grain_compare"
                 trend_dir.mkdir(parents=True, exist_ok=True)
 
@@ -1455,7 +1471,7 @@ def main():
                         kept_by_job,
                         trend_dir / "fig_grain_diameter_nm_kept_mean_by_job.png",
                         "Mean Grain Diameter (kept)\nby Job",
-                        "Diameter (nm, mean ± std)",
+                        "Diameter (nm, mean +/- std)",
                     )
                     _boxplot(
                         kept_by_job,
@@ -1468,7 +1484,7 @@ def main():
                         iso_by_job,
                         trend_dir / "fig_grain_diameter_nm_isolated_mean_by_job.png",
                         "Mean Grain Diameter (isolated)\nby Job",
-                        "Diameter (nm, mean ± std)",
+                        "Diameter (nm, mean +/- std)",
                     )
                     _boxplot(
                         iso_by_job,

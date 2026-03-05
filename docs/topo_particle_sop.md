@@ -28,6 +28,14 @@ Example (reference only):
 Run the summary aggregation:
 - `py -3 scripts/topo_particle_summary.py --config "configs/TEST configs/Example configs/config.topo_particle_summary.yaml"`
 
+Fast iteration (skip slow plots):
+- `py -3 scripts/topo_particle_summary.py --config "configs/TEST configs/Example configs/config.topo_particle_summary.yaml" --fast`
+
+Optional plot toggles (in `configs/TEST configs/Example configs/config.topo_particle_summary.yaml`):
+- `summary_plot.enable_grid_plots`
+- `summary_plot.enable_grain_hist_plots`
+- `summary_plot.enable_grain_trend_plots`
+
 This writes to:
 - `C:\Users\Conor O'Brien\Dropbox\03_AML\00 IN-BOX\AFM Topo Particle processing OUT`
 
@@ -78,6 +86,9 @@ Output:
 ## 4.5) Fit Distributions (Risk Curves)
 Run:
 - `py -3 scripts/fit_particle_distributions.py --config "configs/TEST configs/Example configs/config.topo_particle_fits.yaml" --input-root "<OUT_ROOT>"`
+
+Full postprocessing (summary + fits + combined report):
+- `py -3 scripts/postprocess_topo_outputs.py --out-base-list "<WT10_ROOT>;<WT25_ROOT>"`
 
 Outputs:
 - `summary_outputs/fits/fit_summary.csv`

@@ -146,6 +146,10 @@ summary_plot:
   grid_fixed_max: 15
   grid_fixed_max_raw: 60
   grid_raw_job_pattern: raw|unfiltered|nomask
+  # Plot toggles (optional). Defaults preserve existing behavior if omitted.
+  enable_grid_plots: true
+  enable_grain_hist_plots: true
+  enable_grain_trend_plots: true
   job_order:
     - particle_forward_medianbg_mean
     - particle_forward_medianbg_fixed0

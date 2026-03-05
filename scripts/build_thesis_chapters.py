@@ -172,6 +172,120 @@ def build_chapter6(path: Path) -> None:
     doc.save(path)
 
 
+def build_chapter1(path: Path) -> None:
+    doc = Document()
+    _add_title(doc, "Chapter 1 Draft — Problem Definition and Research Need")
+    doc.add_paragraph(
+        "Purpose: define the PEGDA-based nanoparticle-filled electrolyte system, the research gap, and the staged objectives."
+    )
+    doc.add_paragraph("Scope: set up Stage 1 representativeness and conditional Stage 2 interrogation.")
+
+    doc.add_heading("1.1 System Definition and Motivation", level=1)
+    _placeholder(doc, "Define material systems (PEGDA, PEGDA-SiNP) and why fracture surfaces are used.")
+    _placeholder(doc, "Define electro-mechanical coupling context (high level; keep measurable claims).")
+
+    doc.add_heading("1.2 Interphase Concept (Definition Only)", level=1)
+    _placeholder(doc, "Define interphase as a gradient region; avoid claiming thickness/gradients in Ch.1.")
+
+    doc.add_heading("1.3 Measurement Need + AFM Representativeness Gap", level=1)
+    _placeholder(doc, "State why AFM mapping requires statistical sampling; connect to Stage 1.")
+
+    doc.add_heading("1.4 Staged Objectives (Stage 1 and Stage 2)", level=1)
+    _add_table(
+        doc,
+        "Table 1.1 — Stage 1 vs Stage 2 Objectives",
+        ["Stage", "Objective", "Inputs", "Outputs", "Decision/Trigger"],
+    )
+    _placeholder(doc, "Explicit Stage 2 trigger statement (ties to Ch.5/6 crossover plot).")
+
+    doc.add_heading("1.5 Chapter Roadmap", level=1)
+    _placeholder(doc, "One paragraph roadmap for Chapters 2-8.")
+
+    path.parent.mkdir(parents=True, exist_ok=True)
+    doc.save(path)
+
+
+def build_chapter2(path: Path) -> None:
+    doc = Document()
+    _add_title(doc, "Chapter 2 Draft — Theory and Measurement Foundations")
+    doc.add_paragraph(
+        "Purpose: establish polymer mechanics, inclusion physics, AFM measurement limits, and statistical sampling motivation."
+    )
+
+    doc.add_heading("2.1 PEGDA Network Mechanics (Background)", level=1)
+    _placeholder(doc, "Describe PEGDA crosslinking/mechanics relevant to interpretation (keep concise).")
+
+    doc.add_heading("2.2 Nanoparticle Inclusion Physics + Interphase Framing", level=1)
+    _placeholder(doc, "Explain why inclusions can generate gradients (length-scale argument).")
+
+    doc.add_heading("2.3 AFM Measurement Basics and Limits", level=1)
+    _placeholder(doc, "Contact mechanics model selection rationale + limitations (what AFM can/can't claim).")
+
+    doc.add_heading("2.4 Statistical Sampling Rationale", level=1)
+    _placeholder(doc, "Why many scans are needed; define what 'statistically reliable' means operationally.")
+
+    doc.add_heading("2.5 Synthesis Paragraph (Required)", level=1)
+    _placeholder(doc, "Conclude with a synthesis paragraph that motivates Stage 1 + conditional Stage 2.")
+
+    path.parent.mkdir(parents=True, exist_ok=True)
+    doc.save(path)
+
+
+def build_chapter3(path: Path) -> None:
+    doc = Document()
+    _add_title(doc, "Chapter 3 Draft — Sample Preparation and Fracture System Design")
+    doc.add_paragraph(
+        "Purpose: document formulations, SiNP synthesis/size distribution, curing, sample geometry, and fracture device traceability."
+    )
+
+    doc.add_heading("3.1 Material Formulations", level=1)
+    _add_table(doc, "Table 3.1 — Formulation Summary", ["System", "PEGDA", "TPO wt%", "SiNP wt%", "Notes"])
+    _placeholder(doc, "Any batching/traceability notes.")
+
+    doc.add_heading("3.2 SiNP Synthesis + Size Distribution", level=1)
+    _placeholder(doc, "Stober synthesis summary + nominal diameter and variability; cite measurement method.")
+    _placeholder(doc, "Figure placeholder: particle size distribution (bulk synthesis characterization).")
+
+    doc.add_heading("3.3 UV Curing Protocol", level=1)
+    _placeholder(doc, "Curing setup, time, intensity, environmental controls.")
+
+    doc.add_heading("3.4 Sample Geometry + Fracture Device", level=1)
+    _placeholder(doc, "Fracture device design rationale, repeatability, and why it produces interrogable surfaces.")
+
+    doc.add_heading("3.5 Synthesis Paragraph (Required)", level=1)
+    _placeholder(doc, "End with a short synthesis paragraph linking to AFM acquisition (Ch.4).")
+
+    path.parent.mkdir(parents=True, exist_ok=True)
+    doc.save(path)
+
+
+def build_chapter4(path: Path) -> None:
+    doc = Document()
+    _add_title(doc, "Chapter 4 Draft — AFM Acquisition Protocol (Stage 1 Focused)")
+    doc.add_paragraph(
+        "Purpose: define AFM configuration, Stage 1 survey scan parameters, particle identification criteria, and acquisition stopping logic."
+    )
+
+    doc.add_heading("4.1 AFM Configuration", level=1)
+    _placeholder(doc, "Instrument, probe type, calibration approach, environment, imaging mode details.")
+
+    doc.add_heading("4.2 Stage 1 Survey Design (Grid Scans)", level=1)
+    _placeholder(doc, "50 um x 50 um region, 21 x 21 grid, overlap %, and per-scan size/pixels.")
+    _add_table(doc, "Table 4.1 — Stage 1 Scan Parameters", ["Scan size (um)", "Pixels", "nm/px", "Grid", "Overlap", "Channels"])
+
+    doc.add_heading("4.3 Particle Identification Criteria (Stage 1)", level=1)
+    _placeholder(doc, "Diameter filter and isolation definition references (point to Ch.5 for the statistical framework).")
+
+    doc.add_heading("4.4 Acquisition Stopping Logic", level=1)
+    _placeholder(doc, "Define what triggers stopping Stage 1 vs proceeding to Stage 2 (ties to crossover).")
+
+    doc.add_heading("4.5 Data Organization + Traceability", level=1)
+    _placeholder(doc, "File naming conventions, manifests, and how runs are reproducible from config.")
+
+    path.parent.mkdir(parents=True, exist_ok=True)
+    doc.save(path)
+
+
 def build_chapter7(path: Path) -> None:
     doc = Document()
     _add_title(doc, "Chapter 7 Draft — Conclusions")
@@ -215,6 +329,10 @@ def main() -> int:
     thesis_dir.mkdir(parents=True, exist_ok=True)
 
     outputs = [
+        (thesis_dir / "Chapter1_Problem_Definition_DRAFT.docx", build_chapter1),
+        (thesis_dir / "Chapter2_Theory_and_Foundations_DRAFT.docx", build_chapter2),
+        (thesis_dir / "Chapter3_Sample_Prep_and_Fracture_DRAFT.docx", build_chapter3),
+        (thesis_dir / "Chapter4_AFM_Acquisition_Protocol_DRAFT.docx", build_chapter4),
         (thesis_dir / "Chapter5_Statistical_Validation_Framework_DRAFT.docx", build_chapter5),
         (thesis_dir / "Chapter6_Stage1_Results_Feasibility_DRAFT.docx", build_chapter6),
         (thesis_dir / "Chapter7_Conclusions_DRAFT.docx", build_chapter7),
@@ -227,6 +345,57 @@ def main() -> int:
         fn(path)
 
     notes = [
+        (
+            thesis_dir / "Chapter1_writing_notes.md",
+            "Chapter 1 Writing Notes (Read Before Drafting)",
+            [
+                "## Purpose",
+                "- Define the problem, the gap, and the staged objectives (Stage 1 then conditional Stage 2).",
+                "",
+                "## Must-Haves",
+                "- Define what a scan/grid is in plain language (consistent with later chapters).",
+                "- State the representativeness gap and why statistics are required.",
+                "- Avoid interphase thickness/gradient claims (save for conditional future work).",
+            ],
+        ),
+        (
+            thesis_dir / "Chapter2_writing_notes.md",
+            "Chapter 2 Writing Notes (Read Before Drafting)",
+            [
+                "## Purpose",
+                "- Provide just enough theory to motivate what you measure and why Stage 1 is needed.",
+                "",
+                "## Must-Haves",
+                "- AFM limitations stated explicitly (what you can/can't claim).",
+                "- End with a synthesis paragraph that motivates the statistical framework.",
+            ],
+        ),
+        (
+            thesis_dir / "Chapter3_writing_notes.md",
+            "Chapter 3 Writing Notes (Read Before Drafting)",
+            [
+                "## Purpose",
+                "- Document formulations and the engineered fracture system with traceability.",
+                "",
+                "## Must-Haves",
+                "- A formulation table with wt% values.",
+                "- SiNP size distribution summary (nominal + variability).",
+                "- End with a synthesis paragraph linking to AFM acquisition (Ch.4).",
+            ],
+        ),
+        (
+            thesis_dir / "Chapter4_writing_notes.md",
+            "Chapter 4 Writing Notes (Read Before Drafting)",
+            [
+                "## Purpose",
+                "- Define the acquisition protocol for Stage 1 survey mapping and the stopping/trigger logic.",
+                "",
+                "## Must-Haves",
+                "- Grid geometry (50 um x 50 um, 21 x 21 grid, overlap) and per-scan parameters.",
+                "- Channel list (topography; later channels if applicable).",
+                "- Clear handoff to Ch.5 for processing + statistics.",
+            ],
+        ),
         (
             thesis_dir / "Chapter7_writing_notes.md",
             "Chapter 7 Writing Notes (Read Before Drafting)",
@@ -282,4 +451,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-
