@@ -24,10 +24,10 @@ modes:
     particle_diameter_max_nm: 550
     isolation_min_dist_nm: 900
     export_particles: true
-    export_particle_mask: true
-    export_particle_mask_review_only: true
+    export_particle_mask: false
+    export_particle_mask_review_only: false
     edge_exclude: true
-    review_pack: { enable: true, sample_limit: 5, seed: 1337, panel_basename_max_len: 60 }
+    review_pack: { enable: false, sample_limit: 0, seed: 1337, panel_basename_max_len: 60 }
     grain_export:
       enable: true
       use_review_sample: true
@@ -53,10 +53,10 @@ modes:
     particle_diameter_max_nm: 550
     isolation_min_dist_nm: 900
     export_particles: true
-    export_particle_mask: true
-    export_particle_mask_review_only: true
+    export_particle_mask: false
+    export_particle_mask_review_only: false
     edge_exclude: true
-    review_pack: { enable: true, sample_limit: 5, seed: 1337, panel_basename_max_len: 60 }
+    review_pack: { enable: false, sample_limit: 0, seed: 1337, panel_basename_max_len: 60 }
     grain_export:
       enable: true
       use_review_sample: true
@@ -82,10 +82,10 @@ modes:
     particle_diameter_max_nm: 550
     isolation_min_dist_nm: 900
     export_particles: true
-    export_particle_mask: true
-    export_particle_mask_review_only: true
+    export_particle_mask: false
+    export_particle_mask_review_only: false
     edge_exclude: true
-    review_pack: { enable: true, sample_limit: 5, seed: 1337, panel_basename_max_len: 60 }
+    review_pack: { enable: false, sample_limit: 0, seed: 1337, panel_basename_max_len: 60 }
     grain_export:
       enable: true
       use_review_sample: true
@@ -113,10 +113,10 @@ modes:
     particle_diameter_max_nm: 550
     isolation_min_dist_nm: 900
     export_particles: true
-    export_particle_mask: true
-    export_particle_mask_review_only: true
+    export_particle_mask: false
+    export_particle_mask_review_only: false
     edge_exclude: true
-    review_pack: { enable: true, sample_limit: 5, seed: 1337, panel_basename_max_len: 60 }
+    review_pack: { enable: false, sample_limit: 0, seed: 1337, panel_basename_max_len: 60 }
     grain_export:
       enable: true
       use_review_sample: true
@@ -142,10 +142,10 @@ modes:
     particle_diameter_max_nm: 550
     isolation_min_dist_nm: 900
     export_particles: true
-    export_particle_mask: true
-    export_particle_mask_review_only: true
+    export_particle_mask: false
+    export_particle_mask_review_only: false
     edge_exclude: true
-    review_pack: { enable: true, sample_limit: 5, seed: 1337, panel_basename_max_len: 60 }
+    review_pack: { enable: false, sample_limit: 0, seed: 1337, panel_basename_max_len: 60 }
     grain_export:
       enable: true
       use_review_sample: true
@@ -171,10 +171,10 @@ modes:
     particle_diameter_max_nm: 550
     isolation_min_dist_nm: 900
     export_particles: true
-    export_particle_mask: true
-    export_particle_mask_review_only: true
+    export_particle_mask: false
+    export_particle_mask_review_only: false
     edge_exclude: true
-    review_pack: { enable: true, sample_limit: 5, seed: 1337, panel_basename_max_len: 60 }
+    review_pack: { enable: false, sample_limit: 0, seed: 1337, panel_basename_max_len: 60 }
     grain_export:
       enable: true
       use_review_sample: true
@@ -200,10 +200,10 @@ modes:
     particle_diameter_max_nm: 550
     isolation_min_dist_nm: 900
     export_particles: true
-    export_particle_mask: true
-    export_particle_mask_review_only: true
+    export_particle_mask: false
+    export_particle_mask_review_only: false
     edge_exclude: true
-    review_pack: { enable: true, sample_limit: 5, seed: 1337, panel_basename_max_len: 60 }
+    review_pack: { enable: false, sample_limit: 0, seed: 1337, panel_basename_max_len: 60 }
     grain_export:
       enable: true
       use_review_sample: true
@@ -230,10 +230,10 @@ modes:
     particle_diameter_max_nm: 550
     isolation_min_dist_nm: 900
     export_particles: true
-    export_particle_mask: true
-    export_particle_mask_review_only: true
+    export_particle_mask: false
+    export_particle_mask_review_only: false
     edge_exclude: true
-    review_pack: { enable: true, sample_limit: 5, seed: 1337, panel_basename_max_len: 60 }
+    review_pack: { enable: false, sample_limit: 0, seed: 1337, panel_basename_max_len: 60 }
     grain_export:
       enable: true
       use_review_sample: true
@@ -367,10 +367,10 @@ jobs:
 
 
 debug:
-  enable: true
+  enable: false
   level: "info"
   artifacts: []
-  sample_limit: 5
+  sample_limit: 0
   out_dir: "out/debug"
   trace_dir: "out/debug/trace"
   log_fields: []
@@ -379,3 +379,15 @@ debug:
   echo_config: false
 
 
+
+
+
+
+
+
+run_ui:
+  estimate_enable: true
+  estimate_from_history: true
+  estimate_seconds_per_scan: null
+  progress_enable: true
+  progress_bar_width: 30

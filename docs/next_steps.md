@@ -13,6 +13,7 @@ Change policy: see `docs/change_control.md`.
 - Add size and shape filtering (min/max grain size, circularity thresholds).
 - Add multi-channel mask fusion (consensus mask from topo + modulus + other channels).
 - Use the existing `review_pack` outputs to build a manual verification loop.
+- Enforce grid completeness policy for reporting (`keep_all|require_full_grid|intersect_grid|manual_review`).
 
 ## 3) Units + scaling (critical integrity)
 - Resolve missing Z-units for SmartScan TIFFs.
@@ -24,6 +25,7 @@ Change policy: see `docs/change_control.md`.
 - Same processing in GUI vs pygwy (trace + manual match).
 - Same summary values across multiple runs (determinism).
 - Update `docs/method_compare_notes.md` if new filters change results.
+- Add fit-model sensitivity outputs (Poisson/NB/ZINB) into the standard report path.
 
 ## 5) Job templates for future runs
 - Add per-dataset `jobs` entries (input_root, collect, profile, plots, aggregates).

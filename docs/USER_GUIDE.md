@@ -44,6 +44,8 @@ For change policy, see `docs/change_control.md`.
   `py -3 scripts/cli_aggregate_config.py --config config.yaml --profile modulus_grid --csv out/summary.csv --out-dir out/aggregates`
 - Compare methods against a baseline (Py3):
   `py -3 scripts/compare_methods.py --baseline-summary out/baseline/summary.csv --methods-root out/methods_root --out-root out/method_compare`
+- Fit particle-count distributions and risk curves (Py3):
+  `py -3 scripts/fit_particle_distributions.py --config configs/TEST configs/Example configs/config.topo_particle_fits.yaml --input-root <out_root>`
 - Collect/copy subsets out of mixed folders (Py3, fuzzy keyword matching):
   `py -3 scripts/collect_files.py --config config.yaml --job collect_modulus_backward --dry-run`
 - Use profiles (Py3 summarize/plot): add `--profile your_profile` to pull defaults from `config.profiles`.
@@ -63,6 +65,7 @@ Top-level sections (see `config.example.yaml`):
   - `review_pack` (optional, particle mode): write a `review.csv` template + simple PNG panels under `<output_dir>/review/` to support manual verification.
 - `grid`: filename regex with named groups `row`/`col` to add grid indices. Optional `index_base: 1` converts SmartScan-style `RC001001` to zero-based indices stored in the CSV.
 - `summarize`: `recursive: false|true` to control recursive search for TIFFs.
+  - Topo particle summary options (see `config.topo_particle_summary.yaml`): `grid_policy` (`keep_all|require_full_grid|intersect_grid|manual_review`), `grid_rows`, `grid_cols`, `grid_index_base`, `exclude_samples`, `exclude_source_files`.
 - `csv_modes`: column layout and mapping from ModeResultRecord keys.
 - `result_schemas`: casting rules from CSV columns to typed fields for plotting.
 - `plotting_modes`: schema + recipe + labels/bins/etc.

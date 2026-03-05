@@ -1,0 +1,8 @@
+$ErrorActionPreference = 'Stop'
+Start-Transcript -Path "out\run_topo_medonly_blocking_20260304_080406.transcript.log" | Out-Null
+py -3 scripts/topo_particle_batch.py --config "configs/TEST configs/Example configs/config.topo_particle_2jobs_masking.yaml" --out-base "C:\Users\Conor O'Brien\Dropbox\03_AML\00 IN-BOX\AFM Topo Particle processing OUT\rerun_350_550_medonly_wt10_20260304_080406" --only-wt 10 --jobs "particle_forward_medianbg_mean"
+py -3 scripts/topo_particle_summary.py --out-base "C:\Users\Conor O'Brien\Dropbox\03_AML\00 IN-BOX\AFM Topo Particle processing OUT\rerun_350_550_medonly_wt10_20260304_080406" --config "configs/TEST configs/Example configs/config.topo_particle_summary.yaml"
+py -3 scripts/topo_particle_batch.py --config "configs/TEST configs/Example configs/config.topo_particle_2jobs_masking.yaml" --out-base "C:\Users\Conor O'Brien\Dropbox\03_AML\00 IN-BOX\AFM Topo Particle processing OUT\rerun_350_550_medonly_wt25_20260304_080406" --only-wt 25 --jobs "particle_forward_medianbg_mean"
+py -3 scripts/topo_particle_summary.py --out-base "C:\Users\Conor O'Brien\Dropbox\03_AML\00 IN-BOX\AFM Topo Particle processing OUT\rerun_350_550_medonly_wt25_20260304_080406" --config "configs/TEST configs/Example configs/config.topo_particle_summary.yaml"
+py -3 scripts/generate_topo_report_docx.py --out-base-list "C:\Users\Conor O'Brien\Dropbox\03_AML\00 IN-BOX\AFM Topo Particle processing OUT\rerun_350_550_medonly_wt10_20260304_080406;C:\Users\Conor O'Brien\Dropbox\03_AML\00 IN-BOX\AFM Topo Particle processing OUT\rerun_350_550_medonly_wt25_20260304_080406" --report-path "C:\Users\Conor O'Brien\Dropbox\03_AML\00 IN-BOX\AFM Topo Particle processing OUT\topo_particle_report_draft_10pct_25pct_medonly_20260304_080406.docx"
+Stop-Transcript | Out-Null

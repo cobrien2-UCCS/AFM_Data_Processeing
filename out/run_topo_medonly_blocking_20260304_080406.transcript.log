@@ -1,0 +1,27 @@
+﻿**********************
+Windows PowerShell transcript start
+Start time: 20260304080407
+Username: CRO-SAMLAPTOP\Conor O'Brien
+RunAs User: CRO-SAMLAPTOP\Conor O'Brien
+Configuration Name: 
+Machine: CRO-SAMLAPTOP (Microsoft Windows NT 10.0.26200.0)
+Host Application: C:\WINDOWS\System32\WindowsPowerShell\v1.0\powershell.exe -NoProfile -ExecutionPolicy Bypass -File out\run_topo_medonly_blocking_20260304_080406.ps1
+Process ID: 28492
+PSVersion: 5.1.26100.7824
+PSEdition: Desktop
+PSCompatibleVersions: 1.0, 2.0, 3.0, 4.0, 5.0, 5.1.26100.7824
+BuildVersion: 10.0.26100.7824
+CLRVersion: 4.0.30319.42000
+WSManStackVersion: 3.0
+PSRemotingProtocolVersion: 2.3
+SerializationVersion: 1.1.0.1
+**********************
+
+
+
+
+
+**********************
+Windows PowerShell transcript end
+End time: 20260304081602
+**********************

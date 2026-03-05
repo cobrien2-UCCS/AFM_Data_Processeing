@@ -214,3 +214,10 @@ jobs:
       job: "collect_forward"
       out_root: "C:/AFM_STAGE"
 
+
+run_ui:
+  estimate_enable: true
+  estimate_from_history: true
+  estimate_seconds_per_scan: null
+  progress_enable: true
+  progress_bar_width: 30

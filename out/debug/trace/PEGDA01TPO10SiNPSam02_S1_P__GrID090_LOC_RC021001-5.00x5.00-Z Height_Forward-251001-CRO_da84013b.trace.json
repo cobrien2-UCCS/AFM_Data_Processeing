@@ -1,0 +1,44 @@
+[
+  {
+    "info": {
+      "direction": "horizontal", 
+      "method": "median"
+    }, 
+    "step": "align_rows", 
+    "ok": true
+  }, 
+  {
+    "step": "plane_level", 
+    "ok": true
+  }, 
+  {
+    "info": {
+      "direction": "horizontal", 
+      "method": "median"
+    }, 
+    "step": "align_rows", 
+    "ok": true
+  }, 
+  {
+    "info": {
+      "func": "median-bg"
+    }, 
+    "step": "median_level", 
+    "ok": true
+  }, 
+  {
+    "info": {
+      "size": 3
+    }, 
+    "step": "median", 
+    "ok": true
+  }, 
+  {
+    "info": {
+      "threshold": 1.1562782911356498e-10, 
+      "count_total": 7
+    }, 
+    "step": "particle_count", 
+    "ok": true
+  }
+]

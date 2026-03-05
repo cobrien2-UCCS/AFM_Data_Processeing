@@ -1,0 +1,172 @@
+Config configs\TEST configs\Example configs\config.topo_particle_2jobs_masking.yaml missing sections: result_schemas, plotting_modes
+Config configs\TEST configs\Example configs\config.topo_particle_2jobs_masking.yaml missing sections: result_schemas, plotting_modes
+
+** (python.exe:14408): WARNING **: Trying to register gtype 'GMountMountFlags' as enum when in fact it is of type 'GFlags'
+
+** (python.exe:14408): WARNING **: Trying to register gtype 'GDriveStartFlags' as enum when in fact it is of type 'GFlags'
+
+** (python.exe:14408): WARNING **: Trying to register gtype 'GSocketMsgFlags' as enum when in fact it is of type 'GFlags'
+Config configs\TEST configs\Example configs\config.topo_particle_2jobs_masking.yaml missing sections: result_schemas, plotting_modes
+Config configs\TEST configs\Example configs\config.topo_particle_2jobs_masking.yaml missing sections: result_schemas, plotting_modes
+
+** (python.exe:4016): WARNING **: Trying to register gtype 'GMountMountFlags' as enum when in fact it is of type 'GFlags'
+
+** (python.exe:4016): WARNING **: Trying to register gtype 'GDriveStartFlags' as enum when in fact it is of type 'GFlags'
+
+** (python.exe:4016): WARNING **: Trying to register gtype 'GSocketMsgFlags' as enum when in fact it is of type 'GFlags'
+Config configs\TEST configs\Example configs\config.topo_particle_2jobs_masking.yaml missing sections: result_schemas, plotting_modes
+Config configs\TEST configs\Example configs\config.topo_particle_2jobs_masking.yaml missing sections: result_schemas, plotting_modes
+
+** (python.exe:24188): WARNING **: Trying to register gtype 'GMountMountFlags' as enum when in fact it is of type 'GFlags'
+
+** (python.exe:24188): WARNING **: Trying to register gtype 'GDriveStartFlags' as enum when in fact it is of type 'GFlags'
+
+** (python.exe:24188): WARNING **: Trying to register gtype 'GSocketMsgFlags' as enum when in fact it is of type 'GFlags'
+Config configs\TEST configs\Example configs\config.topo_particle_2jobs_masking.yaml missing sections: result_schemas, plotting_modes
+Config configs\TEST configs\Example configs\config.topo_particle_2jobs_masking.yaml missing sections: result_schemas, plotting_modes
+
+** (python.exe:16208): WARNING **: Trying to register gtype 'GMountMountFlags' as enum when in fact it is of type 'GFlags'
+
+** (python.exe:16208): WARNING **: Trying to register gtype 'GDriveStartFlags' as enum when in fact it is of type 'GFlags'
+
+** (python.exe:16208): WARNING **: Trying to register gtype 'GSocketMsgFlags' as enum when in fact it is of type 'GFlags'
+Config configs\TEST configs\Example configs\config.topo_particle_2jobs_masking.yaml missing sections: result_schemas, plotting_modes
+Config configs\TEST configs\Example configs\config.topo_particle_2jobs_masking.yaml missing sections: result_schemas, plotting_modes
+
+** (python.exe:16716): WARNING **: Trying to register gtype 'GMountMountFlags' as enum when in fact it is of type 'GFlags'
+
+** (python.exe:16716): WARNING **: Trying to register gtype 'GDriveStartFlags' as enum when in fact it is of type 'GFlags'
+
+** (python.exe:16716): WARNING **: Trying to register gtype 'GSocketMsgFlags' as enum when in fact it is of type 'GFlags'
+Config configs\TEST configs\Example configs\config.topo_particle_2jobs_masking.yaml missing sections: result_schemas, plotting_modes
+Config configs\TEST configs\Example configs\config.topo_particle_2jobs_masking.yaml missing sections: result_schemas, plotting_modes
+
+** (python.exe:22644): WARNING **: Trying to register gtype 'GMountMountFlags' as enum when in fact it is of type 'GFlags'
+
+** (python.exe:22644): WARNING **: Trying to register gtype 'GDriveStartFlags' as enum when in fact it is of type 'GFlags'
+
+** (python.exe:22644): WARNING **: Trying to register gtype 'GSocketMsgFlags' as enum when in fact it is of type 'GFlags'
+Config configs\TEST configs\Example configs\config.topo_particle_2jobs_masking.yaml missing sections: result_schemas, plotting_modes
+Config configs\TEST configs\Example configs\config.topo_particle_2jobs_masking.yaml missing sections: result_schemas, plotting_modes
+
+** (python.exe:13576): WARNING **: Trying to register gtype 'GMountMountFlags' as enum when in fact it is of type 'GFlags'
+
+** (python.exe:13576): WARNING **: Trying to register gtype 'GDriveStartFlags' as enum when in fact it is of type 'GFlags'
+
+** (python.exe:13576): WARNING **: Trying to register gtype 'GSocketMsgFlags' as enum when in fact it is of type 'GFlags'
+Config configs\TEST configs\Example configs\config.topo_particle_2jobs_masking.yaml missing sections: result_schemas, plotting_modes
+Config configs\TEST configs\Example configs\config.topo_particle_2jobs_masking.yaml missing sections: result_schemas, plotting_modes
+
+** (python.exe:19860): WARNING **: Trying to register gtype 'GMountMountFlags' as enum when in fact it is of type 'GFlags'
+
+** (python.exe:19860): WARNING **: Trying to register gtype 'GDriveStartFlags' as enum when in fact it is of type 'GFlags'
+
+** (python.exe:19860): WARNING **: Trying to register gtype 'GSocketMsgFlags' as enum when in fact it is of type 'GFlags'
+C:\Users\Conor O'Brien\Documents\GitHub\AFM-Data-Management\scripts\topo_particle_summary.py:547: MatplotlibDeprecationWarning: The 'labels' parameter of boxplot() has been renamed 'tick_labels' since Matplotlib 3.9; support for the old name will be dropped in 3.11.
+  plt.boxplot(data, labels=labels, showfliers=True)
+C:\Users\Conor O'Brien\Documents\GitHub\AFM-Data-Management\scripts\topo_particle_summary.py:560: MatplotlibDeprecationWarning: The 'labels' parameter of boxplot() has been renamed 'tick_labels' since Matplotlib 3.9; support for the old name will be dropped in 3.11.
+  plt.boxplot(data, labels=labels, showfliers=True)
+C:\Users\Conor O'Brien\Documents\GitHub\AFM-Data-Management\scripts\topo_particle_summary.py:669: MatplotlibDeprecationWarning: The get_cmap function was deprecated in Matplotlib 3.7 and will be removed in 3.11. Use ``matplotlib.colormaps[name]`` or ``matplotlib.colormaps.get_cmap()`` or ``pyplot.get_cmap()`` instead.
+  cmap = plt.cm.get_cmap(args.grid_cmap).copy()
+Config configs\TEST configs\Example configs\config.topo_particle_2jobs_masking.yaml missing sections: result_schemas, plotting_modes
+Config configs\TEST configs\Example configs\config.topo_particle_2jobs_masking.yaml missing sections: result_schemas, plotting_modes
+
+** (python.exe:17364): WARNING **: Trying to register gtype 'GMountMountFlags' as enum when in fact it is of type 'GFlags'
+
+** (python.exe:17364): WARNING **: Trying to register gtype 'GDriveStartFlags' as enum when in fact it is of type 'GFlags'
+
+** (python.exe:17364): WARNING **: Trying to register gtype 'GSocketMsgFlags' as enum when in fact it is of type 'GFlags'
+Config configs\TEST configs\Example configs\config.topo_particle_2jobs_masking.yaml missing sections: result_schemas, plotting_modes
+Config configs\TEST configs\Example configs\config.topo_particle_2jobs_masking.yaml missing sections: result_schemas, plotting_modes
+
+** (python.exe:11720): WARNING **: Trying to register gtype 'GMountMountFlags' as enum when in fact it is of type 'GFlags'
+
+** (python.exe:11720): WARNING **: Trying to register gtype 'GDriveStartFlags' as enum when in fact it is of type 'GFlags'
+
+** (python.exe:11720): WARNING **: Trying to register gtype 'GSocketMsgFlags' as enum when in fact it is of type 'GFlags'
+Config configs\TEST configs\Example configs\config.topo_particle_2jobs_masking.yaml missing sections: result_schemas, plotting_modes
+Config configs\TEST configs\Example configs\config.topo_particle_2jobs_masking.yaml missing sections: result_schemas, plotting_modes
+
+** (python.exe:4272): WARNING **: Trying to register gtype 'GMountMountFlags' as enum when in fact it is of type 'GFlags'
+
+** (python.exe:4272): WARNING **: Trying to register gtype 'GDriveStartFlags' as enum when in fact it is of type 'GFlags'
+
+** (python.exe:4272): WARNING **: Trying to register gtype 'GSocketMsgFlags' as enum when in fact it is of type 'GFlags'
+Config configs\TEST configs\Example configs\config.topo_particle_2jobs_masking.yaml missing sections: result_schemas, plotting_modes
+Config configs\TEST configs\Example configs\config.topo_particle_2jobs_masking.yaml missing sections: result_schemas, plotting_modes
+
+** (python.exe:28492): WARNING **: Trying to register gtype 'GMountMountFlags' as enum when in fact it is of type 'GFlags'
+
+** (python.exe:28492): WARNING **: Trying to register gtype 'GDriveStartFlags' as enum when in fact it is of type 'GFlags'
+
+** (python.exe:28492): WARNING **: Trying to register gtype 'GSocketMsgFlags' as enum when in fact it is of type 'GFlags'
+Config configs\TEST configs\Example configs\config.topo_particle_2jobs_masking.yaml missing sections: result_schemas, plotting_modes
+Config configs\TEST configs\Example configs\config.topo_particle_2jobs_masking.yaml missing sections: result_schemas, plotting_modes
+
+** (python.exe:11360): WARNING **: Trying to register gtype 'GMountMountFlags' as enum when in fact it is of type 'GFlags'
+
+** (python.exe:11360): WARNING **: Trying to register gtype 'GDriveStartFlags' as enum when in fact it is of type 'GFlags'
+
+** (python.exe:11360): WARNING **: Trying to register gtype 'GSocketMsgFlags' as enum when in fact it is of type 'GFlags'
+Config configs\TEST configs\Example configs\config.topo_particle_2jobs_masking.yaml missing sections: result_schemas, plotting_modes
+Config configs\TEST configs\Example configs\config.topo_particle_2jobs_masking.yaml missing sections: result_schemas, plotting_modes
+
+** (python.exe:10596): WARNING **: Trying to register gtype 'GMountMountFlags' as enum when in fact it is of type 'GFlags'
+
+** (python.exe:10596): WARNING **: Trying to register gtype 'GDriveStartFlags' as enum when in fact it is of type 'GFlags'
+
+** (python.exe:10596): WARNING **: Trying to register gtype 'GSocketMsgFlags' as enum when in fact it is of type 'GFlags'
+Config configs\TEST configs\Example configs\config.topo_particle_2jobs_masking.yaml missing sections: result_schemas, plotting_modes
+Config configs\TEST configs\Example configs\config.topo_particle_2jobs_masking.yaml missing sections: result_schemas, plotting_modes
+
+** (python.exe:19464): WARNING **: Trying to register gtype 'GMountMountFlags' as enum when in fact it is of type 'GFlags'
+
+** (python.exe:19464): WARNING **: Trying to register gtype 'GDriveStartFlags' as enum when in fact it is of type 'GFlags'
+
+** (python.exe:19464): WARNING **: Trying to register gtype 'GSocketMsgFlags' as enum when in fact it is of type 'GFlags'
+Config configs\TEST configs\Example configs\config.topo_particle_2jobs_masking.yaml missing sections: result_schemas, plotting_modes
+Config configs\TEST configs\Example configs\config.topo_particle_2jobs_masking.yaml missing sections: result_schemas, plotting_modes
+
+** (python.exe:23364): WARNING **: Trying to register gtype 'GMountMountFlags' as enum when in fact it is of type 'GFlags'
+
+** (python.exe:23364): WARNING **: Trying to register gtype 'GDriveStartFlags' as enum when in fact it is of type 'GFlags'
+
+** (python.exe:23364): WARNING **: Trying to register gtype 'GSocketMsgFlags' as enum when in fact it is of type 'GFlags'
+Config configs\TEST configs\Example configs\config.topo_particle_2jobs_masking.yaml missing sections: result_schemas, plotting_modes
+Config configs\TEST configs\Example configs\config.topo_particle_2jobs_masking.yaml missing sections: result_schemas, plotting_modes
+
+** (python.exe:26824): WARNING **: Trying to register gtype 'GMountMountFlags' as enum when in fact it is of type 'GFlags'
+
+** (python.exe:26824): WARNING **: Trying to register gtype 'GDriveStartFlags' as enum when in fact it is of type 'GFlags'
+
+** (python.exe:26824): WARNING **: Trying to register gtype 'GSocketMsgFlags' as enum when in fact it is of type 'GFlags'
+Config configs\TEST configs\Example configs\config.topo_particle_2jobs_masking.yaml missing sections: result_schemas, plotting_modes
+Config configs\TEST configs\Example configs\config.topo_particle_2jobs_masking.yaml missing sections: result_schemas, plotting_modes
+
+** (python.exe:12228): WARNING **: Trying to register gtype 'GMountMountFlags' as enum when in fact it is of type 'GFlags'
+
+** (python.exe:12228): WARNING **: Trying to register gtype 'GDriveStartFlags' as enum when in fact it is of type 'GFlags'
+
+** (python.exe:12228): WARNING **: Trying to register gtype 'GSocketMsgFlags' as enum when in fact it is of type 'GFlags'
+Config configs\TEST configs\Example configs\config.topo_particle_2jobs_masking.yaml missing sections: result_schemas, plotting_modes
+Config configs\TEST configs\Example configs\config.topo_particle_2jobs_masking.yaml missing sections: result_schemas, plotting_modes
+
+** (python.exe:27296): WARNING **: Trying to register gtype 'GMountMountFlags' as enum when in fact it is of type 'GFlags'
+
+** (python.exe:27296): WARNING **: Trying to register gtype 'GDriveStartFlags' as enum when in fact it is of type 'GFlags'
+
+** (python.exe:27296): WARNING **: Trying to register gtype 'GSocketMsgFlags' as enum when in fact it is of type 'GFlags'
+Config configs\TEST configs\Example configs\config.topo_particle_2jobs_masking.yaml missing sections: result_schemas, plotting_modes
+Config configs\TEST configs\Example configs\config.topo_particle_2jobs_masking.yaml missing sections: result_schemas, plotting_modes
+
+** (python.exe:20380): WARNING **: Trying to register gtype 'GMountMountFlags' as enum when in fact it is of type 'GFlags'
+
+** (python.exe:20380): WARNING **: Trying to register gtype 'GDriveStartFlags' as enum when in fact it is of type 'GFlags'
+
+** (python.exe:20380): WARNING **: Trying to register gtype 'GSocketMsgFlags' as enum when in fact it is of type 'GFlags'
+C:\Users\Conor O'Brien\Documents\GitHub\AFM-Data-Management\scripts\topo_particle_summary.py:547: MatplotlibDeprecationWarning: The 'labels' parameter of boxplot() has been renamed 'tick_labels' since Matplotlib 3.9; support for the old name will be dropped in 3.11.
+  plt.boxplot(data, labels=labels, showfliers=True)
+C:\Users\Conor O'Brien\Documents\GitHub\AFM-Data-Management\scripts\topo_particle_summary.py:560: MatplotlibDeprecationWarning: The 'labels' parameter of boxplot() has been renamed 'tick_labels' since Matplotlib 3.9; support for the old name will be dropped in 3.11.
+  plt.boxplot(data, labels=labels, showfliers=True)
+C:\Users\Conor O'Brien\Documents\GitHub\AFM-Data-Management\scripts\topo_particle_summary.py:669: MatplotlibDeprecationWarning: The get_cmap function was deprecated in Matplotlib 3.7 and will be removed in 3.11. Use ``matplotlib.colormaps[name]`` or ``matplotlib.colormaps.get_cmap()`` or ``pyplot.get_cmap()`` instead.
+  cmap = plt.cm.get_cmap(args.grid_cmap).copy()

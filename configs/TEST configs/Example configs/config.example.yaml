@@ -328,3 +328,10 @@ unit_conversions:
     MPa: { target: "kPa", factor: 1000.0 }
     GPa: { target: "kPa", factor: 1e6 }
     Pa:  { target: "kPa", factor: 0.001 }
+
+run_ui:
+  estimate_enable: true
+  estimate_from_history: true
+  estimate_seconds_per_scan: null
+  progress_enable: true
+  progress_bar_width: 30

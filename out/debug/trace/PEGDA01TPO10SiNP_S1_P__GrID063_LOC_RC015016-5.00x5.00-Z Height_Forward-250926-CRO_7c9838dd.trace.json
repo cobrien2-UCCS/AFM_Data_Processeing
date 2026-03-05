@@ -35,7 +35,7 @@
   }, 
   {
     "info": {
-      "threshold": 3.486358218801821e-08, 
+      "threshold": 0.0, 
       "count_total": 9
     }, 
     "step": "particle_count", 

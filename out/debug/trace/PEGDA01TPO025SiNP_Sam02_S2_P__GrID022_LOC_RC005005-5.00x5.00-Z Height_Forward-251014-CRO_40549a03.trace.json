@@ -1,0 +1,51 @@
+[
+  {
+    "info": {
+      "direction": "horizontal", 
+      "method": "median"
+    }, 
+    "step": "align_rows", 
+    "ok": true
+  }, 
+  {
+    "step": "plane_level", 
+    "ok": true
+  }, 
+  {
+    "info": {
+      "direction": "horizontal", 
+      "method": "median"
+    }, 
+    "step": "align_rows", 
+    "ok": true
+  }, 
+  {
+    "info": {
+      "func": "flatten_base"
+    }, 
+    "step": "flatten_base", 
+    "ok": true
+  }, 
+  {
+    "info": {
+      "size": 3
+    }, 
+    "step": "median", 
+    "ok": true
+  }, 
+  {
+    "info": {
+      "file": "panels\\PEGDA01TPO025SiNP_Sam02_S2_P__GrID022_LOC_RC005005-_842890ba_particle_panel.png"
+    }, 
+    "step": "review_panel", 
+    "ok": true
+  }, 
+  {
+    "info": {
+      "threshold": 9.707681226091637e-09, 
+      "count_total": 0
+    }, 
+    "step": "particle_count", 
+    "ok": true
+  }
+]

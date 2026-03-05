@@ -11,6 +11,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
 OUT_BASE = Path(r"C:\Users\Conor O'Brien\Dropbox\03_AML\00 IN-BOX\AFM Topo Particle processing OUT")
+DATA_GROUPED = Path("docs/File Locations for Data Grouped.txt")
 
 SCAN_SIZE_UM = (5.0, 5.0)
 GRID = (512, 512)
@@ -253,6 +254,61 @@ def _wt_percent_from_sample(sample):
     return int(m.group(1))
 
 
+def parse_data_grouped(path):
+    groups = []
+    current_system = None
+    current_label = None
+    if not path.exists():
+        return groups
+    for raw in path.read_text(encoding="utf-8").splitlines():
+        line = raw.strip()
+        if not line:
+            continue
+        if line.startswith("# PEGDA Only"):
+            current_system = "pegda"
+            current_label = None
+            continue
+        if line.startswith("# PEGDA SiNP"):
+            current_system = "pegda_sinp"
+            current_label = None
+            continue
+        if line.startswith("#"):
+            continue
+        if line.startswith("## "):
+            current_label = line[3:].strip()
+            groups.append({"system": current_system, "label": current_label, "roots": []})
+            continue
+        if line.startswith("C:\\") and groups:
+            groups[-1]["roots"].append(line)
+    return groups
+
+
+def build_sample_group_map(groups):
+    mapping = {}
+    for g in groups:
+        for root in g["roots"]:
+            sample = Path(root).name
+            mapping[sample] = g
+    return mapping
+
+
+def scraped_status_from_label(label):
+    if not label:
+        return ""
+    if re.search(r"\bnon[- ]scraped\b", label, re.I):
+        return "Non Scraped"
+    if re.search(r"\bscraped\b", label, re.I):
+        return "Scraped"
+    return ""
+
+
+def wt_percent_from_label(label):
+    if not label:
+        return ""
+    m = re.search(r"(10|25)%", label)
+    return f"{m.group(1)}%" if m else ""
+
+
 def _parse_row_col(source_file):
     if not source_file:
         return None, None
@@ -274,11 +330,128 @@ def parse_args():
     return ap.parse_args()
 
 
+def _grid_expected_positions(rows, cols, index_base):
+    return {(r, c) for r in range(index_base, index_base + rows) for c in range(index_base, index_base + cols)}
+
+
+def _format_positions(positions, limit=20):
+    items = sorted(positions)[:limit]
+    return "; ".join("R%03dC%03d" % (r, c) for r, c in items)
+
+
+def apply_grid_policy(count_rows, sample_to_group, cfg):
+    summary_cfg = cfg.get("summary", {}) if cfg else {}
+    policy = summary_cfg.get("grid_policy", "keep_all")
+    grid_rows = int(summary_cfg.get("grid_rows", 21))
+    grid_cols = int(summary_cfg.get("grid_cols", 21))
+    index_base = int(summary_cfg.get("grid_index_base", 1))
+    exclude_samples = set(s for s in summary_cfg.get("exclude_samples", []) if s)
+    exclude_source_files = [s.lower() for s in summary_cfg.get("exclude_source_files", []) if s]
+
+    filtered = []
+    for row in count_rows:
+        sample = row.get("sample", "")
+        source_file = (row.get("source_file") or "").lower()
+        if sample in exclude_samples:
+            continue
+        if exclude_source_files and any(token in source_file for token in exclude_source_files):
+            continue
+        filtered.append(row)
+
+    expected = _grid_expected_positions(grid_rows, grid_cols, index_base)
+    sample_positions = {}
+    sample_pos_files = {}
+    for row in filtered:
+        sample = row.get("sample", "")
+        row_idx = to_int(row.get("row_idx", -1), -1)
+        col_idx = to_int(row.get("col_idx", -1), -1)
+        if row_idx <= 0 or col_idx <= 0:
+            continue
+        sample_positions.setdefault(sample, set()).add((row_idx, col_idx))
+        key = (sample, row_idx, col_idx)
+        sample_pos_files.setdefault(key, set()).add(row.get("source_file", ""))
+
+    issues = []
+    for sample, positions in sample_positions.items():
+        group = sample_to_group.get(sample, {})
+        label = group.get("label", "")
+        wt = wt_percent_from_label(label) or (f"{_wt_percent_from_sample(sample)}%" if _wt_percent_from_sample(sample) else "")
+        scraped = scraped_status_from_label(label)
+        missing = expected - positions
+        duplicate_positions = []
+        duplicate_files = []
+        for (s, r, c), files in sample_pos_files.items():
+            if s != sample:
+                continue
+            if len(files) > 1:
+                duplicate_positions.append((r, c))
+                duplicate_files.extend(list(files)[:3])
+        issues.append({
+            "sample": sample,
+            "system": row.get("system", ""),
+            "group_label": label,
+            "wt_percent": wt,
+            "scraped": scraped,
+            "expected_positions": len(expected),
+            "present_positions": len(positions),
+            "missing_count": len(missing),
+            "missing_positions": _format_positions(missing),
+            "duplicate_positions": _format_positions(set(duplicate_positions)),
+            "duplicate_files": "; ".join(sorted(set(duplicate_files))[:5]),
+        })
+
+    issues_path = OUT_BASE / "grid_issues_by_sample.csv"
+    if issues:
+        write_csv(issues_path, issues, list(issues[0].keys()))
+
+    if policy == "manual_review":
+        problem_samples = [r for r in issues if r.get("missing_count", 0) or r.get("duplicate_positions")]
+        if problem_samples:
+            review_csv = OUT_BASE / "grid_manual_review.csv"
+            write_csv(review_csv, problem_samples, list(problem_samples[0].keys()))
+            blacklist = OUT_BASE / "grid_manual_review_blacklist.txt"
+            blacklist.write_text("\n".join(sorted({r["sample"] for r in problem_samples})), encoding="utf-8")
+            print("Manual review required. See:")
+            print(str(review_csv))
+            print(str(blacklist))
+            return None, {"policy": policy, "issues": len(problem_samples)}
+
+    if policy == "require_full_grid":
+        full_samples = {r["sample"] for r in issues if r.get("missing_count", 0) == 0}
+        filtered = [r for r in filtered if r.get("sample") in full_samples]
+        return filtered, {"policy": policy, "kept_samples": len(full_samples), "expected_positions": len(expected)}
+
+    if policy == "intersect_grid":
+        group_positions = {}
+        for r in issues:
+            sample = r["sample"]
+            group = sample_to_group.get(sample, {})
+            key = group.get("label") or r.get("system") or "unknown"
+            group_positions.setdefault(key, []).append(sample_positions.get(sample, set()))
+        intersection = {}
+        for key, sets in group_positions.items():
+            if not sets:
+                continue
+            inter = set.intersection(*sets) if len(sets) > 1 else sets[0]
+            intersection[key] = inter
+        filtered = [
+            r for r in filtered
+            if (r.get("row_idx"), r.get("col_idx")) in intersection.get(
+                (sample_to_group.get(r.get("sample", ""), {}).get("label") or r.get("system") or "unknown"),
+                set()
+            )
+        ]
+        return filtered, {"policy": policy, "groups": len(intersection)}
+
+    return filtered, {"policy": policy}
+
+
 def main():
     args = parse_args()
     global OUT_BASE
     if args.out_base:
         OUT_BASE = Path(args.out_base)
+    cfg = {}
     if args.config:
         try:
             import yaml
@@ -293,6 +466,8 @@ def main():
             pass
 
     inv = read_inventory()
+    groups = parse_data_grouped(DATA_GROUPED)
+    sample_to_group = build_sample_group_map(groups)
 
     systems = {"pegda": [], "pegda_sinp": []}
     for r in inv:
@@ -332,25 +507,6 @@ def main():
             summary_rows.append(row)
 
     count_rows = []
-    counts = []
-    isolated_counts = []
-    counts_by_sample = {}
-    isolated_by_sample = {}
-    sample_system = {}
-    rows_by_sample = {}
-    counts_by_job = {}
-    isolated_by_job = {}
-    counts_raw_by_job = {}
-    counts_filtered_by_job = {}
-    grid_counts = {}
-    grid_isolated = {}
-    grid_raw_counts = {}
-    grid_zero = {}
-    grid_iso_zero = {}
-    wt_grid_counts = {}
-    wt_grid_isolated = {}
-    wt_grid_raw_counts = {}
-    wt_grid_n = {}
     for row in summary_rows:
         count_total = to_int(row.get("count_total"))
         raw_val = row.get("count_total_raw")
@@ -361,6 +517,10 @@ def main():
         sample = row.get("sample", "unknown")
         system = row.get("system", "unknown")
         job = row.get("job", "unknown")
+        group = sample_to_group.get(sample, {})
+        group_label = group.get("label", "")
+        wt_label = wt_percent_from_label(group_label) or (f"{_wt_percent_from_sample(sample)}%" if _wt_percent_from_sample(sample) else "")
+        scraped = scraped_status_from_label(group_label)
         row_idx = to_int(row.get("row_idx", -1), -1)
         col_idx = to_int(row.get("col_idx", -1), -1)
         if row_idx <= 0 or col_idx <= 0:
@@ -368,19 +528,6 @@ def main():
             if pr and pc:
                 row_idx = pr
                 col_idx = pc
-        counts.append(count_total)
-        isolated_counts.append(count_iso)
-        counts_by_sample.setdefault(sample, []).append(count_total)
-        isolated_by_sample.setdefault(sample, []).append(count_iso)
-        rows_by_sample.setdefault(sample, []).append(row)
-        if sample not in sample_system:
-            sample_system[sample] = system
-        counts_by_job.setdefault(job, []).append(count_total)
-        isolated_by_job.setdefault(job, []).append(count_iso)
-        if raw_present:
-            counts_raw_by_job.setdefault(job, []).append(count_total_raw)
-        if count_total_filtered:
-            counts_filtered_by_job.setdefault(job, []).append(count_total_filtered)
         count_rows.append({
             "source_file": row.get("source_file", ""),
             "count_total": count_total,
@@ -393,9 +540,69 @@ def main():
             "sample": sample,
             "system": system,
             "job": job,
+            "group_label": group_label,
+            "wt_percent": wt_label,
+            "scraped": scraped,
             "row_idx": row_idx,
             "col_idx": col_idx,
         })
+
+    count_rows, policy_info = apply_grid_policy(count_rows, sample_to_group, cfg)
+    if count_rows is None:
+        print("Summary halted for manual review.")
+        return
+
+    counts = []
+    isolated_counts = []
+    counts_by_sample = {}
+    isolated_by_sample = {}
+    sample_system = {}
+    rows_by_sample = {}
+    counts_by_job = {}
+    isolated_by_job = {}
+    counts_by_job_wt = {}
+    isolated_by_job_wt = {}
+    counts_raw_by_job = {}
+    counts_filtered_by_job = {}
+    grid_counts = {}
+    grid_isolated = {}
+    grid_raw_counts = {}
+    grid_zero = {}
+    grid_iso_zero = {}
+    wt_grid_counts = {}
+    wt_grid_isolated = {}
+    wt_grid_raw_counts = {}
+    wt_grid_n = {}
+    for row in count_rows:
+        count_total = to_int(row.get("count_total"))
+        raw_val = row.get("count_total_raw")
+        raw_present = raw_val not in (None, "")
+        count_total_raw = to_int(raw_val)
+        count_total_filtered = to_int(row.get("count_total_filtered"))
+        count_iso = to_int(row.get("count_isolated"))
+        sample = row.get("sample", "unknown")
+        system = row.get("system", "unknown")
+        job = row.get("job", "unknown")
+        wt_label = row.get("wt_percent", "")
+        counts.append(count_total)
+        isolated_counts.append(count_iso)
+        counts_by_sample.setdefault(sample, []).append(count_total)
+        isolated_by_sample.setdefault(sample, []).append(count_iso)
+        rows_by_sample.setdefault(sample, []).append(row)
+        if sample not in sample_system:
+            sample_system[sample] = system
+        counts_by_job.setdefault(job, []).append(count_total)
+        isolated_by_job.setdefault(job, []).append(count_iso)
+        if wt_label:
+            counts_by_job_wt.setdefault((job, wt_label), []).append(count_total)
+            isolated_by_job_wt.setdefault((job, wt_label), []).append(count_iso)
+        if raw_present:
+            counts_raw_by_job.setdefault(job, []).append(count_total_raw)
+        if count_total_filtered:
+            counts_filtered_by_job.setdefault(job, []).append(count_total_filtered)
+
+        row_idx = to_int(row.get("row_idx", -1), -1)
+        col_idx = to_int(row.get("col_idx", -1), -1)
         if row_idx > 0 and col_idx > 0:
             key = (system, sample, job)
             grid_counts.setdefault(key, {})[(row_idx, col_idx)] = count_total
@@ -450,6 +657,7 @@ def main():
     diameters = []
     diameters_by_sample = {}
     diameters_by_job = {}
+    diameters_by_job_wt = {}
     for p in find_particle_csvs():
         for row in read_particle_rows(p):
             kept = to_int(row.get("kept", 0))
@@ -462,6 +670,9 @@ def main():
                 diameters_by_sample.setdefault(sample, []).append(d)
                 job = job_from_particle_path(p)
                 diameters_by_job.setdefault(job, []).append(d)
+                wt = _wt_percent_from_sample(sample)
+                if wt:
+                    diameters_by_job_wt.setdefault((job, wt), []).append(d)
 
     diam_stats = {}
     if diameters:
@@ -490,10 +701,40 @@ def main():
     if stats_rows:
         write_csv(OUT_BASE / "particle_summary_stats.csv", stats_rows, ["metric", "value"])
 
+    # Diameter stats by job + wt%
+    if diameters_by_job_wt:
+        rows = []
+        for (job, wt), vals in sorted(diameters_by_job_wt.items()):
+            if not vals:
+                continue
+            rows.append({
+                "job": job,
+                "wt_percent": f"{wt}%",
+                "count": len(vals),
+                "mean_diameter_nm": stats.mean(vals),
+                "std_diameter_nm": stats.pstdev(vals) if len(vals) > 1 else 0.0,
+            })
+        if rows:
+            write_csv(OUT_BASE / "particle_diameter_stats_by_job_wt.csv", rows, list(rows[0].keys()))
+
+    # Diameter histograms by job + wt%
+    if diameters_by_job_wt:
+        diam_dir = OUT_BASE / "summary_outputs" / "diameter_by_job_wt"
+        diam_dir.mkdir(parents=True, exist_ok=True)
+        for (job, wt), vals in diameters_by_job_wt.items():
+            if not vals:
+                continue
+            _plot_hist(
+                vals,
+                "Particle Diameter\n%s (wt%d%%)" % (job, wt),
+                "Diameter (nm)",
+                diam_dir / ("hist_diameter_%s_wt%d.png" % (job, wt)),
+            )
+
     if counts:
         plt.figure(figsize=(6,4))
         plt.hist(counts, bins=20, color="#4C78A8", edgecolor="black")
-        plt.title("Kept Particle Count per Scan (all jobs, pre-isolation)")
+        plt.title("Kept Particle Count per Scan\n(all jobs, pre-isolation)")
         plt.xlabel("Particles per map")
         plt.ylabel("Frequency")
         plt.tight_layout()
@@ -503,7 +744,7 @@ def main():
     if diameters:
         plt.figure(figsize=(6,4))
         plt.hist(diameters, bins=30, color="#F58518", edgecolor="black")
-        plt.title("Particle Diameter Distribution (filtered)")
+        plt.title("Particle Diameter Distribution\n(filtered)")
         plt.xlabel("Diameter (nm)")
         plt.ylabel("Frequency")
         plt.tight_layout()
@@ -513,7 +754,7 @@ def main():
     if isolated_counts:
         plt.figure(figsize=(6,4))
         plt.hist(isolated_counts, bins=20, color="#54A24B", edgecolor="black")
-        plt.title("Isolated Particle Count per Scan (all jobs)")
+        plt.title("Isolated Particle Count per Scan\n(all jobs)")
         plt.xlabel("Isolated particles per map")
         plt.ylabel("Frequency")
         plt.tight_layout()
@@ -523,7 +764,7 @@ def main():
     if counts:
         plt.figure(figsize=(7,4))
         plt.scatter(range(1, len(counts) + 1), counts, s=12, color="#4C78A8", alpha=0.8)
-        plt.title("Kept Particle Count per Scan (index order)")
+        plt.title("Kept Particle Count per Scan\n(index order)")
         plt.xlabel("Map index")
         plt.ylabel("Particles per map")
         plt.tight_layout()
@@ -533,7 +774,7 @@ def main():
     if isolated_counts:
         plt.figure(figsize=(7,4))
         plt.scatter(range(1, len(isolated_counts) + 1), isolated_counts, s=12, color="#54A24B", alpha=0.8)
-        plt.title("Isolated Particle Count per Map (index order)")
+        plt.title("Isolated Particle Count per Map\n(index order)")
         plt.xlabel("Map index")
         plt.ylabel("Isolated particles per map")
         plt.tight_layout()
@@ -545,7 +786,7 @@ def main():
         data = [counts_by_sample[s] for s in counts_by_sample.keys()]
         plt.figure(figsize=(8,4))
         plt.boxplot(data, labels=labels, showfliers=True)
-        plt.title("Kept Particle Count per Scan by Sample")
+        plt.title("Kept Particle Count per Scan\nby Sample")
         plt.xlabel("Sample")
         plt.ylabel("Particles per map")
         plt.xticks(rotation=45, ha="right")
@@ -558,7 +799,7 @@ def main():
         data = [isolated_by_sample[s] for s in isolated_by_sample.keys()]
         plt.figure(figsize=(8,4))
         plt.boxplot(data, labels=labels, showfliers=True)
-        plt.title("Isolated Particle Count per Map by Sample")
+        plt.title("Isolated Particle Count per Map\nby Sample")
         plt.xlabel("Sample")
         plt.ylabel("Isolated particles per map")
         plt.xticks(rotation=45, ha="right")
@@ -572,7 +813,7 @@ def main():
         stds = [stats.pstdev(v) if len(v) > 1 else 0.0 for v in counts_by_sample.values()]
         plt.figure(figsize=(8,4))
         plt.bar(labels, means, yerr=stds, color="#4C78A8", capsize=4)
-        plt.title("Mean Kept Particle Count per Scan by Sample")
+        plt.title("Mean Kept Particle Count per Scan\nby Sample")
         plt.xlabel("Sample")
         plt.ylabel("Particles per map (mean ± std)")
         plt.xticks(rotation=45, ha="right")
@@ -586,7 +827,7 @@ def main():
         stds = [stats.pstdev(v) if len(v) > 1 else 0.0 for v in isolated_by_sample.values()]
         plt.figure(figsize=(8,4))
         plt.bar(labels, means, yerr=stds, color="#54A24B", capsize=4)
-        plt.title("Mean Isolated Particle Count per Scan by Sample")
+        plt.title("Mean Isolated Particle Count per Scan\nby Sample")
         plt.xlabel("Sample")
         plt.ylabel("Isolated particles per map (mean ± std)")
         plt.xticks(rotation=45, ha="right")
@@ -600,7 +841,7 @@ def main():
         stds = [stats.pstdev(v) if len(v) > 1 else 0.0 for v in counts_by_job.values()]
         plt.figure(figsize=(9,4))
         plt.bar(job_labels, means, yerr=stds, color="#72B7B2", capsize=4)
-        plt.title("Mean Kept Particle Count per Scan by Job")
+        plt.title("Mean Kept Particle Count per Scan\nby Job")
         plt.xlabel("Job")
         plt.ylabel("Particles per map (mean ± std)")
         plt.xticks(rotation=30, ha="right")
@@ -614,13 +855,47 @@ def main():
         stds = [stats.pstdev(v) if len(v) > 1 else 0.0 for v in isolated_by_job.values()]
         plt.figure(figsize=(9,4))
         plt.bar(job_labels, means, yerr=stds, color="#59A14F", capsize=4)
-        plt.title("Mean Isolated Particle Count per Scan by Job")
+        plt.title("Mean Isolated Particle Count per Scan\nby Job")
         plt.xlabel("Job")
         plt.ylabel("Isolated particles per map (mean ± std)")
         plt.xticks(rotation=30, ha="right")
         plt.tight_layout()
         plt.savefig(OUT_BASE / "fig_isolated_count_mean_by_job.png", dpi=300)
         plt.close()
+
+    # Per-wt bar plots by job
+    if counts_by_job_wt:
+        out_dir = OUT_BASE / "summary_outputs" / "compare_by_wt"
+        out_dir.mkdir(parents=True, exist_ok=True)
+        wt_groups = sorted({wt for (_, wt) in counts_by_job_wt.keys()})
+        for wt in wt_groups:
+            jobs = sorted({job for (job, w) in counts_by_job_wt.keys() if w == wt})
+            if not jobs:
+                continue
+            means = [stats.mean(counts_by_job_wt[(job, wt)]) for job in jobs]
+            stds = [stats.pstdev(counts_by_job_wt[(job, wt)]) if len(counts_by_job_wt[(job, wt)]) > 1 else 0.0 for job in jobs]
+            labels = [wrap_label(j, 18, 2) for j in jobs]
+            plt.figure(figsize=(9,4))
+            plt.bar(labels, means, yerr=stds, color="#4C78A8", capsize=4)
+            plt.title("Mean Kept Particle Count per Scan\nby Job (%s)" % wt)
+            plt.xlabel("Job")
+            plt.ylabel("Particles per scan (mean ± std)")
+            plt.xticks(rotation=30, ha="right")
+            plt.tight_layout()
+            plt.savefig(out_dir / ("fig_particle_count_mean_by_job_%s.png" % wt.replace("%","pct")), dpi=300)
+            plt.close()
+
+            iso_means = [stats.mean(isolated_by_job_wt[(job, wt)]) for job in jobs]
+            iso_stds = [stats.pstdev(isolated_by_job_wt[(job, wt)]) if len(isolated_by_job_wt[(job, wt)]) > 1 else 0.0 for job in jobs]
+            plt.figure(figsize=(9,4))
+            plt.bar(labels, iso_means, yerr=iso_stds, color="#54A24B", capsize=4)
+            plt.title("Mean Isolated Particle Count per Scan\nby Job (%s)" % wt)
+            plt.xlabel("Job")
+            plt.ylabel("Isolated particles per scan (mean ± std)")
+            plt.xticks(rotation=30, ha="right")
+            plt.tight_layout()
+            plt.savefig(out_dir / ("fig_isolated_count_mean_by_job_%s.png" % wt.replace("%","pct")), dpi=300)
+            plt.close()
 
     # Per-job histograms (kept / raw / isolated)
     if counts_by_job or isolated_by_job:
@@ -749,7 +1024,7 @@ def main():
                 grid_raw,
                 grid_density,
                 zero_cells,
-                "Kept Particle Density Grid (%s)" % job,
+                "Kept Particle Density Grid\n(%s)" % job,
                 out_dir / ("fig_particle_count_grid_%s.png" % job),
                 vmax,
             )
@@ -757,7 +1032,7 @@ def main():
                 grid_raw_iso,
                 grid_iso_density,
                 iso_zero_cells,
-                "Isolated Particle Density Grid (%s)" % job,
+                "Isolated Particle Density Grid\n(%s)" % job,
                 out_dir / ("fig_isolated_count_grid_%s.png" % job),
                 vmax,
             )
@@ -770,7 +1045,7 @@ def main():
                     grid_raw_unfiltered,
                     grid_raw_unfiltered_density,
                     set(),
-                    "Raw Particle Density Grid (%s)" % job,
+                    "Raw Particle Density Grid\n(%s)" % job,
                     out_dir / ("fig_particle_count_raw_grid_%s.png" % job),
                     raw_vmax,
                 )
@@ -810,7 +1085,7 @@ def main():
                     grid_raw,
                     grid_density,
                     zero_cells,
-                    "Mean Kept Particle Density Grid (wt%d%%, %s)" % (wt, job),
+                    "Mean Kept Particle Density Grid\n(wt%d%%, %s)" % (wt, job),
                     combined_dir / ("fig_particle_count_grid_wt%d_%s.png" % (wt, job)),
                     vmax,
                 )
@@ -818,7 +1093,7 @@ def main():
                     grid_raw_iso,
                     grid_iso_density,
                     iso_zero_cells,
-                    "Mean Isolated Density Grid (wt%d%%, %s)" % (wt, job),
+                    "Mean Isolated Density Grid\n(wt%d%%, %s)" % (wt, job),
                     combined_dir / ("fig_isolated_count_grid_wt%d_%s.png" % (wt, job)),
                     vmax,
                 )
@@ -831,7 +1106,7 @@ def main():
                         grid_raw_unfiltered,
                         grid_raw_unfiltered_density,
                         set(),
-                        "Mean Raw Particle Density Grid (wt%d%%, %s)" % (wt, job),
+                        "Mean Raw Particle Density Grid\n(wt%d%%, %s)" % (wt, job),
                         combined_dir / ("fig_particle_count_raw_grid_wt%d_%s.png" % (wt, job)),
                         raw_vmax,
                     )

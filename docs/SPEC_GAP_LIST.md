@@ -117,6 +117,8 @@ Change policy: see `docs/change_control.md`.
 ### 6.5) Particle counting workflow (human review loop)
 - Current state: `particle_count_basic` exists (threshold + pygwy grain stats). Optional `review_pack` can emit simple PNG panels + a `review.csv` template for manual verification.
 - Gap: multi-channel mask fusion and per-area user verification UI are not implemented yet (planned; start with CSV + panels).
+- New: summary-stage grid completeness policy added (`keep_all|require_full_grid|intersect_grid|manual_review`) with `grid_issues_by_sample.csv` and manual-review blacklist outputs.
+- New: fit-model sensitivity analysis added (Poisson/NB/ZINB risk curves, histogram distances, variance across methods) in `scripts/fit_particle_distributions.py`.
 
 ### 7) Processing step trace / debug transparency
 - Current state: per-file trace JSON exists when debug is enabled; debug logs include units, mask/stats counts, and filter provenance.

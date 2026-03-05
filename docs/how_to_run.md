@@ -25,6 +25,12 @@ Common overrides (no config edits):
 py -3 scripts/run_job.py --config config.yaml --job example_modulus_job --input-root "D:\data" --output-root out/jobs --no-collect
 ```
 
+## Topo particle summary + fits
+```powershell
+py -3 scripts/topo_particle_summary.py --config "configs/TEST configs/Example configs/config.topo_particle_summary.yaml" --out-base "<out_root>"
+py -3 scripts/fit_particle_distributions.py --config "configs/TEST configs/Example configs/config.topo_particle_fits.yaml" --input-root "<out_root>"
+```
+
 ## Legacy: manual steps
 If you want to run the steps yourself:
 1) Generate manifest (Py3)

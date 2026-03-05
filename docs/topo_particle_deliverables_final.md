@@ -22,6 +22,7 @@ Use this template to assemble the final Word document. Fill in values from the p
 - Isolated particle: center-to-center distance >= 900 nm from any other detected particle (per config isolation distance).
 
 ## 1) Scan Inventory
+> **Note:** Use `grid_issues_by_sample.csv` to flag incomplete grids or duplicates. If `summary.grid_policy` is not `keep_all`, note the policy used and any excluded samples.
 
 ### PEGDA
 > **Table Callout:** Insert "Scan Inventory - PEGDA" table here.
@@ -87,7 +88,7 @@ Source: `particle_summary_stats_by_sample.csv` (filter for `job = particle_forwa
 | Std. dev. particle diameter (nm) | 28.964 |
 
 ### Filtering Criteria
-- Diameter filter: 400-500 nm (current comparison runs)
+- Diameter filter: 350-550 nm (current runs; update if config changes)
 - Isolation distance: 900 nm (center-to-center)
 - Edge exclusion: enabled
 
@@ -135,6 +136,13 @@ Use `particle_summary_stats_by_job.csv` to populate this section.
 | flatten + p95 | 0.586 | 1.010 | 0.500 | 0.826 |  |
 | flatten + max(mean,0,p95) | 0.586 | 1.010 | 0.500 | 0.826 |  |
 
+### Method Histogram Sensitivity
+Source: `summary_outputs/fits/method_histograms.csv`, `summary_outputs/fits/method_histogram_distances.csv`,
+`summary_outputs/fits/method_compare_metrics.csv`, `summary_outputs/fits/method_variance_summary.csv`.
+
+> **Table Callout:** Method histogram distances (JS divergence, L1, Wasserstein-1) across jobs.
+> **Table Callout:** Variance across methods (mean/variance/zero-rate).
+
 ## 6) Grain Property Summary (Gwyddion)
 
 Use `grain_summary_by_job.csv` and `grain_summary_by_sample_job.csv`.
@@ -153,6 +161,13 @@ Figures (if used):
 ## 7) Statistical Feasibility Statement
 
 Based on the current Stage 1 dataset, approximately **12 scans** are required to obtain ~**30 isolated particles**, using the observed mean isolated count per scan.
+
+### Risk Curves (Fit Models)
+Source: `summary_outputs/fits/fit_summary.csv`, `summary_outputs/fits/fit_risk_curves.csv`,
+`summary_outputs/fits/risk_*_*.png`, `summary_outputs/fits/risk_compare_*.png`.
+
+> **Figure Callout:** Risk curves by model (Poisson/NB/ZINB) per wt% and method.
+> **Figure Callout:** Uncertainty bands (bootstrap) for Poisson/NB.
 
 ## 8) Equations and Aggregations (Python)
 
@@ -213,6 +228,9 @@ Lateral resolution (nm/px):
 - Grain summaries: `grain_summary_by_job.csv`, `grain_summary_by_sample_job.csv`
 - Plots: `fig_particle_count_hist.png`, `fig_particle_diameter_hist.png`, `fig_isolated_count_hist.png`
 - Per-job plots: `grain_plots/<job>/*`
+- Fit outputs: `summary_outputs/fits/*`
+- Grid issues: `grid_issues_by_sample.csv`, `grid_manual_review.csv`, `grid_manual_review_blacklist.txt`
+- Report figures include a source caption line with the originating file path.
 
 Output root (summary + figures):
 - `C:\Users\Conor O'Brien\Dropbox\03_AML\00 IN-BOX\AFM Topo Particle processing OUT`

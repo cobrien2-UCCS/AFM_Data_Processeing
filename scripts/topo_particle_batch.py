@@ -7,6 +7,7 @@ import subprocess
 import time
 from datetime import datetime
 from pathlib import Path
+from typing import Any, Dict, List
 
 DEFAULT_CONFIG = Path("configs/TEST configs/Example configs/config.topo_particle_2jobs_masking.yaml")
 DEFAULT_DATA_LIST = Path("docs/File Locations for Data Grouped.txt")
@@ -80,6 +81,64 @@ def run_particle_job(input_root, output_root, job_name, config_path):
         raise RuntimeError("run_job failed for %s" % input_root)
 
 
+def _load_config(path: Path) -> Dict[str, Any]:
+    try:
+        if path.suffix.lower() in (".yaml", ".yml"):
+            import yaml  # type: ignore
+            return yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+        return json.loads(path.read_text(encoding="utf-8")) or {}
+    except Exception:
+        return {}
+
+
+def _find_recent_timing(out_base: Path) -> Path:
+    candidates = sorted(out_base.rglob("run_timing.json"), key=lambda p: p.stat().st_mtime, reverse=True)
+    return candidates[0] if candidates else None
+
+
+def _estimate_seconds_per_scan(out_base: Path, cfg: Dict[str, Any]) -> float:
+    run_ui = cfg.get("run_ui") or {}
+    if run_ui.get("estimate_seconds_per_scan") is not None:
+        try:
+            return float(run_ui.get("estimate_seconds_per_scan"))
+        except Exception:
+            pass
+    if run_ui.get("estimate_from_history", True):
+        timing_path = _find_recent_timing(out_base)
+        if timing_path and timing_path.exists():
+            try:
+                info = json.loads(timing_path.read_text(encoding="utf-8"))
+                entries = info.get("entries") or []
+                total_scans = sum(float(e.get("scan_count", 0)) for e in entries)
+                total_seconds = sum(float(e.get("seconds", 0.0)) for e in entries)
+                if total_scans > 0 and total_seconds > 0:
+                    return total_seconds / total_scans
+            except Exception:
+                pass
+    # Heuristic fallback: 120 seconds per scan per job
+    return 120.0
+
+
+def _format_duration(seconds: float) -> str:
+    if seconds < 60:
+        return f"{seconds:.0f}s"
+    mins = seconds / 60.0
+    if mins < 60:
+        return f"{mins:.1f} min"
+    hours = mins / 60.0
+    return f"{hours:.2f} hr"
+
+
+def _print_progress(done: int, total: int, done_seconds: float, total_seconds: float, width: int = 30) -> None:
+    if total <= 0:
+        return
+    pct = (done / total) * 100.0
+    fill = int(width * pct / 100.0)
+    bar = "#" * fill + "-" * (width - fill)
+    remaining = max(total_seconds - done_seconds, 0.0)
+    print(f"[{bar}] {done}/{total} ({pct:.1f}%) | est rem { _format_duration(remaining) }")
+
+
 def parse_args():
     ap = argparse.ArgumentParser(description="Batch run topo particle jobs for SiNP systems.")
     ap.add_argument("--config", default=str(DEFAULT_CONFIG), help="Config YAML path.")
@@ -93,6 +152,7 @@ def parse_args():
 def main():
     args = parse_args()
     config_path = Path(args.config)
+    cfg = _load_config(config_path)
     data_list = Path(args.data_list)
     out_base = Path(args.out_base)
     jobs = JOBS
@@ -144,6 +204,12 @@ def main():
     print("Wrote", inv_path)
 
     # Run particle counting for SiNP systems
+    run_ui = cfg.get("run_ui") or {}
+    estimate_enable = run_ui.get("estimate_enable", True)
+    progress_enable = run_ui.get("progress_enable", True)
+    progress_width = int(run_ui.get("progress_bar_width", 30) or 30)
+
+    tasks: List[Dict[str, Any]] = []
     for root in sinp_roots:
         if wt_rx and not wt_rx.search(str(root)):
             continue
@@ -151,14 +217,37 @@ def main():
         out_root = out_base / "PEGDA_SiNP" / base
         out_root.mkdir(parents=True, exist_ok=True)
         for job_name in jobs:
-            t0 = time.time()
-            run_particle_job(root, out_root, job_name, config_path)
-            timing["entries"].append({
-                "input_root": root,
-                "job": job_name,
-                "scan_count": root_counts.get(root, 0),
-                "seconds": round(time.time() - t0, 3),
-            })
+            tasks.append({"root": root, "out_root": out_root, "job": job_name, "scan_count": root_counts.get(root, 0)})
+
+    est_seconds_per_scan = _estimate_seconds_per_scan(out_base, cfg) if estimate_enable else None
+    total_est_seconds = 0.0
+    if est_seconds_per_scan is not None:
+        total_est_seconds = sum(t["scan_count"] * est_seconds_per_scan for t in tasks)
+        estimate_note = (
+            f"Estimated run time: ~{_format_duration(total_est_seconds)} total "
+            f"(using {est_seconds_per_scan:.1f} sec/scan/job)."
+        )
+        (out_base / "run_estimate.txt").write_text(estimate_note, encoding="utf-8")
+        print(estimate_note)
+
+    done = 0
+    done_est_seconds = 0.0
+    total_tasks = len(tasks)
+    for task in tasks:
+        t0 = time.time()
+        run_particle_job(task["root"], task["out_root"], task["job"], config_path)
+        elapsed = time.time() - t0
+        timing["entries"].append({
+            "input_root": task["root"],
+            "job": task["job"],
+            "scan_count": task["scan_count"],
+            "seconds": round(elapsed, 3),
+        })
+        done += 1
+        if est_seconds_per_scan is not None:
+            done_est_seconds += task["scan_count"] * est_seconds_per_scan
+        if progress_enable:
+            _print_progress(done, total_tasks, done_est_seconds, total_est_seconds, width=progress_width)
 
     total_seconds = round(time.time() - t0_all, 3)
     timing["total_seconds"] = total_seconds

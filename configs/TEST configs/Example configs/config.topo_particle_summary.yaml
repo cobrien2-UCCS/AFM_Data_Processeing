@@ -37,6 +37,12 @@ grid:
 
 summarize:
   recursive: false
+  grid_policy: "manual_review"  # keep_all | require_full_grid | intersect_grid | manual_review
+  grid_rows: 21
+  grid_cols: 21
+  grid_index_base: 1
+  exclude_samples: []
+  exclude_source_files: []
 
 debug:
   enable: false
@@ -141,3 +147,10 @@ summary_plot:
   grid_fixed_max_raw: 60
   grid_raw_job_pattern: raw|unfiltered|nomask
 
+
+run_ui:
+  estimate_enable: true
+  estimate_from_history: true
+  estimate_seconds_per_scan: null
+  progress_enable: true
+  progress_bar_width: 30

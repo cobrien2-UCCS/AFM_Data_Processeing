@@ -50,9 +50,13 @@ def add_table(doc, headers, rows):
     return table
 
 
-def add_picture_if_exists(doc, path, width_in=5.5):
+def add_picture_if_exists(doc, path, width_in=5.5, caption=None):
     if path.exists():
         doc.add_picture(str(path), width=Inches(width_in))
+        if caption:
+            doc.add_paragraph(caption)
+        else:
+            doc.add_paragraph(f"Source: {path}")
         return True
     doc.add_paragraph(f"(Missing figure: {path.name})")
     return False
@@ -202,6 +206,45 @@ def parse_scan_id(source_file):
     return "R{}-C{}".format(m.group("row"), m.group("col"))
 
 
+def parse_specimen_metadata(name):
+    if not name:
+        return {}
+    # Use specimen ID portion before _Sam if present
+    specimen = name
+    m = re.search(r"^(?P<spec>[^_]+)", name)
+    if m:
+        specimen = m.group("spec")
+    meta = {"polymer": "", "tpo": "", "sinp": "", "litfsi": "", "coating": ""}
+    m = re.search(r"^(?P<polymer>[A-Za-z]+)(?P<tpo>\\d+)?TPO(?P<sinp>\\d+)?SiNP", specimen, re.I)
+    if m:
+        meta["polymer"] = m.group("polymer") or ""
+        tpo = m.group("tpo") or ""
+        sinp = m.group("sinp") or ""
+        meta["tpo"] = tpo.lstrip("0") or tpo
+        meta["sinp"] = sinp.lstrip("0") or sinp
+    m = re.search(r"LiTFSI(?P<litfsi>\\d+)", specimen, re.I)
+    if m:
+        meta["litfsi"] = m.group("litfsi").lstrip("0") or m.group("litfsi")
+    if re.search(r"coat|coated|silane|peg", specimen, re.I):
+        meta["coating"] = "yes"
+    return meta
+
+
+def format_metadata(meta):
+    parts = []
+    if meta.get("polymer"):
+        parts.append(f"Polymer={meta['polymer']}")
+    if meta.get("tpo"):
+        parts.append(f"TPO={meta['tpo']}%")
+    if meta.get("sinp"):
+        parts.append(f"SiNP={meta['sinp']}%")
+    if meta.get("litfsi"):
+        parts.append(f"LiTFSI={meta['litfsi']}%")
+    if meta.get("coating"):
+        parts.append(f"Coating={meta['coating']}")
+    return ", ".join(parts) if parts else "No coded metadata in filename"
+
+
 def wt_percent_from_label(label):
     if not label:
         return ""
@@ -265,6 +308,10 @@ def main():
 
     doc.add_heading("Topo Particle Summary Report (Draft)", level=0)
     doc.add_paragraph(f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M')}")
+    doc.add_paragraph(
+        "Purpose: quantify particle counts and sizes from AFM topography scans, compare processing methods, "
+        "and estimate scan counts needed to achieve a statistically reliable number of isolated particles."
+    )
     if input_bases:
         doc.add_paragraph("Output roots:")
         for base in input_bases:
@@ -282,6 +329,10 @@ def main():
         "Scan = a single 5 um x 5 um AFM image at one grid index (Row/Col)."
     )
     doc.add_paragraph(
+        "Processing steps are implemented using Gwyddion/pygwy operations; "
+        "see the Gwyddion documentation for detailed descriptions of each operation."
+    )
+    doc.add_paragraph(
         "Baseline processing (per scan): alignment/row correction, background leveling (median), "
         "particle detection with mean-threshold mask, edge exclusion, diameter filter, and "
         "isolation filter based on center-to-center distance."
@@ -291,8 +342,44 @@ def main():
         "particles are outlined in red; numbers overlay the raw particle count per scan."
     )
     doc.add_paragraph(
+        "Grid scales: kept/isolated grids use 0–15 particles per scan; raw grids use 0–60 particles per scan."
+    )
+    doc.add_paragraph(
         "Unclassified = sample folder name did not match any grouped input roots in the "
         "File Locations for Data Grouped list."
+    )
+    doc.add_heading("Fit Models and Risk Equations", level=2)
+    doc.add_paragraph(
+        "Definitions: X_i = isolated particle count in scan i; S_n = sum of counts over n scans; "
+        "T = target isolated particle count."
+    )
+    doc.add_paragraph(
+        "Poisson: X_i ~ Poisson(lambda). P(X=k)=exp(-lambda)*lambda^k/k!. "
+        "S_n ~ Poisson(n*lambda). P(S_n >= T) = 1 - sum_{k=0..T-1} P(S_n=k)."
+    )
+    doc.add_paragraph(
+        "Negative Binomial (over-dispersed): Var(X)=mu+mu^2/r, r=mu^2/(Var-mu), p=r/(r+mu). "
+        "X ~ NB(r,p). S_n ~ NB(n*r,p)."
+    )
+    doc.add_paragraph(
+        "Zero-inflated NB: P(X=0)=pi+(1-pi)*NB(0;r,p); P(X=k)=(1-pi)*NB(k;r,p), k>0."
+    )
+    doc.add_paragraph(
+        "Required scans: smallest n such that P(S_n >= T) >= q (q = 90%, 95%, 99%)."
+    )
+    doc.add_paragraph(
+        "Uncertainty band: bootstrap the per-scan counts, recompute risk curves, and use "
+        "5th/95th percentiles at each n."
+    )
+    doc.add_paragraph(
+        "Method sensitivity: compare per-method histograms and fitted risk curves; compute "
+        "histogram distances (JS divergence, L1, Wasserstein-1) and variance across methods "
+        "for mean/variance/zero-rate."
+    )
+    doc.add_heading("Baseline Rationale", level=2)
+    doc.add_paragraph(
+        "Baseline is `particle_forward_medianbg_mean` (median-bg preprocessing + mean threshold). "
+        "This is used as the reference method for percent-difference comparisons against other methods."
     )
     doc.add_paragraph("Processing methods (explicit):")
     method_rows = []
@@ -394,6 +481,12 @@ def main():
             count_rows.extend(read_csv_dicts(base / "particle_counts_by_map.csv"))
     else:
         count_rows = read_csv_dicts(OUT_BASE / "particle_counts_by_map.csv")
+    if count_rows:
+        methods_ran = sorted({r.get("job") for r in count_rows if r.get("job")})
+        if methods_ran:
+            doc.add_paragraph("Methods actually run in this report:")
+            for m in methods_ran:
+                doc.add_paragraph(m, style="List Bullet")
     base_rows = [
         r for r in count_rows
         if r.get("job") == BASELINE_JOB and r.get("system") == SYSTEM_SINP
@@ -485,6 +578,8 @@ def main():
             samples = sorted({r[3] for r in wt_rows})
             for sample in samples:
                 count_plot, iso_plot = _find_plot_paths(input_bases, SYSTEM_SINP, sample, BASELINE_JOB)
+                meta = parse_specimen_metadata(sample)
+                meta_str = format_metadata(meta)
                 raw_plot = None
                 for base in (input_bases or [OUT_BASE]):
                     candidate = (
@@ -495,9 +590,10 @@ def main():
                         break
                 if (count_plot and count_plot.exists()) or (iso_plot and iso_plot.exists()) or raw_plot:
                     doc.add_paragraph(
-                        f"Grid density maps for {sample} ({BASELINE_JOB}); "
-                        "counts are normalized per scan area (particles/um^2) with fixed color range "
-                        "equivalent to 0-12 particles per scan. Raw grids (pre-filter) use a higher range."
+                        f"Grid density maps for {sample} ({BASELINE_JOB})\n"
+                        f"{meta_str}\n"
+                        "Counts are normalized per scan area (particles/um^2) with fixed color range "
+                        "equivalent to 0–15 particles per scan. Raw grids (pre-filter) use 0–60."
                     )
                     if count_plot:
                         add_picture_if_exists(doc, count_plot)
@@ -542,6 +638,40 @@ def main():
     )
     add_picture_if_exists(doc, OUT_BASE / "fig_particle_diameter_hist.png")
 
+    # Per-method diameter stats by wt%
+    diam_rows = []
+    if input_bases:
+        for base in input_bases:
+            diam_rows.extend(read_csv_dicts(base / "particle_diameter_stats_by_job_wt.csv"))
+    else:
+        diam_rows = read_csv_dicts(OUT_BASE / "particle_diameter_stats_by_job_wt.csv")
+    if diam_rows:
+        doc.add_paragraph("Particle diameter stats by method and wt% (kept particles).")
+        diam_table = []
+        for r in diam_rows:
+            diam_table.append([
+                r.get("wt_percent", ""),
+                r.get("job", ""),
+                r.get("count", ""),
+                r.get("mean_diameter_nm", ""),
+                r.get("std_diameter_nm", ""),
+            ])
+        add_table(
+            doc,
+            ["SiNP wt%", "Job", "Count", "Mean Diam (nm)", "Std Diam (nm)"],
+            diam_table,
+        )
+        # Embed histograms if present
+        for r in diam_rows:
+            wt = (r.get("wt_percent") or "").replace("%", "")
+            job = r.get("job", "")
+            for base in (input_bases or [OUT_BASE]):
+                path = base / "summary_outputs" / "diameter_by_job_wt" / f"hist_diameter_{job}_wt{wt}.png"
+                if path.exists():
+                    doc.add_paragraph(f"Diameter histogram: {job} (wt{wt}%)")
+                    add_picture_if_exists(doc, path, width_in=4.5)
+                    break
+
     doc.add_heading("4. Isolation Criteria", level=1)
     add_table(
         doc,
@@ -579,6 +709,47 @@ def main():
         ["Job", "Raw Mean/Scan", "Filtered Mean/Scan", "Mean Isolated/Scan", "Std Isolated/Scan", "% Scans w/ Iso"],
         job_rows,
     )
+    # Per-wt bar plots (if available)
+    for base in (input_bases or [OUT_BASE]):
+        plot_dir = base / "summary_outputs" / "compare_by_wt"
+        if not plot_dir.exists():
+            continue
+        for wt in ("10pct", "25pct"):
+            kept = plot_dir / f"fig_particle_count_mean_by_job_{wt}.png"
+            iso = plot_dir / f"fig_isolated_count_mean_by_job_{wt}.png"
+            if kept.exists() or iso.exists():
+                doc.add_paragraph(f"Per-job comparison plots ({wt.replace('pct','%')})")
+                if kept.exists():
+                    add_picture_if_exists(doc, kept, width_in=5.0)
+                if iso.exists():
+                    add_picture_if_exists(doc, iso, width_in=5.0)
+    # Per-wt comparison tables
+    if count_rows:
+        by_job_wt = {}
+        for r in count_rows:
+            wt = r.get("wt_percent") or "Unknown"
+            job = r.get("job", "")
+            if not job:
+                continue
+            by_job_wt.setdefault(wt, {}).setdefault(job, []).append(int(float(r.get("count_isolated", 0) or 0)))
+        for wt, job_map in sorted(by_job_wt.items()):
+            doc.add_heading(f"Method Comparison by wt% ({wt})", level=3)
+            rows = []
+            base_vals = job_map.get(BASELINE_JOB) or []
+            base_mean = stats.mean(base_vals) if base_vals else 0.0
+            for job in job_order:
+                vals = job_map.get(job) or []
+                if not vals:
+                    continue
+                mean_iso = stats.mean(vals)
+                std_iso = stats.pstdev(vals) if len(vals) > 1 else 0.0
+                pct_diff = ((mean_iso - base_mean) / base_mean * 100.0) if base_mean > 0 else None
+                rows.append([job, f"{mean_iso:.3f}", f"{std_iso:.3f}", f"{pct_diff:.1f}%" if pct_diff is not None else "n/a"])
+            add_table(
+                doc,
+                ["Job", "Mean Isolated/Scan", "Std Isolated/Scan", "% diff vs baseline"],
+                rows,
+            )
     doc.add_paragraph(
         "Per-job histograms (kept/raw/isolated) are embedded below and also exported under "
         "summary_outputs/job_hists/<job>/ in each output root."
@@ -627,61 +798,103 @@ def main():
         ],
         grain_table_rows,
     )
+    # Per-wt grain summary if available
+    grain_sample_rows = []
+    if input_bases:
+        for base in input_bases:
+            grain_sample_rows.extend(read_csv_dicts(base / "grain_summary_by_sample_job.csv"))
+    else:
+        grain_sample_rows = read_csv_dicts(OUT_BASE / "grain_summary_by_sample_job.csv")
+    if grain_sample_rows:
+        doc.add_paragraph("Grain summary by method and wt% (from sample-level grain stats).")
+        by_wt_job = {}
+        for r in grain_sample_rows:
+            sample = r.get("sample", "")
+            wt = wt_percent_from_sample(sample) or "Unknown"
+            job = r.get("job", "")
+            if not job:
+                continue
+            by_wt_job.setdefault((wt, job), []).append(r)
+        rows = []
+        for (wt, job), rows_list in sorted(by_wt_job.items()):
+            totals = [float(r.get("grain_total", 0) or 0) for r in rows_list]
+            kept = [float(r.get("grain_kept", 0) or 0) for r in rows_list]
+            iso = [float(r.get("grain_isolated", 0) or 0) for r in rows_list]
+            kept_mean = [float(r.get("kept_mean_diameter_nm", 0) or 0) for r in rows_list]
+            rows.append([
+                wt,
+                job,
+                f"{stats.mean(totals):.1f}" if totals else "n/a",
+                f"{stats.mean(kept):.1f}" if kept else "n/a",
+                f"{stats.mean(iso):.1f}" if iso else "n/a",
+                f"{stats.mean(kept_mean):.2f}" if kept_mean else "n/a",
+            ])
+        add_table(
+            doc,
+            ["SiNP wt%", "Job", "Grain Total (mean)", "Grain Kept (mean)", "Grain Isolated (mean)", "Kept Mean Diam (nm)"],
+            rows,
+        )
+    else:
+        doc.add_paragraph("Grain exports were not available for this run (grain_export disabled).")
 
     doc.add_heading("7. Statistical Feasibility Statement", level=1)
     if count_rows:
         rows_sinp = [r for r in count_rows if r.get("system") == SYSTEM_SINP]
-        by_job = {}
+        by_wt_job = {}
         for r in rows_sinp:
+            wt = r.get("wt_percent") or "Unknown"
             job = r.get("job", "")
             iso = int(float(r.get("count_isolated", 0) or 0))
-            by_job.setdefault(job, []).append(iso)
-        base_vals = by_job.get(BASELINE_JOB) or []
-        base_mean = stats.mean(base_vals) if base_vals else 0.0
+            by_wt_job.setdefault(wt, {}).setdefault(job, []).append(iso)
 
-        method_rows = []
-        scans_needed_list = []
-        mean_iso_list = []
-        for job in JOB_ORDER:
-            vals = by_job.get(job) or []
-            if not vals:
-                continue
-            mean_iso = stats.mean(vals)
-            std_iso = stats.pstdev(vals) if len(vals) > 1 else 0.0
-            scans_needed = math.ceil(TARGET_ISOLATED / mean_iso) if mean_iso > 0 else None
-            pct_diff = ((mean_iso - base_mean) / base_mean * 100.0) if base_mean > 0 else None
-            scans_needed_list.append(scans_needed) if scans_needed else None
-            mean_iso_list.append(mean_iso)
-            method_rows.append([
-                job,
-                f"{mean_iso:.3f}",
-                f"{std_iso:.3f}",
-                str(scans_needed) if scans_needed else "n/a",
-                f"{pct_diff:.1f}%" if pct_diff is not None else "n/a",
-            ])
-        add_table(
-            doc,
-            ["Job", "Mean isolated/scan", "Std isolated/scan", "Scans for ~30 isolated", "% diff vs baseline"],
-            method_rows,
-        )
-        if scans_needed_list:
-            mean_scans = stats.mean(scans_needed_list)
-            std_scans = stats.pstdev(scans_needed_list) if len(scans_needed_list) > 1 else 0.0
-        else:
-            mean_scans = 0.0
-            std_scans = 0.0
-        if mean_iso_list:
-            mean_iso_all = stats.mean(mean_iso_list)
-            std_iso_all = stats.pstdev(mean_iso_list) if len(mean_iso_list) > 1 else 0.0
-        else:
-            mean_iso_all = 0.0
-            std_iso_all = 0.0
+        for wt, job_map in sorted(by_wt_job.items()):
+            doc.add_heading(f"Feasibility by wt% ({wt})", level=3)
+            base_vals = job_map.get(BASELINE_JOB) or []
+            base_mean = stats.mean(base_vals) if base_vals else 0.0
+            method_rows = []
+            scans_needed_list = []
+            mean_iso_list = []
+            for job in JOB_ORDER:
+                vals = job_map.get(job) or []
+                if not vals:
+                    continue
+                mean_iso = stats.mean(vals)
+                std_iso = stats.pstdev(vals) if len(vals) > 1 else 0.0
+                scans_needed = math.ceil(TARGET_ISOLATED / mean_iso) if mean_iso > 0 else None
+                pct_diff = ((mean_iso - base_mean) / base_mean * 100.0) if base_mean > 0 else None
+                if scans_needed:
+                    scans_needed_list.append(scans_needed)
+                mean_iso_list.append(mean_iso)
+                method_rows.append([
+                    job,
+                    f"{mean_iso:.3f}",
+                    f"{std_iso:.3f}",
+                    str(scans_needed) if scans_needed else "n/a",
+                    f"{pct_diff:.1f}%" if pct_diff is not None else "n/a",
+                ])
+            add_table(
+                doc,
+                ["Job", "Mean isolated/scan", "Std isolated/scan", "Scans for ~30 isolated", "% diff vs baseline"],
+                method_rows,
+            )
+            if scans_needed_list:
+                mean_scans = stats.mean(scans_needed_list)
+                std_scans = stats.pstdev(scans_needed_list) if len(scans_needed_list) > 1 else 0.0
+            else:
+                mean_scans = 0.0
+                std_scans = 0.0
+            if mean_iso_list:
+                mean_iso_all = stats.mean(mean_iso_list)
+                std_iso_all = stats.pstdev(mean_iso_list) if len(mean_iso_list) > 1 else 0.0
+            else:
+                mean_iso_all = 0.0
+                std_iso_all = 0.0
+            doc.add_paragraph(
+                f"Across methods (this wt%): mean scans needed = {mean_scans:.2f} (std {std_scans:.2f}); "
+                f"mean isolated/scan = {mean_iso_all:.3f} (std {std_iso_all:.3f})."
+            )
         doc.add_paragraph(
-            "Across methods: mean scans needed = %.2f (std %.2f); mean isolated/scan = %.3f (std %.3f)."
-            % (mean_scans, std_scans, mean_iso_all, std_iso_all)
-        )
-        doc.add_paragraph(
-            "Percent difference is computed as (method - baseline) / baseline * 100 using the baseline job mean isolated/scan."
+            "Percent difference is computed as (method - baseline) / baseline * 100 using the baseline job mean isolated/scan (within each wt%)."
         )
     else:
         doc.add_paragraph("Feasibility statement could not be computed (no isolated count data).")
@@ -734,6 +947,17 @@ def main():
     else:
         doc.add_paragraph("run_timing.json not found (time data not available for this run).")
 
+    # Optional estimate note
+    for base in bases_for_timing:
+        estimate_path = base / "run_estimate.txt"
+        if estimate_path.exists():
+            doc.add_paragraph(f"Estimated run time note ({base.name}):")
+            try:
+                note_text = estimate_path.read_text(encoding="utf-8")
+            except UnicodeDecodeError:
+                note_text = estimate_path.read_text(encoding="cp1252", errors="replace")
+            doc.add_paragraph(note_text)
+
     doc.add_paragraph(
         "Run-time drivers: number of scans x number of methods, Gwyddion preprocessing steps, "
         "particle detection + grain exports, and debug artifact saves (aligned/leveled/filtered/mask)."
@@ -751,6 +975,39 @@ def main():
             doc.add_paragraph(f"... {len(debug_rows) - 20} more debug folders not shown.")
     else:
         doc.add_paragraph("No debug folders found under output roots.")
+
+    # Per-method timing (if available)
+    method_time_rows = []
+    for base in bases_for_timing:
+        timing_path = base / "run_timing.json"
+        if not timing_path.exists():
+            continue
+        try:
+            import json
+            info = json.loads(timing_path.read_text(encoding="utf-8"))
+            entries = info.get("entries") or []
+            by_job = {}
+            for e in entries:
+                job = e.get("job")
+                root = e.get("input_root", "")
+                wt = "10%" if re.search(r"tpo10sinp", root, re.I) else ("25%" if re.search(r"tpo25sinp", root, re.I) else "Unknown")
+                if not job:
+                    continue
+                key = (job, wt)
+                by_job.setdefault(key, []).append(float(e.get("seconds", 0.0)))
+            for (job, wt), vals in sorted(by_job.items()):
+                if not vals:
+                    continue
+                method_time_rows.append([base.name, wt, job, f"{sum(vals):.1f}", f"{stats.mean(vals):.1f}", len(vals)])
+        except Exception:
+            continue
+    if method_time_rows:
+        doc.add_paragraph("Per-method timing summary (sum and mean over sample roots).")
+        add_table(
+            doc,
+            ["Output Root", "SiNP wt%", "Job", "Total Seconds", "Mean Seconds", "Samples"],
+            method_time_rows,
+        )
 
     try:
         doc.save(str(REPORT_PATH))

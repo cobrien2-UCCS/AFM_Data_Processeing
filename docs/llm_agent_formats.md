@@ -155,6 +155,8 @@ Implement a new mode "<mode_name>" in scripts/run_pygwy_job.py:
 - Do not add new global state; keep behavior in config or mode branches.
 - Prefer Gwyddion/pygwy ops; use Python helpers only when necessary.
 - Preserve function signatures described in the spec.
+- When selecting an output root for topo particle work, use the "File Directory for Output"
+  path listed in `docs/File Locations for Data Grouped.txt` unless the user explicitly overrides it.
 
 ## Compare outputs across methods (script)
 Use `scripts/compare_methods.py` to compare multiple `summary.csv` outputs against a baseline.
