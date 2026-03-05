@@ -14,6 +14,7 @@ Change policy: see `docs/change_control.md`.
 - Add multi-channel mask fusion (consensus mask from topo + modulus + other channels).
 - Use the existing `review_pack` outputs to build a manual verification loop.
 - Enforce grid completeness policy for reporting (`keep_all|require_full_grid|intersect_grid|manual_review`).
+- Add grain trend plots across methods (diameter mean/std + box plots) to support advisor deliverables.
 
 ## 3) Units + scaling (critical integrity)
 - Resolve missing Z-units for SmartScan TIFFs.

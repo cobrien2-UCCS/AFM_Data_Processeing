@@ -147,6 +147,12 @@ Figures (if used):
 > **Figure Callout:** Per-grain histograms by job (all/kept/isolated).
 > Suggested files: `grain_plots/<job>/grain_diameter_nm_all.png`, `grain_plots/<job>/grain_diameter_nm_kept.png`, `grain_plots/<job>/grain_diameter_nm_isolated.png`.
 
+> **Figure Callout (recommended):** Cross-method grain diameter trends.
+> Suggested files: `summary_outputs/grain_compare/fig_grain_diameter_nm_kept_mean_by_job.png`,
+`summary_outputs/grain_compare/fig_grain_diameter_nm_kept_box_by_job.png`,
+`summary_outputs/grain_compare/fig_grain_diameter_nm_isolated_mean_by_job.png`,
+`summary_outputs/grain_compare/fig_grain_diameter_nm_isolated_box_by_job.png`.
+
 ## 7) Statistical Feasibility Statement
 
 Based on the current Stage 1 dataset, approximately **12 scans** are required to obtain ~**30 isolated particles**, using the observed mean isolated count per scan.

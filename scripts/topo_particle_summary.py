@@ -1349,6 +1349,86 @@ def main():
                         color="#54A24B",
                     )
 
+            # Cross-method grain trends (diameter) across jobs (and by wt% if available).
+            if "diameter_nm" in numeric_fields:
+                trend_dir = OUT_BASE / "summary_outputs" / "grain_compare"
+                trend_dir.mkdir(parents=True, exist_ok=True)
+
+                def _job_vals(rows, which):
+                    vals = []
+                    for r in rows:
+                        if which == "kept" and to_int(r.get("kept", 0)) != 1:
+                            continue
+                        if which == "isolated" and to_int(r.get("isolated", 0)) != 1:
+                            continue
+                        v = to_float_or_none(r.get("diameter_nm"))
+                        if v is None:
+                            continue
+                        vals.append(v)
+                    return vals
+
+                def _bar_with_error(values_by_job, out_path, title, ylabel):
+                    jobs = list(values_by_job.keys())
+                    labels = [wrap_label(j, 18, 2) for j in jobs]
+                    means = [stats.mean(values_by_job[j]) if values_by_job[j] else 0.0 for j in jobs]
+                    stds = [stats.pstdev(values_by_job[j]) if len(values_by_job[j]) > 1 else 0.0 for j in jobs]
+                    plt.figure(figsize=(10, 4))
+                    plt.bar(labels, means, yerr=stds, color="#4C78A8", capsize=4)
+                    plt.title(title)
+                    plt.xlabel("Job")
+                    plt.ylabel(ylabel)
+                    plt.xticks(rotation=30, ha="right")
+                    plt.tight_layout()
+                    plt.savefig(out_path, dpi=300)
+                    plt.close()
+
+                def _boxplot(values_by_job, out_path, title, ylabel):
+                    jobs = list(values_by_job.keys())
+                    labels = [wrap_label(j, 18, 2) for j in jobs]
+                    data = [values_by_job[j] for j in jobs]
+                    plt.figure(figsize=(10, 4))
+                    plt.boxplot(data, labels=labels, showfliers=True)
+                    plt.title(title)
+                    plt.xlabel("Job")
+                    plt.ylabel(ylabel)
+                    plt.xticks(rotation=30, ha="right")
+                    plt.tight_layout()
+                    plt.savefig(out_path, dpi=300)
+                    plt.close()
+
+                job_order = args.job_order or sorted(rows_by_job.keys())
+                kept_by_job = {j: _job_vals(rows_by_job.get(j, []), "kept") for j in job_order}
+                iso_by_job = {j: _job_vals(rows_by_job.get(j, []), "isolated") for j in job_order}
+                kept_by_job = {j: v for j, v in kept_by_job.items() if v}
+                iso_by_job = {j: v for j, v in iso_by_job.items() if v}
+
+                if kept_by_job:
+                    _bar_with_error(
+                        kept_by_job,
+                        trend_dir / "fig_grain_diameter_nm_kept_mean_by_job.png",
+                        "Mean Grain Diameter (kept)\nby Job",
+                        "Diameter (nm, mean ± std)",
+                    )
+                    _boxplot(
+                        kept_by_job,
+                        trend_dir / "fig_grain_diameter_nm_kept_box_by_job.png",
+                        "Grain Diameter Distribution (kept)\nby Job",
+                        "Diameter (nm)",
+                    )
+                if iso_by_job:
+                    _bar_with_error(
+                        iso_by_job,
+                        trend_dir / "fig_grain_diameter_nm_isolated_mean_by_job.png",
+                        "Mean Grain Diameter (isolated)\nby Job",
+                        "Diameter (nm, mean ± std)",
+                    )
+                    _boxplot(
+                        iso_by_job,
+                        trend_dir / "fig_grain_diameter_nm_isolated_box_by_job.png",
+                        "Grain Diameter Distribution (isolated)\nby Job",
+                        "Diameter (nm)",
+                    )
+
     feas = ""
     if iso_stats and iso_stats.get("mean_isolated_per_map"):
         mean_iso = iso_stats.get("mean_isolated_per_map")

@@ -40,6 +40,7 @@ Key outputs:
 - `grain_summary_by_job.csv`
 - `grain_summary_by_sample_job.csv`
 - `grid_issues_by_sample.csv` (grid completeness + duplicates)
+- Grain trend plots: `summary_outputs/grain_compare/*` (cross-method grain diameter comparisons)
 - Figures: `fig_particle_count_hist.png`, `fig_particle_diameter_hist.png`, `fig_isolated_count_hist.png`, etc.
 
 Grid policy controls (in `config.topo_particle_summary.yaml`):
@@ -50,6 +51,11 @@ Grid policy controls (in `config.topo_particle_summary.yaml`):
 Manual review mode:
 - Writes `grid_manual_review.csv` + `grid_manual_review_blacklist.txt`.
 - Exits early so the user can remove or blacklist samples/files and rerun.
+
+Grain export note:
+- Grain export is controlled by `modes.<particle_mode>.grain_export`.
+- For full grain statistics (not just review samples), set `use_review_sample: false`.
+- If `*_grains.csv` are missing, check Windows path-length limits; the runner uses long-path support for exports.
 
 ## 3.5) Check That Jobs Ran (Quick Verification)
 Use the output root from `docs/File Locations for Data Grouped.txt`.

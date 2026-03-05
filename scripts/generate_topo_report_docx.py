@@ -339,7 +339,7 @@ def main():
     else:
         doc.add_paragraph(f"Output root: {OUT_BASE}")
     doc.add_paragraph(f"Baseline job: {BASELINE_JOB}")
-    doc.add_paragraph("Particle coating: yes (coded when present in filenames).")
+    doc.add_paragraph("Particle coating: none (no coating metadata in filenames).")
     doc.add_paragraph("Map/grid area: 50 um x 50 um (21 x 21 grid, 5% overlap per scan)")
     if DATA_GROUPED.exists():
         doc.add_paragraph(f"Grouping source: {DATA_GROUPED}")
@@ -499,6 +499,7 @@ def main():
     fit_summary_rows, fit_curve_rows = _load_fit_rows(input_bases)
     if fit_summary_rows:
         doc.add_paragraph("Scan sufficiency and zero-rate summary (all jobs).")
+        doc.add_paragraph("Scraped vs non-scraped are aggregated for distribution fits in this report.")
         fit_headers = ["SiNP wt%", "Scraped?", "Job", "Model", "Zero-rate (obs)", "P0 (model)"]
         for n in RISK_SCAN_COUNTS:
             fit_headers.append(f"P(total >= {TARGET_ISOLATED}) @ {n} scans")
@@ -816,20 +817,31 @@ def main():
                 std_iso = stats.pstdev(vals) if len(vals) > 1 else 0.0
                 pct_diff = ((mean_iso - base_mean) / base_mean * 100.0) if base_mean > 0 else None
                 ratio = (mean_iso / wt_val) if wt_val and wt_val > 0 else None
+                inv_ratio = (wt_val / mean_iso) if mean_iso and mean_iso > 0 and wt_val else None
                 rows.append([
                     job,
                     f"{mean_iso:.3f}",
                     f"{std_iso:.3f}",
                     f"{pct_diff:.1f}%" if pct_diff is not None else "n/a",
                     f"{ratio:.4f}" if ratio is not None else "n/a",
+                    f"{inv_ratio:.4f}" if inv_ratio is not None else "n/a",
                 ])
             add_table(
                 doc,
-                ["Job", "Mean Isolated/Scan", "Std Isolated/Scan", "% diff vs baseline", "Mean Isolated/Scan per wt%"],
+                [
+                    "Job",
+                    "Mean Isolated/Scan",
+                    "Std Isolated/Scan",
+                    "% diff vs baseline",
+                    "Mean Isolated/Scan per wt%",
+                    "wt% per Isolated/Scan",
+                ],
                 rows,
             )
             doc.add_paragraph(
-                "Mean isolated/scan per wt% is computed as (mean isolated per scan) / (SiNP wt%)."
+                "Footnote: Normalized isolation yield = (mean isolated/scan) / (SiNP wt%). "
+                "Loading cost = (SiNP wt%) / (mean isolated/scan). "
+                "Units: isolated·scan^-1·wt%^-1 and wt%·scan·isolated^-1."
             )
     doc.add_paragraph(
         "Per-job histograms (kept/raw/isolated) are embedded below and also exported under "
@@ -886,6 +898,20 @@ def main():
 
     doc.add_heading("6. Grain Summary (Selected Fields)", level=1)
     doc.add_paragraph("Grain exports are enabled in the particle modes for this report.")
+    for base in (input_bases or [OUT_BASE]):
+        trend_dir = base / "summary_outputs" / "grain_compare"
+        if not trend_dir.exists():
+            continue
+        for name, label in [
+            ("fig_grain_diameter_nm_kept_mean_by_job.png", "Grain diameter trend (kept): mean ± std by job"),
+            ("fig_grain_diameter_nm_kept_box_by_job.png", "Grain diameter distribution (kept): box plot by job"),
+            ("fig_grain_diameter_nm_isolated_mean_by_job.png", "Grain diameter trend (isolated): mean ± std by job"),
+            ("fig_grain_diameter_nm_isolated_box_by_job.png", "Grain diameter distribution (isolated): box plot by job"),
+        ]:
+            path = trend_dir / name
+            if path.exists():
+                doc.add_paragraph(label)
+                add_picture_if_exists(doc, path, width_in=5.5)
     grain_rows = []
     if input_bases:
         for base in input_bases:

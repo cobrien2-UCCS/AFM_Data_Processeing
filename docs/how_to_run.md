@@ -31,6 +31,8 @@ py -3 scripts/topo_particle_summary.py --config "configs/TEST configs/Example co
 py -3 scripts/fit_particle_distributions.py --config "configs/TEST configs/Example configs/config.topo_particle_fits.yaml" --input-root "<out_root>"
 ```
 
+Note: grain/particle exports (`*_grains.csv`, `*_particles.csv`) are written by the Py2 runner under `<out_root>/<system>/<sample>/<job>/grains|particles/`. If they are missing, check for Windows path-length constraints.
+
 ## Legacy: manual steps
 If you want to run the steps yourself:
 1) Generate manifest (Py3)

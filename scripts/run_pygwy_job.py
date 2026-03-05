@@ -1026,7 +1026,7 @@ def _write_particle_table(out_dir, base_name, rows, max_len):
     base = _shorten_name(base_name, max_len)
     path = os.path.join(out_dir, "%s_particles.csv" % base)
     try:
-        with open(path, "w") as f:
+        with open(_long_path(path), "w") as f:
             writer = csv.writer(f)
             writer.writerow([
                 "source_file",
@@ -1054,7 +1054,7 @@ def _write_grain_table(out_dir, base_name, header, rows, max_len):
     base = _shorten_name(base_name, max_len)
     path = os.path.join(out_dir, "%s_grains.csv" % base)
     try:
-        with open(path, "w") as f:
+        with open(_long_path(path), "w") as f:
             writer = csv.writer(f)
             writer.writerow(header)
             for row in rows:

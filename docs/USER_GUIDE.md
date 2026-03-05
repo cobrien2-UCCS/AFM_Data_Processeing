@@ -126,6 +126,7 @@ Top-level sections (see `config.example.yaml`):
 - pygwy runner writes `summary.csv` (or `--output-csv`) and enforces unit policies.
 - Forward/Backward (and other) filename metadata: the pygwy runner attaches best-effort keys like `file.channel`, `file.direction`, `file.grid_id`, `file.date_code` which you can include as CSV columns via `csv_modes`.
 - Optional per-image exports: `modes.<mode>.python_data_filtering.export_raw_csv|export_filtered_csv` write `*_raw.csv`/`*_filtered.csv` under `<output_dir>/pyfilter/` unless `export_dir` is set.
+- Particle/grain export note (Py2): `*_particles.csv` / `*_grains.csv` are written under `<output_dir>/particles/` and `<output_dir>/grains/`. If they are missing, check for Windows path-length issues; the runner uses long-path support for these exports.
 
 ## 8) Notes for pygwy (Py2) processing
 - Requires 32-bit Python 2.7 and 32-bit Gwyddion/pygwy on Windows.
