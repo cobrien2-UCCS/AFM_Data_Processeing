@@ -3,15 +3,22 @@
 ## Chapter 6 Purpose (Do Not Drift)
 
 - Core question: *Are particles present in statistically sufficient quantity and isolation to justify Stage 2?*
-- This chapter is allowed limited interpretation, but keep it strictly about *measurement feasibility*.
+- This chapter is allowed limited interpretation, but keep it strictly about **measurement feasibility**.
 - Scope limit: do **not** report interphase thickness, radial gradients, or modeling parameterization.
+
+## Terminology Rule For Chapter 6
+
+- Do **not** let Chapter 6 become the place where project vocabulary is first defined.
+- Terms such as `job`, `profile`, `processing mode`, `candidate particle`, `isolated particle`, `grain`, and `baseline` should be defined in Chapter 5.
+- In Chapter 6, use those terms consistently and add only short reminder phrases when needed.
+- At the first use of specialized workflow language, add a brief pointer back to Chapter 5 definitions.
 
 ## Ordering Matters
 
 1. Start with baseline validation (pipeline credibility).
-2. Then particle presence + diameter distribution.
-3. Then isolation + required scans + decision statement.
-4. Then processing route sensitivity.
+2. Then particle presence and diameter distribution.
+3. Then isolation, required scans, and the decision statement.
+4. Then processing-route sensitivity.
 5. Then Stage 2 trigger / crossover synthesis.
 
 ## Must-Haves in Chapter 6
@@ -20,18 +27,25 @@
 - Explicitly state whether zero-count scans exist and show the zero-rate in a table or statement.
 - Required scans must be reported per wt% and, if multiple jobs are discussed, per method.
 - Stage 2 crossover section must define the crossover rule clearly: availability, risk, or cost crossover.
+- Whenever a mean is reported, include the standard deviation alongside it when available.
+- Captions, headings, and tables should identify which wt% the result belongs to.
+- Clearly distinguish between:
+  - retained candidate-particle counts
+  - isolated-particle counts
+  - Stage 2 confirmed-particle counts (if discussed, likely as future validation only)
 
 ## Stage 2 Trigger Language
 
-- Stage 1 provides candidate isolated particle yield `lambda`.
+- Stage 1 provides candidate isolated-particle yield `lambda`.
 - Stage 2 determines confirmation rate `p` or assigns `p_j` per candidate.
-- Required scans depend on `lambda * p`; if `p` is unknown, show a sensitivity band.
+- Required scans depend on `lambda * p`; if `p` is unknown, show a sensitivity band or crossover plot.
 
 ## Captions and Traceability
 
 - Every figure caption should include: polymer, wt% SiNP, wt% TPO, and state `no coating` if applicable.
 - If plots are generated from pipeline outputs, include a short source-path line for traceability.
 - If a figure is method-specific, state the job/profile directly in the caption.
+- If a figure combines multiple methods, say that explicitly in the caption and identify whether it is full-matrix or primary-route only.
 
 ## Figure Placement Plan
 
@@ -146,3 +160,61 @@
 - Full debugging artifact figures
 
 These belong in appendices, supplementary material, or selective in-text callouts.
+
+## Reader Clarity Checks
+
+- If a result sentence would confuse someone who has not lived inside the pipeline, simplify the sentence or move the definition back to Chapter 5.
+- Distinguish clearly between:
+  - candidate count
+  - isolated count
+  - confirmed particle count
+- Distinguish clearly between:
+  - primary route results
+  - full method-matrix comparisons
+  - provisional method conclusions pending rerun/fix propagation
+
+## New Points To Carry Into Drafting
+
+- In the particle-count subsection, explain what the histogram **frequency** axis means:
+  - it is the number of scans falling at each retained-particle count.
+- In the particle-count subsection, explain that the current heatmaps are **mean count maps** across grouped sample sets and therefore do not show per-position standard deviation unless an explicit companion plot is added.
+- In the isolation subsection, define `primary lambda` explicitly as the mean isolated-particle count per scan under the primary route.
+- In the required-scan subsection, define `observed zero-isolated rate` explicitly as the fraction of scans with zero isolated particles.
+- In the required-scan subsection, make explicit that `95%` refers to the modeled success probability of obtaining at least the target isolated-particle total.
+- In the grain section, clarify whether a figure is:
+  - a single-method summary
+  - or a full-method matrix summary
+- In the processing-sensitivity section, focus on the practical conclusion:
+  - method choice changes isolated yield
+  - which changes required scan count
+  - which changes the practical scan-efficiency conclusion
+
+## Inventory And Sufficiency Notes
+
+- State explicitly that some `25 wt%` grouped sample sets had incomplete scan inventories relative to the nominal `21 x 21` grid.
+- Also state explicitly that, despite unequal inventory between `10 wt%` and `25 wt%`, both datasets are well above the modeled minimum scan requirement for the current Stage 1 question.
+- Make clear that fewer scans in `10 wt%` do **not** imply insufficient statistical support if the modeled sufficiency threshold has already been exceeded.
+
+## Scraped Vs Non-Scraped Interpretation Notes
+
+- If the scraped grouped sample sets require more scans, interpret that as lower isolated-particle yield under Stage 1, not automatically lower or higher particle quality.
+- Use that point to justify why Stage 2 remains necessary: Stage 1 count sufficiency does not establish the quality or validity of the retained targets.
+
+## Crossover / Risk Figure Notes
+
+- Figure 6.9 horizontal dashed lines are fixed probability reference levels (for example `0.90`, `0.95`, `0.99`), not uncertainty bands.
+- Figure 6.10 must define the crossover quantity clearly. It is **not** the probability that a crossover occurs.
+- The availability crossover `p` means the minimum Stage 2 confirmation fraction required for the currently available scan inventory to remain sufficient.
+- Add explicit labels on the plots for:
+  - the `0.95` success line
+  - the available-scan line
+  - the intersection / crossover point
+- If Table 6.8 remains in the chapter, the surrounding text must explicitly connect the table values to the crossover figure.
+
+## Discussion Section Notes
+
+- Add a short discussion point on the **minimum scan inventory needed to justify use of the Poisson model**.
+- That discussion should separate:
+  - enough scans to fit or trust the count model
+  - enough scans to reach the isolated-particle target
+- This belongs in discussion/limits because it is about model justification, not just the observed result.

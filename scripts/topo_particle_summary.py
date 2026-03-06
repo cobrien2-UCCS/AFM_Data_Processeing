@@ -639,6 +639,9 @@ def main():
     wt_grid_isolated = {}
     wt_grid_raw_counts = {}
     wt_grid_n = {}
+    wt_grid_counts_sq = {}
+    wt_grid_isolated_sq = {}
+    wt_grid_raw_counts_sq = {}
     for row in count_rows:
         count_total = to_int(row.get("count_total"))
         raw_val = row.get("count_total_raw")
@@ -687,14 +690,23 @@ def main():
                 wt_grid_isolated.setdefault(wt_key, {})
                 wt_grid_raw_counts.setdefault(wt_key, {})
                 wt_grid_n.setdefault(wt_key, {})
+                wt_grid_counts_sq.setdefault(wt_key, {})
+                wt_grid_isolated_sq.setdefault(wt_key, {})
+                wt_grid_raw_counts_sq.setdefault(wt_key, {})
                 wt_grid_counts[wt_key].setdefault((row_idx, col_idx), 0.0)
                 wt_grid_isolated[wt_key].setdefault((row_idx, col_idx), 0.0)
                 wt_grid_raw_counts[wt_key].setdefault((row_idx, col_idx), 0.0)
                 wt_grid_n[wt_key].setdefault((row_idx, col_idx), 0)
+                wt_grid_counts_sq[wt_key].setdefault((row_idx, col_idx), 0.0)
+                wt_grid_isolated_sq[wt_key].setdefault((row_idx, col_idx), 0.0)
+                wt_grid_raw_counts_sq[wt_key].setdefault((row_idx, col_idx), 0.0)
                 wt_grid_counts[wt_key][(row_idx, col_idx)] += float(count_total)
                 wt_grid_isolated[wt_key][(row_idx, col_idx)] += float(count_iso)
                 if raw_present:
                     wt_grid_raw_counts[wt_key][(row_idx, col_idx)] += float(count_total_raw)
+                    wt_grid_raw_counts_sq[wt_key][(row_idx, col_idx)] += float(count_total_raw) * float(count_total_raw)
+                wt_grid_counts_sq[wt_key][(row_idx, col_idx)] += float(count_total) * float(count_total)
+                wt_grid_isolated_sq[wt_key][(row_idx, col_idx)] += float(count_iso) * float(count_iso)
                 wt_grid_n[wt_key][(row_idx, col_idx)] += 1
 
     if count_rows:
@@ -1061,6 +1073,42 @@ def main():
             plt.savefig(out_path, dpi=300)
             plt.close()
 
+        def _plot_grid_metric(grid_metric, title, out_path, cbar_label, vmax=None, annotate=False, annotate_fmt="{:.2f}"):
+            masked = np.ma.masked_invalid(grid_metric)
+            plt.figure(figsize=(6, 5))
+            ax = plt.gca()
+            ax.imshow(masked, origin="lower", aspect="auto", cmap=cmap, vmin=0.0, vmax=vmax)
+            ax.set_title(title)
+            ax.set_xlabel("Col index")
+            ax.set_ylabel("Row index")
+            cbar = plt.colorbar(ax.images[0], ax=ax)
+            cbar.set_label(cbar_label)
+            nrows, ncols = grid_metric.shape
+            ax.set_xticks(list(range(ncols)))
+            ax.set_yticks(list(range(nrows)))
+            ax.set_xticklabels([str(i + 1) for i in range(ncols)], fontsize=6)
+            ax.set_yticklabels([str(i + 1) for i in range(nrows)], fontsize=6)
+            if annotate:
+                for r in range(nrows):
+                    for c in range(ncols):
+                        val = grid_metric[r, c]
+                        if np.isnan(val):
+                            continue
+                        text = annotate_fmt.format(val)
+                        ax.text(
+                            c,
+                            r,
+                            text,
+                            ha="center",
+                            va="center",
+                            fontsize=6,
+                            color="white",
+                            bbox=dict(facecolor="black", alpha=0.6, edgecolor="none", boxstyle="round,pad=0.1"),
+                        )
+            plt.tight_layout()
+            plt.savefig(out_path, dpi=300)
+            plt.close()
+
         for (system, sample, job), cells in grid_counts.items():
             if not cells:
                 continue
@@ -1131,21 +1179,66 @@ def main():
                 max_c = max(c for _, c in cells.keys())
                 grid_raw = np.full((max_r, max_c), np.nan, dtype=float)
                 grid_raw_iso = np.full((max_r, max_c), np.nan, dtype=float)
+                grid_std = np.full((max_r, max_c), np.nan, dtype=float)
+                grid_std_iso = np.full((max_r, max_c), np.nan, dtype=float)
+                grid_cv = np.full((max_r, max_c), np.nan, dtype=float)
+                grid_cv_iso = np.full((max_r, max_c), np.nan, dtype=float)
+                grid_se = np.full((max_r, max_c), np.nan, dtype=float)
+                grid_se_iso = np.full((max_r, max_c), np.nan, dtype=float)
+                grid_n = np.full((max_r, max_c), np.nan, dtype=float)
                 grid_raw_unfiltered = None
+                grid_raw_unfiltered_std = None
+                grid_raw_unfiltered_cv = None
+                grid_raw_unfiltered_se = None
                 if wt_grid_raw_counts.get((wt, job)):
                     grid_raw_unfiltered = np.full((max_r, max_c), np.nan, dtype=float)
+                    grid_raw_unfiltered_std = np.full((max_r, max_c), np.nan, dtype=float)
+                    grid_raw_unfiltered_cv = np.full((max_r, max_c), np.nan, dtype=float)
+                    grid_raw_unfiltered_se = np.full((max_r, max_c), np.nan, dtype=float)
                 for (r, c), total in cells.items():
                     n = wt_grid_n.get((wt, job), {}).get((r, c), 1)
-                    grid_raw[r - 1, c - 1] = total / float(n) if n else np.nan
+                    mean_val = total / float(n) if n else np.nan
+                    sum_sq = wt_grid_counts_sq.get((wt, job), {}).get((r, c), 0.0)
+                    var = max(0.0, (sum_sq / float(n)) - (mean_val * mean_val)) if n else np.nan
+                    std_val = math.sqrt(var) if n else np.nan
+                    cv_val = (std_val / mean_val) if n and mean_val > 0 else np.nan
+                    se_val = (std_val / math.sqrt(float(n))) if n and n > 0 else np.nan
+                    grid_raw[r - 1, c - 1] = mean_val
+                    grid_std[r - 1, c - 1] = std_val
+                    grid_cv[r - 1, c - 1] = cv_val
+                    grid_se[r - 1, c - 1] = se_val
+                    grid_n[r - 1, c - 1] = n
                 for (r, c), total in wt_grid_isolated.get((wt, job), {}).items():
                     n = wt_grid_n.get((wt, job), {}).get((r, c), 1)
-                    grid_raw_iso[r - 1, c - 1] = total / float(n) if n else np.nan
+                    mean_val = total / float(n) if n else np.nan
+                    sum_sq = wt_grid_isolated_sq.get((wt, job), {}).get((r, c), 0.0)
+                    var = max(0.0, (sum_sq / float(n)) - (mean_val * mean_val)) if n else np.nan
+                    std_val = math.sqrt(var) if n else np.nan
+                    cv_val = (std_val / mean_val) if n and mean_val > 0 else np.nan
+                    se_val = (std_val / math.sqrt(float(n))) if n and n > 0 else np.nan
+                    grid_raw_iso[r - 1, c - 1] = mean_val
+                    grid_std_iso[r - 1, c - 1] = std_val
+                    grid_cv_iso[r - 1, c - 1] = cv_val
+                    grid_se_iso[r - 1, c - 1] = se_val
                 if grid_raw_unfiltered is not None:
                     for (r, c), total in wt_grid_raw_counts.get((wt, job), {}).items():
                         n = wt_grid_n.get((wt, job), {}).get((r, c), 1)
-                        grid_raw_unfiltered[r - 1, c - 1] = total / float(n) if n else np.nan
+                        mean_val = total / float(n) if n else np.nan
+                        sum_sq = wt_grid_raw_counts_sq.get((wt, job), {}).get((r, c), 0.0)
+                        var = max(0.0, (sum_sq / float(n)) - (mean_val * mean_val)) if n else np.nan
+                        std_val = math.sqrt(var) if n else np.nan
+                        cv_val = (std_val / mean_val) if n and mean_val > 0 else np.nan
+                        se_val = (std_val / math.sqrt(float(n))) if n and n > 0 else np.nan
+                        grid_raw_unfiltered[r - 1, c - 1] = mean_val
+                        grid_raw_unfiltered_std[r - 1, c - 1] = std_val
+                        grid_raw_unfiltered_cv[r - 1, c - 1] = cv_val
+                        grid_raw_unfiltered_se[r - 1, c - 1] = se_val
                 grid_density = grid_raw / area_um2 if area_um2 else grid_raw
                 grid_iso_density = grid_raw_iso / area_um2 if area_um2 else grid_raw_iso
+                grid_std_density = grid_std / area_um2 if area_um2 else grid_std
+                grid_iso_std_density = grid_std_iso / area_um2 if area_um2 else grid_std_iso
+                grid_se_density = grid_se / area_um2 if area_um2 else grid_se
+                grid_iso_se_density = grid_se_iso / area_um2 if area_um2 else grid_se_iso
                 zero_cells = set()
                 iso_zero_cells = set()
 
@@ -1165,6 +1258,65 @@ def main():
                     combined_dir / ("fig_isolated_count_grid_wt%d_%s.png" % (wt, job)),
                     vmax,
                 )
+                std_vmax = float(np.nanmax(grid_std_density)) if np.any(~np.isnan(grid_std_density)) else None
+                iso_std_vmax = float(np.nanmax(grid_iso_std_density)) if np.any(~np.isnan(grid_iso_std_density)) else None
+                cv_vmax = float(np.nanmax(grid_cv)) if np.any(~np.isnan(grid_cv)) else None
+                iso_cv_vmax = float(np.nanmax(grid_cv_iso)) if np.any(~np.isnan(grid_cv_iso)) else None
+                se_vmax = float(np.nanmax(grid_se_density)) if np.any(~np.isnan(grid_se_density)) else None
+                iso_se_vmax = float(np.nanmax(grid_iso_se_density)) if np.any(~np.isnan(grid_iso_se_density)) else None
+                n_vmax = float(np.nanmax(grid_n)) if np.any(~np.isnan(grid_n)) else None
+
+                _plot_grid_metric(
+                    grid_std_density,
+                    "Std Kept Particle Density Grid\n(wt%d%%, %s)" % (wt, job),
+                    combined_dir / ("fig_particle_count_grid_std_wt%d_%s.png" % (wt, job)),
+                    "Std particles per um^2",
+                    vmax=std_vmax,
+                )
+                _plot_grid_metric(
+                    grid_iso_std_density,
+                    "Std Isolated Particle Density Grid\n(wt%d%%, %s)" % (wt, job),
+                    combined_dir / ("fig_isolated_count_grid_std_wt%d_%s.png" % (wt, job)),
+                    "Std isolated particles per um^2",
+                    vmax=iso_std_vmax,
+                )
+                _plot_grid_metric(
+                    grid_cv,
+                    "CV Kept Particle Count Grid\n(wt%d%%, %s)" % (wt, job),
+                    combined_dir / ("fig_particle_count_grid_cv_wt%d_%s.png" % (wt, job)),
+                    "Coefficient of variation",
+                    vmax=cv_vmax,
+                )
+                _plot_grid_metric(
+                    grid_cv_iso,
+                    "CV Isolated Particle Count Grid\n(wt%d%%, %s)" % (wt, job),
+                    combined_dir / ("fig_isolated_count_grid_cv_wt%d_%s.png" % (wt, job)),
+                    "Coefficient of variation",
+                    vmax=iso_cv_vmax,
+                )
+                _plot_grid_metric(
+                    grid_n,
+                    "Contributing Sample Count Grid\n(wt%d%%, %s)" % (wt, job),
+                    combined_dir / ("fig_particle_count_grid_n_wt%d_%s.png" % (wt, job)),
+                    "Number of contributing samples",
+                    vmax=n_vmax,
+                    annotate=True,
+                    annotate_fmt="{:.0f}",
+                )
+                _plot_grid_metric(
+                    grid_se_density,
+                    "SE Kept Particle Density Grid\n(wt%d%%, %s)" % (wt, job),
+                    combined_dir / ("fig_particle_count_grid_se_wt%d_%s.png" % (wt, job)),
+                    "SE particles per um^2",
+                    vmax=se_vmax,
+                )
+                _plot_grid_metric(
+                    grid_iso_se_density,
+                    "SE Isolated Particle Density Grid\n(wt%d%%, %s)" % (wt, job),
+                    combined_dir / ("fig_isolated_count_grid_se_wt%d_%s.png" % (wt, job)),
+                    "SE isolated particles per um^2",
+                    vmax=iso_se_vmax,
+                )
                 if grid_raw_unfiltered is not None:
                     raw_vmax = fixed_raw_max_per_scan / area_um2 if area_um2 else None
                     grid_raw_unfiltered_density = (
@@ -1177,6 +1329,36 @@ def main():
                         "Mean Raw Particle Density Grid\n(wt%d%%, %s)" % (wt, job),
                         combined_dir / ("fig_particle_count_raw_grid_wt%d_%s.png" % (wt, job)),
                         raw_vmax,
+                    )
+                    raw_std_density = (
+                        grid_raw_unfiltered_std / area_um2 if area_um2 else grid_raw_unfiltered_std
+                    )
+                    raw_se_density = (
+                        grid_raw_unfiltered_se / area_um2 if area_um2 else grid_raw_unfiltered_se
+                    )
+                    raw_std_vmax = float(np.nanmax(raw_std_density)) if np.any(~np.isnan(raw_std_density)) else None
+                    raw_cv_vmax = float(np.nanmax(grid_raw_unfiltered_cv)) if np.any(~np.isnan(grid_raw_unfiltered_cv)) else None
+                    raw_se_vmax = float(np.nanmax(raw_se_density)) if np.any(~np.isnan(raw_se_density)) else None
+                    _plot_grid_metric(
+                        raw_std_density,
+                        "Std Raw Particle Density Grid\n(wt%d%%, %s)" % (wt, job),
+                        combined_dir / ("fig_particle_count_raw_grid_std_wt%d_%s.png" % (wt, job)),
+                        "Std particles per um^2",
+                        vmax=raw_std_vmax,
+                    )
+                    _plot_grid_metric(
+                        grid_raw_unfiltered_cv,
+                        "CV Raw Particle Count Grid\n(wt%d%%, %s)" % (wt, job),
+                        combined_dir / ("fig_particle_count_raw_grid_cv_wt%d_%s.png" % (wt, job)),
+                        "Coefficient of variation",
+                        vmax=raw_cv_vmax,
+                    )
+                    _plot_grid_metric(
+                        raw_se_density,
+                        "SE Raw Particle Density Grid\n(wt%d%%, %s)" % (wt, job),
+                        combined_dir / ("fig_particle_count_raw_grid_se_wt%d_%s.png" % (wt, job)),
+                        "SE particles per um^2",
+                        vmax=raw_se_vmax,
                     )
 
     per_sample_rows = []

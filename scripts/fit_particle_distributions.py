@@ -310,8 +310,12 @@ def plot_risk_curve(curve, levels, out_path, title):
     ys = [row["success_prob"] for row in curve]
     plt.figure(figsize=(8, 4.5))
     plt.plot(xs, ys, color="#54A24B", linewidth=2)
+    x_max = max(xs) if xs else 1
     for level in levels:
-        plt.axhline(level, color="#999999", linestyle="--", linewidth=1)
+        color = "#666666" if abs(level - 0.95) < 1e-9 else "#999999"
+        linewidth = 1.3 if abs(level - 0.95) < 1e-9 else 1.0
+        plt.axhline(level, color=color, linestyle="--", linewidth=linewidth)
+        plt.text(x_max, level, " %.0f%%" % (100.0 * level), va="bottom", ha="right", fontsize=8, color=color)
     plt.title(title)
     plt.xlabel("Number of scans")
     plt.ylabel("P(total isolated >= target)")
@@ -331,8 +335,12 @@ def plot_risk_band(curve, band, levels, out_path, title, color="#54A24B"):
         lower = [b["p_low"] for b in band]
         upper = [b["p_high"] for b in band]
         plt.fill_between(xs, lower, upper, color=color, alpha=0.2)
+    x_max = max(xs) if xs else 1
     for level in levels:
-        plt.axhline(level, color="#999999", linestyle="--", linewidth=1)
+        line_color = "#666666" if abs(level - 0.95) < 1e-9 else "#999999"
+        linewidth = 1.3 if abs(level - 0.95) < 1e-9 else 1.0
+        plt.axhline(level, color=line_color, linestyle="--", linewidth=linewidth)
+        plt.text(x_max, level, " %.0f%%" % (100.0 * level), va="bottom", ha="right", fontsize=8, color=line_color)
     plt.title(title)
     plt.xlabel("Number of scans")
     plt.ylabel("P(total isolated >= target)")
@@ -685,11 +693,17 @@ def main():
                 grouped.setdefault(group_key, []).append((label, job, curve))
             for group_key, items in grouped.items():
                 plt.figure(figsize=(9, 5))
+                available_scans = None
                 for label, job, curve in items:
                     xs = [row["n_scans"] for row in curve]
                     ys = [row["success_prob"] for row in curve]
                     plt.plot(xs, ys, linewidth=1.8, label=job)
                     row_out = summary_lookup.get((label, model), {})
+                    if available_scans is None:
+                        try:
+                            available_scans = int(row_out.get("n_scans")) if row_out.get("n_scans") not in ("", None) else None
+                        except Exception:
+                            available_scans = None
                     n_req_095 = row_out.get("n_required_095")
                     try:
                         n_req_095 = int(n_req_095) if n_req_095 not in ("", None) else None
@@ -716,6 +730,20 @@ def main():
                     color = "#666666" if abs(level - 0.95) < 1e-9 else "#999999"
                     linewidth = 1.3 if abs(level - 0.95) < 1e-9 else 1.0
                     plt.axhline(level, color=color, linestyle="--", linewidth=linewidth)
+                    x_max = max(xs) if xs else 1
+                    plt.text(x_max, level, " %.0f%%" % (100.0 * level), va="bottom", ha="right", fontsize=8, color=color)
+                if available_scans:
+                    plt.axvline(available_scans, color="black", linestyle="--", linewidth=1.1)
+                    plt.text(
+                        available_scans,
+                        0.06,
+                        "Available scans = %d" % available_scans,
+                        rotation=90,
+                        va="bottom",
+                        ha="right",
+                        fontsize=8,
+                        color="black",
+                    )
                 group_label = ", ".join("%s=%s" % (f, v) for f, v in zip(aggregate_by, group_key) if f)
                 title = "P(total >= %d) with uncertainty\n(%s | %s)" % (target_total, group_label, model)
                 plt.title(title)

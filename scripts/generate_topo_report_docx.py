@@ -500,6 +500,11 @@ def main():
     if fit_summary_rows:
         doc.add_paragraph("Scan sufficiency and zero-rate summary (all jobs).")
         doc.add_paragraph("Scraped vs non-scraped are aggregated for distribution fits in this report.")
+        doc.add_paragraph(
+            "In this section, the modeled quantity is the isolated-particle count per scan. "
+            "A probability such as P(total >= 30) @ 40 scans means the fitted model predicts the probability "
+            "of reaching at least 30 isolated particles in total after 40 scans, not merely the probability of seeing one particle."
+        )
         fit_headers = ["SiNP wt%", "Scraped?", "Job", "Model", "Zero-rate (obs)", "P0 (model)"]
         for n in RISK_SCAN_COUNTS:
             fit_headers.append(f"P(total >= {TARGET_ISOLATED}) @ {n} scans")
@@ -539,12 +544,21 @@ def main():
                 "The probability of at least one non-zero scan across n scans is approximately "
                 "1 - (zero_rate_obs)^n (independence assumption)."
             )
+            doc.add_paragraph(
+                "For rows derived from isolated counts, `max_per_scan` in the fit summary refers to the maximum isolated-particle count observed in a single scan. "
+                "This is different from the retained candidate-particle maximum reported elsewhere in the report."
+            )
         # Aggregate uncertainty plots (Poisson)
         for base in (input_bases or [OUT_BASE]):
             fit_dir = base / "summary_outputs" / "fits"
             for path in sorted(fit_dir.glob("risk_aggregate_*_poisson.png")):
                 doc.add_paragraph(f"Aggregate Poisson uncertainty: {path.name}")
                 add_picture_if_exists(doc, path, width_in=5.5)
+                doc.add_paragraph(
+                    "Reading guide: each curve shows the modeled probability of reaching the target isolated-particle total as the number of scans increases. "
+                    "Horizontal dashed lines mark probability thresholds (for example 90%, 95%, and 99%). "
+                    "Vertical requirement markers indicate the scan count needed to cross the 95% threshold for each method."
+                )
 
     count_rows = []
     if input_bases:
@@ -593,6 +607,10 @@ def main():
                 ["% scans with >= 1 isolated particle", f"{pct_iso:.3f}"],
             ],
         )
+        doc.add_paragraph(
+            "Here, `Max particles per scan` refers to the retained candidate-particle count after masking, diameter filtering, and edge exclusion, but before the isolation subset is taken. "
+            "`Mean isolated particles per scan` and its standard deviation describe the isolated subset directly."
+        )
 
         doc.add_paragraph("Per-scan particle counts (baseline job), grouped by SiNP wt% and scraped status.")
         sinp_group_order = [g["label"] for g in groups if g.get("system") == SYSTEM_SINP] if groups else []
@@ -618,6 +636,10 @@ def main():
         doc.add_paragraph(
             "Counts are reported as: total kept particles (after diameter + edge filters) and isolated particles "
             "(subset meeting the isolation distance). Raw (pre-filter) counts are plotted separately when available."
+        )
+        doc.add_paragraph(
+            "In the count histograms, frequency means the number of scans falling at each retained-particle count. "
+            "In the grid heatmaps, the displayed values are mean counts per scan position across the grouped sample sets, so the maps summarize spatial pattern but do not directly show the between-sample standard deviation at each position."
         )
 
         rows_by_wt = {"10%": [], "25%": [], "Unknown": []}
@@ -968,6 +990,34 @@ def main():
             doc.add_paragraph(f"Per-job means ({base.name}):")
         add_picture_if_exists(doc, p1)
         add_picture_if_exists(doc, p2)
+
+    doc.add_heading("5A. Heatmap Uncertainty Companions", level=1)
+    doc.add_paragraph(
+        "The mean heatmaps in this report are now paired with empirical uncertainty companions. "
+        "Standard-deviation maps show between-sample spread at each scan position, standard-error maps "
+        "show uncertainty in the estimated mean at each position, coefficient-of-variation maps normalize "
+        "variability by the local mean, and n-maps show how many grouped sample sets contributed to each position."
+    )
+    for base in (input_bases or [OUT_BASE]):
+        combined_dir = base / "summary_outputs" / "combined"
+        if not combined_dir.exists():
+            continue
+        for wt in ("10", "25"):
+            doc.add_paragraph(f"Heatmap uncertainty companions ({wt} wt%)")
+            for job in [BASELINE_JOB]:
+                for stem, label in [
+                    ("fig_particle_count_grid_std_wt{wt}_{job}.png", "Kept-count std map"),
+                    ("fig_particle_count_grid_se_wt{wt}_{job}.png", "Kept-count SE map"),
+                    ("fig_particle_count_grid_cv_wt{wt}_{job}.png", "Kept-count CV map"),
+                    ("fig_particle_count_grid_n_wt{wt}_{job}.png", "Contributing-sample-count map"),
+                    ("fig_isolated_count_grid_std_wt{wt}_{job}.png", "Isolated-count std map"),
+                    ("fig_isolated_count_grid_se_wt{wt}_{job}.png", "Isolated-count SE map"),
+                    ("fig_isolated_count_grid_cv_wt{wt}_{job}.png", "Isolated-count CV map"),
+                ]:
+                    path = combined_dir / stem.format(wt=wt, job=job)
+                    if path.exists():
+                        doc.add_paragraph(f"{label}: {job} ({wt} wt%)")
+                        add_picture_if_exists(doc, path, width_in=5.0)
 
     doc.add_heading("6. Grain Summary (Selected Fields)", level=1)
     doc.add_paragraph("Grain exports are enabled in the particle modes for this report.")
