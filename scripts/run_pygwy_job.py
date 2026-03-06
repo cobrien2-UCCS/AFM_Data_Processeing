@@ -2582,6 +2582,9 @@ def _process_with_pygwy(path, processing_mode, mode_def, channel_defaults, manif
             mask_data = mask_field.get_data()
             for i in range(len(mask_data)):
                 mask_data[i] = 1.0 if mask_data[i] > thresh else 0.0
+            # Persist the Python-side thresholded mask back into the DataField
+            # before calling Gwyddion grain operations.
+            mask_field.set_data(mask_data)
             grains = mask_field.number_grains()
             sizes = mask_field.get_grain_sizes(grains)
 

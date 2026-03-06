@@ -598,6 +598,8 @@ def main():
             "count_total_raw": count_total_raw if raw_present else "",
             "count_total_filtered": count_total_filtered if count_total_filtered else "",
             "count_isolated": count_iso,
+            "threshold": row.get("threshold", ""),
+            "threshold_source": row.get("threshold_source", ""),
             "diam_min_nm": row.get("diam_min_nm", ""),
             "diam_max_nm": row.get("diam_max_nm", ""),
             "iso_min_dist_nm": row.get("iso_min_dist_nm", ""),

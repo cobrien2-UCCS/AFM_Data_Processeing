@@ -513,6 +513,7 @@ def main():
             groups.setdefault(key, {"meta": key_dict, "values": []})["values"].append(val)
 
         summary_rows = []
+        summary_lookup = {}
         curve_rows = []
         model_curves = {}
         model_bands = {}
@@ -614,6 +615,7 @@ def main():
                 for level, req in required.items():
                     row_out["n_required_%s" % str(level).replace(".", "")] = req if req is not None else ""
                 summary_rows.append(row_out)
+                summary_lookup[(label, model)] = row_out
 
                 for row_curve in curve:
                     curve_rows.append({
@@ -687,13 +689,33 @@ def main():
                     xs = [row["n_scans"] for row in curve]
                     ys = [row["success_prob"] for row in curve]
                     plt.plot(xs, ys, linewidth=1.8, label=job)
+                    row_out = summary_lookup.get((label, model), {})
+                    n_req_095 = row_out.get("n_required_095")
+                    try:
+                        n_req_095 = int(n_req_095) if n_req_095 not in ("", None) else None
+                    except Exception:
+                        n_req_095 = None
+                    if n_req_095:
+                        plt.axvline(n_req_095, color="#BBBBBB", linestyle=":", linewidth=0.8, alpha=0.7)
+                        plt.text(
+                            n_req_095,
+                            0.965,
+                            "%s: %d" % (job, n_req_095),
+                            rotation=90,
+                            va="top",
+                            ha="right",
+                            fontsize=7,
+                            alpha=0.9,
+                        )
                     band = model_bands.get((label, model))
                     if band:
                         lower = [b["p_low"] for b in band]
                         upper = [b["p_high"] for b in band]
                         plt.fill_between(xs, lower, upper, alpha=0.12)
                 for level in reliability_levels:
-                    plt.axhline(level, color="#999999", linestyle="--", linewidth=1)
+                    color = "#666666" if abs(level - 0.95) < 1e-9 else "#999999"
+                    linewidth = 1.3 if abs(level - 0.95) < 1e-9 else 1.0
+                    plt.axhline(level, color=color, linestyle="--", linewidth=linewidth)
                 group_label = ", ".join("%s=%s" % (f, v) for f, v in zip(aggregate_by, group_key) if f)
                 title = "P(total >= %d) with uncertainty\n(%s | %s)" % (target_total, group_label, model)
                 plt.title(title)

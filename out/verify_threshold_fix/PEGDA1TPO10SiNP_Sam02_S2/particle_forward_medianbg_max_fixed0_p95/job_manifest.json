@@ -1,0 +1,292 @@
+{
+  "manifest_version": "1.0",
+  "processing_mode": "particle_count_align_medianbg_max_fixed0_p95",
+  "csv_mode": "particle_metrics_full",
+  "input_root": "C:\\AFM_STAGE_VERIFY_3\\collect_20260305_232057_collect_forward\\copied",
+  "pattern": "**/*Z Height*Forward*.tif;**/*Z Height*Forward*.tiff",
+  "files": [
+    "C:\\AFM_STAGE_VERIFY_3\\collect_20260305_232057_collect_forward\\copied\\forward\\PEGDA01TPO10SiNPSam02_S2_P__GrID001_LOC_RC001001-5.00x5.00-Z Height_Forward-251001-CRO_ba51b389.tiff",
+    "C:\\AFM_STAGE_VERIFY_3\\collect_20260305_232057_collect_forward\\copied\\forward\\PEGDA01TPO10SiNPSam02_S2_P__GrID002_LOC_RC001002-5.00x5.00-Z Height_Forward-251001-CRO_193472e3.tiff",
+    "C:\\AFM_STAGE_VERIFY_3\\collect_20260305_232057_collect_forward\\copied\\forward\\PEGDA01TPO10SiNPSam02_S2_P__GrID003_LOC_RC001005-5.00x5.00-Z Height_Forward-251001-CRO_2665debb.tiff",
+    "C:\\AFM_STAGE_VERIFY_3\\collect_20260305_232057_collect_forward\\copied\\forward\\PEGDA01TPO10SiNPSam02_S2_P__GrID004_LOC_RC001006-5.00x5.00-Z Height_Forward-251001-CRO_2ef8a184.tiff",
+    "C:\\AFM_STAGE_VERIFY_3\\collect_20260305_232057_collect_forward\\copied\\forward\\PEGDA01TPO10SiNPSam02_S2_P__GrID005_LOC_RC001010-5.00x5.00-Z Height_Forward-251001-CRO_4e7c49d0.tiff",
+    "C:\\AFM_STAGE_VERIFY_3\\collect_20260305_232057_collect_forward\\copied\\forward\\PEGDA01TPO10SiNPSam02_S2_P__GrID006_LOC_RC001011-5.00x5.00-Z Height_Forward-251001-CRO_aa46e01d.tiff",
+    "C:\\AFM_STAGE_VERIFY_3\\collect_20260305_232057_collect_forward\\copied\\forward\\PEGDA01TPO10SiNPSam02_S2_P__GrID007_LOC_RC001012-5.00x5.00-Z Height_Forward-251001-CRO_d81f5c11.tiff",
+    "C:\\AFM_STAGE_VERIFY_3\\collect_20260305_232057_collect_forward\\copied\\forward\\PEGDA01TPO10SiNPSam02_S2_P__GrID008_LOC_RC001020-5.00x5.00-Z Height_Forward-251001-CRO_b40ceabc.tiff",
+    "C:\\AFM_STAGE_VERIFY_3\\collect_20260305_232057_collect_forward\\copied\\forward\\PEGDA01TPO10SiNPSam02_S2_P__GrID009_LOC_RC001021-5.00x5.00-Z Height_Forward-251001-CRO_c294bcfb.tiff",
+    "C:\\AFM_STAGE_VERIFY_3\\collect_20260305_232057_collect_forward\\copied\\forward\\PEGDA01TPO10SiNPSam02_S2_P__GrID010_LOC_RC002001-5.00x5.00-Z Height_Forward-251001-CRO_6df84bcd.tiff",
+    "C:\\AFM_STAGE_VERIFY_3\\collect_20260305_232057_collect_forward\\copied\\forward\\PEGDA01TPO10SiNPSam02_S2_P__GrID011_LOC_RC002002-5.00x5.00-Z Height_Forward-251001-CRO_eaf2b9cc.tiff",
+    "C:\\AFM_STAGE_VERIFY_3\\collect_20260305_232057_collect_forward\\copied\\forward\\PEGDA01TPO10SiNPSam02_S2_P__GrID012_LOC_RC002010-5.00x5.00-Z Height_Forward-251001-CRO_cad624d2.tiff",
+    "C:\\AFM_STAGE_VERIFY_3\\collect_20260305_232057_collect_forward\\copied\\forward\\PEGDA01TPO10SiNPSam02_S2_P__GrID013_LOC_RC002011-5.00x5.00-Z Height_Forward-251001-CRO_5bc78f2b.tiff",
+    "C:\\AFM_STAGE_VERIFY_3\\collect_20260305_232057_collect_forward\\copied\\forward\\PEGDA01TPO10SiNPSam02_S2_P__GrID014_LOC_RC002012-5.00x5.00-Z Height_Forward-251001-CRO_bd43a6f3.tiff",
+    "C:\\AFM_STAGE_VERIFY_3\\collect_20260305_232057_collect_forward\\copied\\forward\\PEGDA01TPO10SiNPSam02_S2_P__GrID015_LOC_RC002020-5.00x5.00-Z Height_Forward-251001-CRO_a30dd2dc.tiff",
+    "C:\\AFM_STAGE_VERIFY_3\\collect_20260305_232057_collect_forward\\copied\\forward\\PEGDA01TPO10SiNPSam02_S2_P__GrID016_LOC_RC002021-5.00x5.00-Z Height_Forward-251001-CRO_23f31cb7.tiff",
+    "C:\\AFM_STAGE_VERIFY_3\\collect_20260305_232057_collect_forward\\copied\\forward\\PEGDA01TPO10SiNPSam02_S2_P__GrID017_LOC_RC004008-5.00x5.00-Z Height_Forward-251001-CRO_71e2e715.tiff",
+    "C:\\AFM_STAGE_VERIFY_3\\collect_20260305_232057_collect_forward\\copied\\forward\\PEGDA01TPO10SiNPSam02_S2_P__GrID018_LOC_RC004014-5.00x5.00-Z Height_Forward-251001-CRO_65fad1e3.tiff",
+    "C:\\AFM_STAGE_VERIFY_3\\collect_20260305_232057_collect_forward\\copied\\forward\\PEGDA01TPO10SiNPSam02_S2_P__GrID019_LOC_RC005001-5.00x5.00-Z Height_Forward-251001-CRO_72520118.tiff",
+    "C:\\AFM_STAGE_VERIFY_3\\collect_20260305_232057_collect_forward\\copied\\forward\\PEGDA01TPO10SiNPSam02_S2_P__GrID020_LOC_RC005005-5.00x5.00-Z Height_Forward-251001-CRO_620115aa.tiff",
+    "C:\\AFM_STAGE_VERIFY_3\\collect_20260305_232057_collect_forward\\copied\\forward\\PEGDA01TPO10SiNPSam02_S2_P__GrID021_LOC_RC005006-5.00x5.00-Z Height_Forward-251001-CRO_f3df12e2.tiff",
+    "C:\\AFM_STAGE_VERIFY_3\\collect_20260305_232057_collect_forward\\copied\\forward\\PEGDA01TPO10SiNPSam02_S2_P__GrID022_LOC_RC005016-5.00x5.00-Z Height_Forward-251001-CRO_cfeea2a4.tiff",
+    "C:\\AFM_STAGE_VERIFY_3\\collect_20260305_232057_collect_forward\\copied\\forward\\PEGDA01TPO10SiNPSam02_S2_P__GrID023_LOC_RC005017-5.00x5.00-Z Height_Forward-251001-CRO_209d41ca.tiff",
+    "C:\\AFM_STAGE_VERIFY_3\\collect_20260305_232057_collect_forward\\copied\\forward\\PEGDA01TPO10SiNPSam02_S2_P__GrID024_LOC_RC005021-5.00x5.00-Z Height_Forward-251001-CRO_e3230728.tiff",
+    "C:\\AFM_STAGE_VERIFY_3\\collect_20260305_232057_collect_forward\\copied\\forward\\PEGDA01TPO10SiNPSam02_S2_P__GrID025_LOC_RC006001-5.00x5.00-Z Height_Forward-251001-CRO_c67ebcff.tiff",
+    "C:\\AFM_STAGE_VERIFY_3\\collect_20260305_232057_collect_forward\\copied\\forward\\PEGDA01TPO10SiNPSam02_S2_P__GrID026_LOC_RC006005-5.00x5.00-Z Height_Forward-251001-CRO_c8eae2a9.tiff",
+    "C:\\AFM_STAGE_VERIFY_3\\collect_20260305_232057_collect_forward\\copied\\forward\\PEGDA01TPO10SiNPSam02_S2_P__GrID027_LOC_RC006006-5.00x5.00-Z Height_Forward-251001-CRO_e6344fc4.tiff",
+    "C:\\AFM_STAGE_VERIFY_3\\collect_20260305_232057_collect_forward\\copied\\forward\\PEGDA01TPO10SiNPSam02_S2_P__GrID028_LOC_RC006010-5.00x5.00-Z Height_Forward-251001-CRO_ae75ceb0.tiff",
+    "C:\\AFM_STAGE_VERIFY_3\\collect_20260305_232057_collect_forward\\copied\\forward\\PEGDA01TPO10SiNPSam02_S2_P__GrID029_LOC_RC006011-5.00x5.00-Z Height_Forward-251001-CRO_e850798c.tiff",
+    "C:\\AFM_STAGE_VERIFY_3\\collect_20260305_232057_collect_forward\\copied\\forward\\PEGDA01TPO10SiNPSam02_S2_P__GrID030_LOC_RC006012-5.00x5.00-Z Height_Forward-251001-CRO_1c64da64.tiff",
+    "C:\\AFM_STAGE_VERIFY_3\\collect_20260305_232057_collect_forward\\copied\\forward\\PEGDA01TPO10SiNPSam02_S2_P__GrID031_LOC_RC006016-5.00x5.00-Z Height_Forward-251001-CRO_a550127e.tiff",
+    "C:\\AFM_STAGE_VERIFY_3\\collect_20260305_232057_collect_forward\\copied\\forward\\PEGDA01TPO10SiNPSam02_S2_P__GrID032_LOC_RC006017-5.00x5.00-Z Height_Forward-251001-CRO_d91dc636.tiff",
+    "C:\\AFM_STAGE_VERIFY_3\\collect_20260305_232057_collect_forward\\copied\\forward\\PEGDA01TPO10SiNPSam02_S2_P__GrID033_LOC_RC006021-5.00x5.00-Z Height_Forward-251001-CRO_af7ca311.tiff",
+    "C:\\AFM_STAGE_VERIFY_3\\collect_20260305_232057_collect_forward\\copied\\forward\\PEGDA01TPO10SiNPSam02_S2_P__GrID034_LOC_RC008004-5.00x5.00-Z Height_Forward-251001-CRO_50a923ea.tiff",
+    "C:\\AFM_STAGE_VERIFY_3\\collect_20260305_232057_collect_forward\\copied\\forward\\PEGDA01TPO10SiNPSam02_S2_P__GrID035_LOC_RC008008-5.00x5.00-Z Height_Forward-251001-CRO_73f6652e.tiff",
+    "C:\\AFM_STAGE_VERIFY_3\\collect_20260305_232057_collect_forward\\copied\\forward\\PEGDA01TPO10SiNPSam02_S2_P__GrID036_LOC_RC008014-5.00x5.00-Z Height_Forward-251001-CRO_44eec63b.tiff",
+    "C:\\AFM_STAGE_VERIFY_3\\collect_20260305_232057_collect_forward\\copied\\forward\\PEGDA01TPO10SiNPSam02_S2_P__GrID037_LOC_RC010001-5.00x5.00-Z Height_Forward-251001-CRO_0c72ea68.tiff",
+    "C:\\AFM_STAGE_VERIFY_3\\collect_20260305_232057_collect_forward\\copied\\forward\\PEGDA01TPO10SiNPSam02_S2_P__GrID038_LOC_RC010002-5.00x5.00-Z Height_Forward-251001-CRO_48cf5878.tiff",
+    "C:\\AFM_STAGE_VERIFY_3\\collect_20260305_232057_collect_forward\\copied\\forward\\PEGDA01TPO10SiNPSam02_S2_P__GrID039_LOC_RC010006-5.00x5.00-Z Height_Forward-251001-CRO_24cecd9a.tiff",
+    "C:\\AFM_STAGE_VERIFY_3\\collect_20260305_232057_collect_forward\\copied\\forward\\PEGDA01TPO10SiNPSam02_S2_P__GrID040_LOC_RC010010-5.00x5.00-Z Height_Forward-251001-CRO_11cb3cca.tiff",
+    "C:\\AFM_STAGE_VERIFY_3\\collect_20260305_232057_collect_forward\\copied\\forward\\PEGDA01TPO10SiNPSam02_S2_P__GrID041_LOC_RC010011-5.00x5.00-Z Height_Forward-251001-CRO_35f15beb.tiff",
+    "C:\\AFM_STAGE_VERIFY_3\\collect_20260305_232057_collect_forward\\copied\\forward\\PEGDA01TPO10SiNPSam02_S2_P__GrID042_LOC_RC010012-5.00x5.00-Z Height_Forward-251001-CRO_06675601.tiff",
+    "C:\\AFM_STAGE_VERIFY_3\\collect_20260305_232057_collect_forward\\copied\\forward\\PEGDA01TPO10SiNPSam02_S2_P__GrID043_LOC_RC010016-5.00x5.00-Z Height_Forward-251001-CRO_d4738654.tiff",
+    "C:\\AFM_STAGE_VERIFY_3\\collect_20260305_232057_collect_forward\\copied\\forward\\PEGDA01TPO10SiNPSam02_S2_P__GrID044_LOC_RC010020-5.00x5.00-Z Height_Forward-251001-CRO_3b8a8d51.tiff",
+    "C:\\AFM_STAGE_VERIFY_3\\collect_20260305_232057_collect_forward\\copied\\forward\\PEGDA01TPO10SiNPSam02_S2_P__GrID045_LOC_RC010021-5.00x5.00-Z Height_Forward-251001-CRO_2814d736.tiff",
+    "C:\\AFM_STAGE_VERIFY_3\\collect_20260305_232057_collect_forward\\copied\\forward\\PEGDA01TPO10SiNPSam02_S2_P__GrID046_LOC_RC011001-5.00x5.00-Z Height_Forward-251001-CRO_3c1d83ba.tiff",
+    "C:\\AFM_STAGE_VERIFY_3\\collect_20260305_232057_collect_forward\\copied\\forward\\PEGDA01TPO10SiNPSam02_S2_P__GrID047_LOC_RC011002-5.00x5.00-Z Height_Forward-251001-CRO_ff9dc949.tiff",
+    "C:\\AFM_STAGE_VERIFY_3\\collect_20260305_232057_collect_forward\\copied\\forward\\PEGDA01TPO10SiNPSam02_S2_P__GrID048_LOC_RC011006-5.00x5.00-Z Height_Forward-251001-CRO_062f052d.tiff",
+    "C:\\AFM_STAGE_VERIFY_3\\collect_20260305_232057_collect_forward\\copied\\forward\\PEGDA01TPO10SiNPSam02_S2_P__GrID049_LOC_RC011010-5.00x5.00-Z Height_Forward-251001-CRO_16d44c03.tiff",
+    "C:\\AFM_STAGE_VERIFY_3\\collect_20260305_232057_collect_forward\\copied\\forward\\PEGDA01TPO10SiNPSam02_S2_P__GrID050_LOC_RC011011-5.00x5.00-Z Height_Forward-251001-CRO_fcf6fe2e.tiff",
+    "C:\\AFM_STAGE_VERIFY_3\\collect_20260305_232057_collect_forward\\copied\\forward\\PEGDA01TPO10SiNPSam02_S2_P__GrID051_LOC_RC011012-5.00x5.00-Z Height_Forward-251001-CRO_5b8ec6e3.tiff",
+    "C:\\AFM_STAGE_VERIFY_3\\collect_20260305_232057_collect_forward\\copied\\forward\\PEGDA01TPO10SiNPSam02_S2_P__GrID052_LOC_RC011016-5.00x5.00-Z Height_Forward-251001-CRO_c5229d0d.tiff",
+    "C:\\AFM_STAGE_VERIFY_3\\collect_20260305_232057_collect_forward\\copied\\forward\\PEGDA01TPO10SiNPSam02_S2_P__GrID053_LOC_RC011020-5.00x5.00-Z Height_Forward-251001-CRO_3ad6b860.tiff",
+    "C:\\AFM_STAGE_VERIFY_3\\collect_20260305_232057_collect_forward\\copied\\forward\\PEGDA01TPO10SiNPSam02_S2_P__GrID054_LOC_RC011021-5.00x5.00-Z Height_Forward-251001-CRO_0c8e549d.tiff",
+    "C:\\AFM_STAGE_VERIFY_3\\collect_20260305_232057_collect_forward\\copied\\forward\\PEGDA01TPO10SiNPSam02_S2_P__GrID055_LOC_RC012001-5.00x5.00-Z Height_Forward-251001-CRO_238e1d55.tiff",
+    "C:\\AFM_STAGE_VERIFY_3\\collect_20260305_232057_collect_forward\\copied\\forward\\PEGDA01TPO10SiNPSam02_S2_P__GrID056_LOC_RC012002-5.00x5.00-Z Height_Forward-251001-CRO_3b640111.tiff",
+    "C:\\AFM_STAGE_VERIFY_3\\collect_20260305_232057_collect_forward\\copied\\forward\\PEGDA01TPO10SiNPSam02_S2_P__GrID057_LOC_RC012006-5.00x5.00-Z Height_Forward-251001-CRO_80e384e2.tiff",
+    "C:\\AFM_STAGE_VERIFY_3\\collect_20260305_232057_collect_forward\\copied\\forward\\PEGDA01TPO10SiNPSam02_S2_P__GrID058_LOC_RC012010-5.00x5.00-Z Height_Forward-251001-CRO_6957759f.tiff",
+    "C:\\AFM_STAGE_VERIFY_3\\collect_20260305_232057_collect_forward\\copied\\forward\\PEGDA01TPO10SiNPSam02_S2_P__GrID059_LOC_RC012011-5.00x5.00-Z Height_Forward-251001-CRO_3c11b964.tiff",
+    "C:\\AFM_STAGE_VERIFY_3\\collect_20260305_232057_collect_forward\\copied\\forward\\PEGDA01TPO10SiNPSam02_S2_P__GrID060_LOC_RC012012-5.00x5.00-Z Height_Forward-251001-CRO_ba40e05b.tiff",
+    "C:\\AFM_STAGE_VERIFY_3\\collect_20260305_232057_collect_forward\\copied\\forward\\PEGDA01TPO10SiNPSam02_S2_P__GrID061_LOC_RC012016-5.00x5.00-Z Height_Forward-251001-CRO_ab1842c6.tiff",
+    "C:\\AFM_STAGE_VERIFY_3\\collect_20260305_232057_collect_forward\\copied\\forward\\PEGDA01TPO10SiNPSam02_S2_P__GrID062_LOC_RC012020-5.00x5.00-Z Height_Forward-251001-CRO_d6b551aa.tiff",
+    "C:\\AFM_STAGE_VERIFY_3\\collect_20260305_232057_collect_forward\\copied\\forward\\PEGDA01TPO10SiNPSam02_S2_P__GrID063_LOC_RC012021-5.00x5.00-Z Height_Forward-251001-CRO_46a0c85f.tiff",
+    "C:\\AFM_STAGE_VERIFY_3\\collect_20260305_232057_collect_forward\\copied\\forward\\PEGDA01TPO10SiNPSam02_S2_P__GrID064_LOC_RC014004-5.00x5.00-Z Height_Forward-251001-CRO_99d3f356.tiff",
+    "C:\\AFM_STAGE_VERIFY_3\\collect_20260305_232057_collect_forward\\copied\\forward\\PEGDA01TPO10SiNPSam02_S2_P__GrID065_LOC_RC014008-5.00x5.00-Z Height_Forward-251001-CRO_78ba3437.tiff",
+    "C:\\AFM_STAGE_VERIFY_3\\collect_20260305_232057_collect_forward\\copied\\forward\\PEGDA01TPO10SiNPSam02_S2_P__GrID066_LOC_RC014014-5.00x5.00-Z Height_Forward-251002-CRO_b56395ca.tiff",
+    "C:\\AFM_STAGE_VERIFY_3\\collect_20260305_232057_collect_forward\\copied\\forward\\PEGDA01TPO10SiNPSam02_S2_P__GrID067_LOC_RC016001-5.00x5.00-Z Height_Forward-251002-CRO_a74b17e0.tiff",
+    "C:\\AFM_STAGE_VERIFY_3\\collect_20260305_232057_collect_forward\\copied\\forward\\PEGDA01TPO10SiNPSam02_S2_P__GrID068_LOC_RC016005-5.00x5.00-Z Height_Forward-251002-CRO_14c4da10.tiff",
+    "C:\\AFM_STAGE_VERIFY_3\\collect_20260305_232057_collect_forward\\copied\\forward\\PEGDA01TPO10SiNPSam02_S2_P__GrID069_LOC_RC016006-5.00x5.00-Z Height_Forward-251002-CRO_f5362d15.tiff",
+    "C:\\AFM_STAGE_VERIFY_3\\collect_20260305_232057_collect_forward\\copied\\forward\\PEGDA01TPO10SiNPSam02_S2_P__GrID070_LOC_RC016010-5.00x5.00-Z Height_Forward-251002-CRO_c2122beb.tiff",
+    "C:\\AFM_STAGE_VERIFY_3\\collect_20260305_232057_collect_forward\\copied\\forward\\PEGDA01TPO10SiNPSam02_S2_P__GrID071_LOC_RC016011-5.00x5.00-Z Height_Forward-251002-CRO_18a331b5.tiff",
+    "C:\\AFM_STAGE_VERIFY_3\\collect_20260305_232057_collect_forward\\copied\\forward\\PEGDA01TPO10SiNPSam02_S2_P__GrID072_LOC_RC016012-5.00x5.00-Z Height_Forward-251002-CRO_53d11bbb.tiff",
+    "C:\\AFM_STAGE_VERIFY_3\\collect_20260305_232057_collect_forward\\copied\\forward\\PEGDA01TPO10SiNPSam02_S2_P__GrID073_LOC_RC016016-5.00x5.00-Z Height_Forward-251002-CRO_2117a566.tiff",
+    "C:\\AFM_STAGE_VERIFY_3\\collect_20260305_232057_collect_forward\\copied\\forward\\PEGDA01TPO10SiNPSam02_S2_P__GrID074_LOC_RC016017-5.00x5.00-Z Height_Forward-251002-CRO_6cb40ae2.tiff",
+    "C:\\AFM_STAGE_VERIFY_3\\collect_20260305_232057_collect_forward\\copied\\forward\\PEGDA01TPO10SiNPSam02_S2_P__GrID075_LOC_RC016021-5.00x5.00-Z Height_Forward-251002-CRO_87ad47c7.tiff",
+    "C:\\AFM_STAGE_VERIFY_3\\collect_20260305_232057_collect_forward\\copied\\forward\\PEGDA01TPO10SiNPSam02_S2_P__GrID076_LOC_RC017001-5.00x5.00-Z Height_Forward-251002-CRO_991ec5d1.tiff",
+    "C:\\AFM_STAGE_VERIFY_3\\collect_20260305_232057_collect_forward\\copied\\forward\\PEGDA01TPO10SiNPSam02_S2_P__GrID077_LOC_RC017005-5.00x5.00-Z Height_Forward-251002-CRO_d4bb3b96.tiff",
+    "C:\\AFM_STAGE_VERIFY_3\\collect_20260305_232057_collect_forward\\copied\\forward\\PEGDA01TPO10SiNPSam02_S2_P__GrID078_LOC_RC017006-5.00x5.00-Z Height_Forward-251002-CRO_6f3a9547.tiff",
+    "C:\\AFM_STAGE_VERIFY_3\\collect_20260305_232057_collect_forward\\copied\\forward\\PEGDA01TPO10SiNPSam02_S2_P__GrID079_LOC_RC017016-5.00x5.00-Z Height_Forward-251002-CRO_fa58898f.tiff",
+    "C:\\AFM_STAGE_VERIFY_3\\collect_20260305_232057_collect_forward\\copied\\forward\\PEGDA01TPO10SiNPSam02_S2_P__GrID080_LOC_RC017017-5.00x5.00-Z Height_Forward-251002-CRO_63fa9701.tiff",
+    "C:\\AFM_STAGE_VERIFY_3\\collect_20260305_232057_collect_forward\\copied\\forward\\PEGDA01TPO10SiNPSam02_S2_P__GrID081_LOC_RC017021-5.00x5.00-Z Height_Forward-251002-CRO_b2f0a4b7.tiff",
+    "C:\\AFM_STAGE_VERIFY_3\\collect_20260305_232057_collect_forward\\copied\\forward\\PEGDA01TPO10SiNPSam02_S2_P__GrID082_LOC_RC020001-5.00x5.00-Z Height_Forward-251002-CRO_bb7af964.tiff",
+    "C:\\AFM_STAGE_VERIFY_3\\collect_20260305_232057_collect_forward\\copied\\forward\\PEGDA01TPO10SiNPSam02_S2_P__GrID083_LOC_RC020002-5.00x5.00-Z Height_Forward-251002-CRO_0566814c.tiff",
+    "C:\\AFM_STAGE_VERIFY_3\\collect_20260305_232057_collect_forward\\copied\\forward\\PEGDA01TPO10SiNPSam02_S2_P__GrID084_LOC_RC020010-5.00x5.00-Z Height_Forward-251002-CRO_841cbedf.tiff",
+    "C:\\AFM_STAGE_VERIFY_3\\collect_20260305_232057_collect_forward\\copied\\forward\\PEGDA01TPO10SiNPSam02_S2_P__GrID085_LOC_RC020011-5.00x5.00-Z Height_Forward-251002-CRO_f90ac371.tiff",
+    "C:\\AFM_STAGE_VERIFY_3\\collect_20260305_232057_collect_forward\\copied\\forward\\PEGDA01TPO10SiNPSam02_S2_P__GrID086_LOC_RC020012-5.00x5.00-Z Height_Forward-251002-CRO_0cb0a3bf.tiff",
+    "C:\\AFM_STAGE_VERIFY_3\\collect_20260305_232057_collect_forward\\copied\\forward\\PEGDA01TPO10SiNPSam02_S2_P__GrID087_LOC_RC020020-5.00x5.00-Z Height_Forward-251002-CRO_c4289880.tiff",
+    "C:\\AFM_STAGE_VERIFY_3\\collect_20260305_232057_collect_forward\\copied\\forward\\PEGDA01TPO10SiNPSam02_S2_P__GrID088_LOC_RC020021-5.00x5.00-Z Height_Forward-251002-CRO_325405bd.tiff",
+    "C:\\AFM_STAGE_VERIFY_3\\collect_20260305_232057_collect_forward\\copied\\forward\\PEGDA01TPO10SiNPSam02_S2_P__GrID089_LOC_RC021001-5.00x5.00-Z Height_Forward-251002-CRO_16ac54d5.tiff",
+    "C:\\AFM_STAGE_VERIFY_3\\collect_20260305_232057_collect_forward\\copied\\forward\\PEGDA01TPO10SiNPSam02_S2_P__GrID090_LOC_RC021002-5.00x5.00-Z Height_Forward-251002-CRO_738fddb8.tiff",
+    "C:\\AFM_STAGE_VERIFY_3\\collect_20260305_232057_collect_forward\\copied\\forward\\PEGDA01TPO10SiNPSam02_S2_P__GrID091_LOC_RC021005-5.00x5.00-Z Height_Forward-251002-CRO_a877c9ce.tiff",
+    "C:\\AFM_STAGE_VERIFY_3\\collect_20260305_232057_collect_forward\\copied\\forward\\PEGDA01TPO10SiNPSam02_S2_P__GrID092_LOC_RC021006-5.00x5.00-Z Height_Forward-251002-CRO_a15843da.tiff",
+    "C:\\AFM_STAGE_VERIFY_3\\collect_20260305_232057_collect_forward\\copied\\forward\\PEGDA01TPO10SiNPSam02_S2_P__GrID093_LOC_RC021010-5.00x5.00-Z Height_Forward-251002-CRO_24ca1825.tiff",
+    "C:\\AFM_STAGE_VERIFY_3\\collect_20260305_232057_collect_forward\\copied\\forward\\PEGDA01TPO10SiNPSam02_S2_P__GrID094_LOC_RC021011-5.00x5.00-Z Height_Forward-251002-CRO_48ff9293.tiff",
+    "C:\\AFM_STAGE_VERIFY_3\\collect_20260305_232057_collect_forward\\copied\\forward\\PEGDA01TPO10SiNPSam02_S2_P__GrID095_LOC_RC021012-5.00x5.00-Z Height_Forward-251002-CRO_b6b23231.tiff",
+    "C:\\AFM_STAGE_VERIFY_3\\collect_20260305_232057_collect_forward\\copied\\forward\\PEGDA01TPO10SiNPSam02_S2_P__GrID096_LOC_RC021016-5.00x5.00-Z Height_Forward-251002-CRO_c78a4cad.tiff",
+    "C:\\AFM_STAGE_VERIFY_3\\collect_20260305_232057_collect_forward\\copied\\forward\\PEGDA01TPO10SiNPSam02_S2_P__GrID097_LOC_RC021017-5.00x5.00-Z Height_Forward-251002-CRO_54545bd0.tiff",
+    "C:\\AFM_STAGE_VERIFY_3\\collect_20260305_232057_collect_forward\\copied\\forward\\PEGDA01TPO10SiNPSam02_S2_P__GrID098_LOC_RC021020-5.00x5.00-Z Height_Forward-251002-CRO_da77fb7a.tiff",
+    "C:\\AFM_STAGE_VERIFY_3\\collect_20260305_232057_collect_forward\\copied\\forward\\PEGDA01TPO10SiNPSam02_S2_P__GrID099_LOC_RC021021-5.00x5.00-Z Height_Forward-251002-CRO_963702ed.tiff"
+  ],
+  "input_filters": {
+    "filters_applied": false,
+    "include_regex": [],
+    "exclude_regex": []
+  },
+  "output_dir": "C:\\Users\\Conor O'Brien\\Documents\\GitHub\\AFM-Data-Management\\out\\verify_threshold_fix\\PEGDA1TPO10SiNP_Sam02_S2\\particle_forward_medianbg_max_fixed0_p95",
+  "output_csv": "C:\\Users\\Conor O'Brien\\Documents\\GitHub\\AFM-Data-Management\\out\\verify_threshold_fix\\PEGDA1TPO10SiNP_Sam02_S2\\particle_forward_medianbg_max_fixed0_p95\\summary.csv",
+  "grid": {
+    "index_base": 1,
+    "filename_regex": "LOC_RC(?P<row>\\d{3})(?P<col>\\d{3})"
+  },
+  "channel_defaults": {
+    "topography_family": "height"
+  },
+  "mode_definition": {
+    "channel_family": "height",
+    "metric_type": "particle_count",
+    "units": "count",
+    "expected_units": "count",
+    "gwyddion_ops": [
+      {
+        "op": "align_rows",
+        "params": {
+          "direction": "horizontal",
+          "method": "median"
+        }
+      },
+      {
+        "op": "plane_level"
+      },
+      {
+        "op": "align_rows",
+        "params": {
+          "direction": "horizontal",
+          "method": "median"
+        }
+      },
+      {
+        "op": "median_level"
+      },
+      {
+        "op": "median",
+        "params": {
+          "size": 3
+        }
+      }
+    ],
+    "threshold_strategy": "max",
+    "threshold_fixed": 0.0,
+    "threshold_percentile": 95,
+    "particle_diameter_min_nm": 350,
+    "particle_diameter_max_nm": 550,
+    "isolation_min_dist_nm": 900,
+    "export_particles": true,
+    "export_particle_mask": false,
+    "export_particle_mask_review_only": false,
+    "edge_exclude": true,
+    "review_pack": {
+      "enable": false,
+      "sample_limit": 0,
+      "seed": 1337,
+      "panel_basename_max_len": 60
+    },
+    "grain_export": {
+      "enable": true,
+      "use_review_sample": false,
+      "quantities": [
+        "center_x",
+        "center_y",
+        "pixel_area",
+        "projected_area",
+        "surface_area",
+        "mean",
+        "max",
+        "min",
+        "rms",
+        "equiv_disc_radius",
+        "equiv_square_side",
+        "equiv_ellipse_major",
+        "equiv_ellipse_minor",
+        "circumcircle_r",
+        "inscribed_disc_r"
+      ]
+    }
+  },
+  "csv_mode_definition": {
+    "columns": [
+      {
+        "name": "source_file",
+        "from": "core.source_file"
+      },
+      {
+        "name": "mode",
+        "from": "core.mode"
+      },
+      {
+        "name": "metric_type",
+        "from": "core.metric_type"
+      },
+      {
+        "name": "count_total",
+        "from": "particle.count_total"
+      },
+      {
+        "name": "count_total_raw",
+        "from": "particle.count_total_raw"
+      },
+      {
+        "name": "count_total_filtered",
+        "from": "particle.count_total_filtered"
+      },
+      {
+        "name": "count_isolated",
+        "from": "particle.count_isolated"
+      },
+      {
+        "name": "mean_diam_nm",
+        "from": "particle.mean_diameter_nm"
+      },
+      {
+        "name": "std_diam_nm",
+        "from": "particle.std_diameter_nm"
+      },
+      {
+        "name": "threshold",
+        "from": "particle.threshold"
+      },
+      {
+        "name": "threshold_source",
+        "from": "particle.threshold_source",
+        "default": ""
+      },
+      {
+        "name": "edge_excluded_count",
+        "from": "particle.edge_excluded_count",
+        "default": 0
+      },
+      {
+        "name": "diam_min_nm",
+        "from": "particle.filter_min_nm"
+      },
+      {
+        "name": "diam_max_nm",
+        "from": "particle.filter_max_nm"
+      },
+      {
+        "name": "iso_min_dist_nm",
+        "from": "particle.isolation_min_dist_nm"
+      },
+      {
+        "name": "nx",
+        "from": "core.nx"
+      },
+      {
+        "name": "ny",
+        "from": "core.ny"
+      },
+      {
+        "name": "row_idx",
+        "from": "grid.row_idx",
+        "default": -1
+      },
+      {
+        "name": "col_idx",
+        "from": "grid.col_idx",
+        "default": -1
+      }
+    ],
+    "on_missing_field": "warn_null"
+  },
+  "unit_conversions": {},
+  "filename_parsing": {},
+  "debug": {
+    "enable": false,
+    "level": "info",
+    "artifacts": [],
+    "sample_limit": 0,
+    "out_dir": "out/debug",
+    "trace_dir": "out/debug/trace",
+    "log_fields": [],
+    "stats_provenance": false,
+    "raise_on_warn": false,
+    "echo_config": false
+  }
+}
