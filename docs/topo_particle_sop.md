@@ -82,6 +82,18 @@ Run:
 
 Output:
 - `topo_particle_report_draft.docx` in the same OUT folder.
+- Current thesis/report naming uses the controlled report form:
+  - `REP-AFM-CRO-Topo_Particle_Report-v#Letter-MMDDYY.docx`
+
+Shared synthesis outputs written alongside the report:
+- `topo_report_synthesis.json`
+- `topo_report_table_6_5_sample_isolated.csv`
+- `topo_report_table_6_6_required_scans.csv`
+- `topo_report_table_6_7_grain_summary.csv`
+- `topo_report_table_6_8_method_comparison.csv`
+- `topo_report_table_6_9_crossover.csv`
+
+These files are the preferred bridge from source outputs into the report and Chapter 6.
 
 ## 4.5) Fit Distributions (Risk Curves)
 Run:
@@ -99,6 +111,7 @@ Outputs:
 - Review the draft Word doc for table correctness and figure placements.
 - If the diameter filter must be updated (e.g., 250-550 nm), rerun the comparison suite and regenerate the summary + report.
 - Update `docs/topo_particle_deliverables_final.md` with any new notes and rerun timing.
+- Keep very wide all-method tables in appendix/supporting material once the chapter/report story is settled.
 
 ## 6) Fit Models + Risk Equations (Used in Distribution Analysis)
 These equations are used by `scripts/fit_particle_distributions.py` to estimate risk and required scans.
@@ -154,3 +167,4 @@ Summarize variance across methods of mean/variance/zero-rate.
 ## 7) Notes
 - Terminology: "map/grid" is the collection of scan positions; each "scan" is one AFM image.
 - The draft report auto-fills from CSV outputs; ensure those outputs match the intended baseline job.
+- Scraped/non-scraped is currently an exploratory preparation-state grouping, not a rigorously balanced experimental factor.

@@ -914,9 +914,13 @@ def main():
         if not plot_dir.exists():
             continue
         for wt in ("10pct", "25pct"):
+            family = plot_dir / f"fig_method_family_counts_{wt}.png"
             kept = plot_dir / f"fig_particle_count_mean_by_job_{wt}.png"
             iso = plot_dir / f"fig_isolated_count_mean_by_job_{wt}.png"
-            if kept.exists() or iso.exists():
+            if family.exists():
+                doc.add_paragraph(f"Processing-family comparison plot ({wt.replace('pct','%')})")
+                add_picture_if_exists(doc, family, width_in=6.0)
+            elif kept.exists() or iso.exists():
                 doc.add_paragraph(f"Per-job comparison plots ({wt.replace('pct','%')})")
                 if kept.exists():
                     add_picture_if_exists(doc, kept, width_in=5.0)
@@ -1034,10 +1038,9 @@ def main():
 
     doc.add_heading("5A. Heatmap Uncertainty Companions", level=1)
     doc.add_paragraph(
-        "The mean heatmaps in this report are now paired with empirical uncertainty companions. "
-        "Standard-deviation maps show between-sample spread at each scan position, standard-error maps "
-        "show uncertainty in the estimated mean at each position, coefficient-of-variation maps normalize "
-        "variability by the local mean, and n-maps show how many grouped sample sets contributed to each position."
+        "The mean heatmaps in this report are paired with standard-deviation companions. "
+        "These maps show the between-sample spread at each scan position for the grouped datasets "
+        "and provide the most direct uncertainty layer for the primary kept-count and isolated-count maps."
     )
     for base in (input_bases or [OUT_BASE]):
         combined_dir = base / "summary_outputs" / "combined"
@@ -1048,12 +1051,7 @@ def main():
             for job in [BASELINE_JOB]:
                 for stem, label in [
                     ("fig_particle_count_grid_std_wt{wt}_{job}.png", "Kept-count std map"),
-                    ("fig_particle_count_grid_se_wt{wt}_{job}.png", "Kept-count SE map"),
-                    ("fig_particle_count_grid_cv_wt{wt}_{job}.png", "Kept-count CV map"),
-                    ("fig_particle_count_grid_n_wt{wt}_{job}.png", "Contributing-sample-count map"),
                     ("fig_isolated_count_grid_std_wt{wt}_{job}.png", "Isolated-count std map"),
-                    ("fig_isolated_count_grid_se_wt{wt}_{job}.png", "Isolated-count SE map"),
-                    ("fig_isolated_count_grid_cv_wt{wt}_{job}.png", "Isolated-count CV map"),
                 ]:
                     path = combined_dir / stem.format(wt=wt, job=job)
                     if path.exists():

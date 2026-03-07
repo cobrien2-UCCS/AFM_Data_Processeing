@@ -101,6 +101,38 @@ def _plot_bar_with_error(
     plt.close(fig)
 
 
+def _plot_combined_baseline_heatmap(out_path: Path, paired_rows: list[dict[str, str]]) -> None:
+    rows = [r for r in paired_rows if r.get("method") == "gwy_stats"]
+    if not rows:
+        return
+    max_row = max(_i(r.get("row_idx")) for r in rows)
+    max_col = max(_i(r.get("col_idx")) for r in rows)
+    import numpy as np
+
+    grid = np.full((max_row + 1, max_col + 1), np.nan)
+    for row in rows:
+        rr = _i(row.get("row_idx"))
+        cc = _i(row.get("col_idx"))
+        fwd = _f(row.get("avg_forward"))
+        bwd = _f(row.get("avg_backward"))
+        if fwd == fwd and bwd == bwd:
+            grid[rr, cc] = ((fwd + bwd) / 2.0) * DISPLAY_MODULUS_SCALE
+
+    cmap = plt.cm.get_cmap("viridis").copy()
+    cmap.set_bad(color="lightgray")
+    fig, ax = plt.subplots(figsize=(6.2, 5.2))
+    im = ax.imshow(grid, origin="upper", cmap=cmap)
+    ax.set_title("Combined Forward/Backward Baseline Modulus\nMean of paired baseline fields")
+    ax.set_xlabel("Grid column")
+    ax.set_ylabel("Grid row")
+    cbar = fig.colorbar(im, ax=ax)
+    cbar.set_label(f"Modulus ({DISPLAY_MODULUS_UNIT})")
+    fig.tight_layout()
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(out_path, dpi=300)
+    plt.close(fig)
+
+
 def _aggregate_compare_rows(rows: list[dict[str, str]]) -> dict[str, dict[str, float]]:
     grouped: dict[str, dict[str, list[float]]] = defaultdict(lambda: defaultdict(list))
     for row in rows:
@@ -658,6 +690,7 @@ def build_report(
     backward_loss_bar = asset_dir / "backward_pixels_lost_bar.png"
     forward_pct_loss_bar = asset_dir / "forward_percent_pixels_lost_bar.png"
     backward_pct_loss_bar = asset_dir / "backward_percent_pixels_lost_bar.png"
+    combined_baseline_heatmap = asset_dir / "combined_forward_backward_baseline_heatmap.png"
     _plot_boxplot(
         forward_box,
         "Forward modulus comparison: delta avg vs baseline",
@@ -721,6 +754,7 @@ def build_report(
         [backward_loss[m]["se_pct_lost"] for m in method_order if m in backward_loss],
         "Percent pixels lost vs baseline",
     )
+    _plot_combined_baseline_heatmap(combined_baseline_heatmap, paired_long)
 
     _add_figure(
         doc,
@@ -791,6 +825,11 @@ def build_report(
         doc,
         "Figure M5 - Backward baseline modulus heatmap.",
         backward_compare_dir / "plots" / "heatmap_two_panel__baseline.png",
+    )
+    _add_figure(
+        doc,
+        f"Figure M5a - Combined forward/backward baseline modulus heatmap ({DISPLAY_MODULUS_UNIT} display). Each cell is the mean of the paired forward and backward baseline values at the same grid position.",
+        combined_baseline_heatmap,
     )
 
     _add_heading_paragraph(doc, "Forward delta-versus-baseline heatmaps")

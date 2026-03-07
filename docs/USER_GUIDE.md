@@ -135,6 +135,20 @@ Top-level sections (see `config.example.yaml`):
   - `<output_dir>/review/review.csv`
   - `<output_dir>/review/panels/*_particle_panel.png`
   These are useful for thesis figure selection and manual mask verification.
+  - For curated thesis figure generation, use:
+    - `configs/TEST configs/Example configs/config.topo_particle_representative_review.yaml`
+    - `docs/Thesis/topo_particle_representative_image_sop.md`
+
+## 7.1) Shared synthesis outputs for reports and Chapter 6
+The topo report build now writes a shared synthesis layer into the common output root so the report and Chapter 6 can consume the same derived tables:
+- `topo_report_synthesis.json`
+- `topo_report_table_6_5_sample_isolated.csv`
+- `topo_report_table_6_6_required_scans.csv`
+- `topo_report_table_6_7_grain_summary.csv`
+- `topo_report_table_6_8_method_comparison.csv`
+- `topo_report_table_6_9_crossover.csv`
+
+Use these files as the preferred handoff layer for thesis writing instead of copying values back out of generated Word reports.
 
 ## 8) Notes for pygwy (Py2) processing
 - Requires 32-bit Python 2.7 and 32-bit Gwyddion/pygwy on Windows.

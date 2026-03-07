@@ -1012,6 +1012,18 @@ def main():
         out_dir = OUT_BASE / "summary_outputs" / "compare_by_wt"
         out_dir.mkdir(parents=True, exist_ok=True)
         wt_groups = sorted({wt for (_, wt) in counts_by_job_wt.keys()})
+
+        def _submethod_label(job):
+            if job.endswith("_mean"):
+                return "Mean"
+            if job.endswith("_fixed0"):
+                return "Fixed 0"
+            if job.endswith("_p95"):
+                return "P95"
+            if "max_fixed0_p95" in job:
+                return "Max(F0,P95)"
+            return wrap_label(job, 14, 2)
+
         for wt in wt_groups:
             jobs = merged_job_order(args.job_order, {job for (job, w) in counts_by_job_wt.keys() if w == wt})
             if not jobs:
@@ -1040,6 +1052,35 @@ def main():
             plt.tight_layout()
             plt.savefig(out_dir / ("fig_isolated_count_mean_by_job_%s.png" % wt.replace("%","pct")), dpi=300)
             plt.close()
+
+            families = [
+                ("Median background", [j for j in jobs if "medianbg" in j]),
+                ("Flatten base", [j for j in jobs if "flatten" in j]),
+            ]
+            fig, axes = plt.subplots(1, 2, figsize=(11.2, 4.8), sharey=True)
+            for ax, (family_label, family_jobs) in zip(axes, families):
+                if not family_jobs:
+                    ax.axis("off")
+                    continue
+                xs = list(range(len(family_jobs)))
+                w = 0.36
+                family_kept_means = [stats.mean(counts_by_job_wt.get((j, wt), [])) if counts_by_job_wt.get((j, wt)) else 0.0 for j in family_jobs]
+                family_kept_stds = [stats.pstdev(counts_by_job_wt.get((j, wt), [])) if len(counts_by_job_wt.get((j, wt), [])) > 1 else 0.0 for j in family_jobs]
+                family_iso_means = [stats.mean(isolated_by_job_wt.get((j, wt), [])) if isolated_by_job_wt.get((j, wt)) else 0.0 for j in family_jobs]
+                family_iso_stds = [stats.pstdev(isolated_by_job_wt.get((j, wt), [])) if len(isolated_by_job_wt.get((j, wt), [])) > 1 else 0.0 for j in family_jobs]
+                ax.bar([x - w / 2 for x in xs], family_kept_means, w, yerr=family_kept_stds, color="#4C78A8", capsize=4, label="Kept")
+                ax.bar([x + w / 2 for x in xs], family_iso_means, w, yerr=family_iso_stds, color="#54A24B", capsize=4, label="Isolated")
+                ax.set_xticks(xs)
+                ax.set_xticklabels([_submethod_label(j) for j in family_jobs], rotation=20, ha="right")
+                ax.set_title(family_label)
+                ax.grid(axis="y", alpha=0.25)
+            axes[0].set_ylabel("Particles per scan (mean +/- std)")
+            handles, legend_labels = axes[0].get_legend_handles_labels()
+            fig.legend(handles, legend_labels, loc="upper center", ncol=2, frameon=False)
+            fig.suptitle("Kept and Isolated Counts by Processing Family\n%s SiNP" % wt)
+            fig.tight_layout(rect=(0, 0, 1, 0.9))
+            fig.savefig(out_dir / ("fig_method_family_counts_%s.png" % wt.replace("%","pct")), dpi=300)
+            plt.close(fig)
 
     # Per-job histograms (kept / raw / isolated)
     if counts_by_job or isolated_by_job:
@@ -1456,7 +1497,7 @@ def main():
         if sample_counts:
             plt.figure(figsize=(6,4))
             plt.hist(sample_counts, bins=20, color="#4C78A8", edgecolor="black")
-            plt.title("Particle Count per Map")
+            plt.title("Particle Count per Scan (%s SiNP)" % wt)
             plt.xlabel("Particles per map")
             plt.ylabel("Frequency")
             plt.tight_layout()
@@ -1475,7 +1516,7 @@ def main():
         if sample_isolated:
             plt.figure(figsize=(6,4))
             plt.hist(sample_isolated, bins=20, color="#54A24B", edgecolor="black")
-            plt.title("Isolated Particle Count per Map")
+            plt.title("Isolated Particle Count per Scan (%s SiNP)" % wt)
             plt.xlabel("Isolated particles per map")
             plt.ylabel("Frequency")
             plt.tight_layout()
@@ -1494,7 +1535,7 @@ def main():
         if sample_diam:
             plt.figure(figsize=(6,4))
             plt.hist(sample_diam, bins=30, color="#F58518", edgecolor="black")
-            plt.title("Particle Diameter Distribution (filtered)")
+            plt.title("Particle Diameter Distribution (%s SiNP)\nFiltered candidate particles" % wt)
             plt.xlabel("Diameter (nm)")
             plt.ylabel("Frequency")
             plt.tight_layout()

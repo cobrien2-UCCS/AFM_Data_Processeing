@@ -3,7 +3,7 @@
 This document maps the current repo implementation to the design intents in `AFM TIFF to Summary Stats & Plotting Pipeline v3.md` and tracks what to shore up next.
 Change policy: see `docs/change_control.md`.
 
-## Status snapshot (2026-02-13)
+## Status snapshot (2026-03-06)
 - Known-good example configs:
 - `configs/TEST configs/Example configs/config.modulus_gwyddion_only.yaml` (Gwyddion stats + simple validity mask; no Python filtering)
 - `configs/TEST configs/Example configs/config.modulus_export_python_filters.yaml` (Python stats + optional Python filters; exports per-image CSVs)
@@ -17,6 +17,20 @@ Change policy: see `docs/change_control.md`.
 - Invariants we now enforce (by design):
 - `stats_source` is explicit (no ambiguous "auto" routing).
 - Mixed routes are rejected unless `allow_mixed_processing: true`, and the runner logs provenance when enabled.
+- Topo report and Chapter 6 now share a synthesis layer written into the common output root so both consume the same derived tables instead of copying from `.docx` files.
+
+## Current report / chapter state
+- Topography reporting now uses:
+  - shared synthesis tables written to the Dropbox output root
+  - compact per-wt scan-requirement tables for Chapter 6
+  - family-separated method comparison figures
+- Modulus baseline reporting now includes:
+  - forward/backward baseline figures
+  - a combined forward/backward baseline heatmap
+  - pixels-lost / percent-lost summaries
+  - unit-provenance cautions
+- Remaining thesis-organization task:
+  - move very wide all-method tables into appendix/supporting material
 
 ## Still aligned with the spec (core intent)
 - Config-first behavior: processing/CSV/schema/plotting behavior is controlled by config (`modes`, `csv_modes`, `result_schemas`, `plotting_modes`, `profiles`, `unit_conversions`).
@@ -100,6 +114,8 @@ Change policy: see `docs/change_control.md`.
 - Next:
   - Confirm whether unit metadata can be preserved in the upstream export path for these TIFFs.
   - If TIFF cannot reliably carry units, decide on a dataset-scoped strategy (separate configs per known unit batch, or require a source format that carries units).
+  - Keep the new modulus provenance columns in future modulus reruns so original values and fallback/default unit assignment remain visible.
+  - Treat current absolute modulus magnitudes as provisional until the export/unit path is independently validated.
 
 ## Related tools / prior art (to survey)
 - Short list and concrete search queries live in `docs/related_tools.md`.
@@ -120,6 +136,14 @@ Change policy: see `docs/change_control.md`.
 - New: summary-stage grid completeness policy added (`keep_all|require_full_grid|intersect_grid|manual_review`) with `grid_issues_by_sample.csv` and manual-review blacklist outputs.
 - New: fit-model sensitivity analysis added (risk curves, histogram distances, variance across methods) in `scripts/fit_particle_distributions.py` (Poisson default; NB/ZINB optional).
 - New: Py2 export paths use long-path support for `*_particles.csv` and `*_grains.csv` to avoid Windows filename/path length failures.
+- New: representative-image review config + SOP now exist so selected scans can be rendered as topography+mask panels for thesis figures and manual verification.
+
+### 6.6) Documentation / appendix alignment
+- Current state:
+  - thesis chapters and reports now follow the `REP-AFM-CRO-...-v#Letter-MMDDYY` naming pattern
+  - report/chapter table synchronization uses the shared synthesis outputs
+- Remaining gap:
+  - create a final appendix/supporting-table pack so wide all-method tables can leave the main chapter body without losing traceability
 
 ### 7) Processing step trace / debug transparency
 - Current state: per-file trace JSON exists when debug is enabled; debug logs include units, mask/stats counts, and filter provenance.

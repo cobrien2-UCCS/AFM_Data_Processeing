@@ -14,4 +14,11 @@
   - the current modulus baseline validation was performed on one PEGDA sample and one fracture-surface side
   - it should be repeated across more grouped samples and separated by side before broad generalization
   - the same comparison framework should later be extended to composite PEGDA-SiNP and Li-containing systems
+- Add a modulus-validation future-work note that the absolute modulus magnitude currently appears higher than expected for PEGDA and may reflect a systematic offset rather than a random processing artifact.
+- State that future work should validate modulus magnitude against:
+  - raw pinpoint / force-curve data
+  - AFM setpoints / force regime
+  - calibration parameters
+  - upstream contact-model / fit settings
+  - and TIFF/export scaling before Gwyddion ingestion
 - Add a future-work figure item for a workflow/data-flow chart that explains the pipeline architecture at a reader-facing level.

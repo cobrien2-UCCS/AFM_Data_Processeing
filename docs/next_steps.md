@@ -1,37 +1,52 @@
 # Next Steps (Project Plan)
 
-This is a concise, thesis-friendly list of what remains and why it matters.
+This is the current thesis-facing and pipeline-facing work list after the March 6 report/chapter refresh cycle.
 Change policy: see `docs/change_control.md`.
 
-## 1) Topography pipeline (priority)
-- Build and validate a `topography_flat` config set (plane level, align rows, median).
-- Run a small GUI parity check in Gwyddion to confirm preprocessing order and stats match.
-- Define default masks (if any) that make physical sense for height data.
+## 1) Thesis integration (current)
+- Keep Chapter 6 focused on compact, story-driving tables and figures.
+- Move very wide all-method tables to appendix/supporting material instead of leaving them in the main chapter body.
+- Add the planned workflow/data-flow figure to Chapter 5.
+- Add a fracture-vs-scraped preparation figure in Chapter 5 to explain why scraped/non-scraped exists operationally.
 
-## 2) Particle counting (priority)
-- Move beyond `particle_count_basic` to a repeatable, higher-confidence workflow:
-- Add size and shape filtering (min/max grain size, circularity thresholds).
-- Add multi-channel mask fusion (consensus mask from topo + modulus + other channels).
-- Use the existing `review_pack` outputs to build a manual verification loop.
-- Enforce grid completeness policy for reporting (`keep_all|require_full_grid|intersect_grid|manual_review`).
-- Add grain trend plots across methods (diameter mean/std + box plots) to support advisor deliverables.
+## 2) Topo report polish
+- Finalize the main-body figure set and captions for the topo particle report and Chapter 6.
+- Keep the shared synthesis outputs as the authoritative report/chapter handoff layer:
+  - `topo_report_synthesis.json`
+  - `topo_report_table_6_5_sample_isolated.csv`
+  - `topo_report_table_6_6_required_scans.csv`
+  - `topo_report_table_6_7_grain_summary.csv`
+  - `topo_report_table_6_8_method_comparison.csv`
+  - `topo_report_table_6_9_crossover.csv`
 
-## 3) Units + scaling (critical integrity)
-- Resolve missing Z-units for SmartScan TIFFs.
-- Decide on a policy: reliable export with units, or explicit calibration in config.
-- Document the chosen path as the standard ingestion recipe.
+## 3) Representative-image workflow
+- Use the representative-review config and SOP to generate curated topography+mask figure panels.
+- Keep categories for:
+  - isolated particles
+  - clumped particles
+  - dense fields with limited clumping
+  - sparse / single-particle fields
+- Preserve these as visual validation artifacts, not just decorative images.
 
-## 4) Validation + provenance (thesis defensibility)
-- Pick a small "golden" set of scans and lock down:
-- Same processing in GUI vs pygwy (trace + manual match).
-- Same summary values across multiple runs (determinism).
-- Update `docs/method_compare_notes.md` if new filters change results.
-- Add fit-model sensitivity outputs (Poisson/NB/ZINB) into the standard report path.
+## 4) Modulus integrity + units (critical future work)
+- Resolve modulus TIFF unit provenance and verify what Gwyddion/pygwy is actually reading.
+- Keep the new modulus provenance fields in future modulus CSVs:
+  - `avg_value_original`
+  - `std_value_original`
+  - `units_original`
+  - `unit_source`
+  - `unit_conversion_factor`
+- Investigate the negative one-file modulus export and the unexpectedly high PEGDA modulus magnitude.
+- Validate modulus against raw pinpoint data, setpoints, calibration parameters, and upstream fit/model settings.
 
-## 5) Job templates for future runs
-- Add per-dataset `jobs` entries (input_root, collect, profile, plots, aggregates).
-- Keep one "minimal" and one "full" job for quick runs vs full reporting.
+## 5) Sample-preparation control
+- Treat scraped/non-scraped as exploratory for the current thesis.
+- In future work, control surface-preparation state explicitly so scraped/non-scraped can be evaluated as a deliberate factor rather than an AFM-access accommodation.
 
-## 6) Deliverable docs
-- One-page "method summary" for the thesis appendix.
-- One-page "how to run" for lab users (job-driven workflow).
+## 6) Reproducible pipeline refactor
+- Refactor the current workflow into a more predictable, lower-overhead, end-to-end pipeline.
+- Keep run-time estimates, progress reporting, and standardized outputs as part of the normal interface rather than ad hoc operator work.
+
+## 7) Validation + provenance
+- Lock down a small golden set of scans for GUI-vs-pygwy parity checks.
+- Maintain appendix/SOP artifacts for manual verification and figure generation.

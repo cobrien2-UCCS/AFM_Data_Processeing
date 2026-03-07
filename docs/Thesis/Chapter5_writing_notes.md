@@ -222,6 +222,7 @@
   - aggregation / model fitting
   - report and chapter outputs
 - This should stay as a placeholder for now if the final diagram is not ready.
+- Add a second Chapter 5 figure placeholder for a representative fractured surface versus a manually flattened/scraped surface so the reader can see why this preparation accommodation was sometimes necessary.
 
 ## Parameter Reporting Notes
 
@@ -250,6 +251,14 @@
 - It should **not** become a full modulus-results section.
 - The modulus method-comparison study should be used only as method-selection precedent and direction-consistency support.
 - The topography route-comparison results themselves belong mainly in Chapter 6.
+
+## Scraped vs Non-Scraped Preparation Note
+
+- The scraped versus non-scraped grouping was not introduced as a fully planned experimental factor.
+- It arose from practical AFM-access constraints when fractured surfaces contained hills or valleys too severe for stable scanning.
+- Limited manual trimming or scraping was used to reduce those topographic extremes, but the degree of scraping was not systematically balanced across all samples.
+- Write this as an exploratory preparation-state distinction rather than as a rigorously controlled treatment factor.
+- Add a future figure placeholder showing a representative fractured surface versus a manually flattened/scraped surface so the reader can see why this accommodation was sometimes necessary.
 
 ## What to Write as Active Methods vs Future Work
 

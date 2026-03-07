@@ -4,7 +4,7 @@ fit:
   enable: true
   input_roots: []
   count_field: "count_isolated"
-  stratify_by: ["wt_percent", "job"]
+  stratify_by: ["wt_percent", "scraped", "job"]
   count_models: ["poisson"]
   min_samples: 5
   target_total: 30
@@ -22,7 +22,7 @@ fit:
     combine_models: true
     combine_uncertainty: false
     aggregate_uncertainty: true
-    aggregate_by: ["wt_percent"]
+    aggregate_by: ["wt_percent", "scraped"]
     aggregate_model: "poisson"
 
   checks:
@@ -38,6 +38,6 @@ fit:
 
   method_compare:
     enable: true
-    stratify_by: []   # [] for all samples; or ["wt_percent"] to split by wt%
+    stratify_by: ["wt_percent", "scraped"]
     count_field: "count_isolated"
     hist_max_bin: null

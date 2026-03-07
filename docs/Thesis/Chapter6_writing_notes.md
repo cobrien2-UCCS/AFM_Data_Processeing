@@ -196,6 +196,19 @@ These belong in appendices, supplementary material, or selective in-text callout
   - count outputs are count-based and do not inherit a physical z-unit
   - particle/grain diameter outputs are derived geometric metrics reported in `nm`
 - Keep the negative-value modulus verification issue separate from the validated modulus comparison outputs: the one-file unit-verification run exported a negative modulus value, but the broader modulus comparison CSV sets used for baseline validation remained non-negative. This should be framed as an open validation issue that may require a targeted modulus rerun.
+- Add a second modulus caution: the absolute modulus magnitude currently appears higher than expected for PEGDA, even when the field remains relatively uniform spatially. This should be framed as a likely systematic-offset issue rather than a random map artifact.
+- State that the present modulus baseline section remains useful for **relative route-consistency and forward/backward comparison**, but not yet as final proof of absolute PEGDA modulus magnitude.
+- Candidate causes to note:
+  - unit/metadata interpretation
+  - AFM setpoints or force regime
+  - calibration parameters
+  - upstream force-model / pinpoint-processing settings
+  - or another systematic offset in the measurement chain
+- Recommended validation path:
+  - inspect raw pinpoint / force-curve data
+  - verify setpoints and force conditions
+  - verify calibration parameters and model settings
+  - confirm TIFF/export scaling before Gwyddion ingestion
 
 - In the particle-count subsection, explain what the histogram **frequency** axis means:
   - it is the number of scans falling at each retained-particle count.
@@ -203,9 +216,17 @@ These belong in appendices, supplementary material, or selective in-text callout
 - In the isolation subsection, define `primary lambda` explicitly as the mean isolated-particle count per scan under the primary route.
 - In the required-scan subsection, define `observed zero-isolated rate` explicitly as the fraction of scans with zero isolated particles.
 - In the required-scan subsection, make explicit that `95%` refers to the modeled success probability of obtaining at least the target isolated-particle total.
+- Carry the scraped/non-scraped interpretation into the processing-sensitivity discussion:
+  - for the current Stage 1 fits, scraped subsets generally require more scans than non-scraped subsets to reach the 30-isolated-candidate, 95%-confidence target
+  - this difference is much stronger for 10 wt% than for 25 wt%
+  - the 25 wt% scraped subset shows substantial overlap across several submethods, which should be treated as a real feature of the current fitted outputs unless later reruns show otherwise
 - In the grain section, clarify whether a figure is:
   - a single-method summary
   - or a full-method matrix summary
+- Use the grain section as secondary support only:
+  - grain summaries and box plots should be framed as evidence that the segmentation output is broadly consistent across methods
+  - they should not replace the primary Stage 1 decision metrics, which remain isolated-particle yield and required scan count
+- If the existing grain summary table plus grain box plots already show the intended distribution story clearly, keep them and avoid replacing them with a weaker mean-only bar summary.
 - In the processing-sensitivity section, focus on the practical conclusion:
   - method choice changes isolated yield
   - which changes required scan count
@@ -219,6 +240,9 @@ These belong in appendices, supplementary material, or selective in-text callout
 
 ## Scraped Vs Non-Scraped Interpretation Notes
 
+- State clearly that scraped versus non-scraped was not a planned balanced experimental factor.
+- It was an AFM-access accommodation introduced when fracture topography was too severe for practical scanning.
+- Therefore treat the scraped/non-scraped comparison as exploratory and observational, not as a definitive causal sample-preparation study.
 - If the scraped grouped sample sets require more scans, interpret that as lower isolated-particle yield under Stage 1, not automatically lower or higher particle quality.
 - Use that point to justify why Stage 2 remains necessary: Stage 1 count sufficiency does not establish the quality or validity of the retained targets.
 
@@ -234,6 +258,8 @@ These belong in appendices, supplementary material, or selective in-text callout
 - If Table 6.8 remains in the chapter, the surrounding text must explicitly connect the table values to the crossover figure.
 
 ## Discussion Section Notes
+- Keep compact decision-driving tables in the chapter body and move very wide all-method detail tables to appendix/supporting material.
+- Use the shared topo synthesis tables as the source for chapter tables so Chapter 6 and the topo report stay synchronized.
 
 - Add a short discussion point on the **minimum scan inventory needed to justify use of the Poisson model**.
 - That discussion should separate:
