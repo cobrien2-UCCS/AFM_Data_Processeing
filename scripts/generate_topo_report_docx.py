@@ -7,6 +7,7 @@ from pathlib import Path
 
 from docx import Document
 from docx.shared import Inches
+from topo_report_synthesis import build_bundle, write_bundle
 
 OUT_BASE = Path(r"C:\Users\Conor O'Brien\Dropbox\03_AML\00 IN-BOX\AFM Topo Particle processing OUT")
 REPORT_PATH = OUT_BASE / "topo_particle_report_draft.docx"
@@ -339,6 +340,23 @@ def main():
         REPORT_PATH = Path(args.report_path)
     else:
         REPORT_PATH = OUT_BASE / "topo_particle_report_draft.docx"
+
+    synthesis_bundle = None
+    if len(input_bases) >= 2:
+        wt10_root = None
+        wt25_root = None
+        for base in input_bases:
+            label = base.name.lower()
+            if "wt10" in label:
+                wt10_root = base
+            elif "wt25" in label:
+                wt25_root = base
+        if wt10_root and wt25_root:
+            try:
+                synthesis_bundle = build_bundle(wt10_root, wt25_root)
+                write_bundle(synthesis_bundle, REPORT_PATH.parent)
+            except Exception as exc:
+                print(f"WARN: failed to write topo synthesis bundle: {exc}")
 
     doc = Document()
     job_order = JOB_ORDER

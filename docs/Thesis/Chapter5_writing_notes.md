@@ -99,7 +99,13 @@
   - steps that require export + manual calculation outside Gwyddion (especially isolation filtering)
 - Reference appendix file:
   - `docs/Thesis/topo_particle_gwyddion_gui_sop.md`
+- Add a second appendix/support artifact for representative particle-image selection and mask overlays:
+  - `docs/Thesis/topo_particle_representative_image_sop.md`
 - When mentioned in Chapter 5, refer to the SOP only as a **verification artifact** or **appendix aid**.
+- State clearly that the representative image panels exist to show:
+  - what the Stage 1 program is doing visually
+  - what isolated / clumped / dense / sparse particle arrangements look like in real scans
+  - how the retained-particle mask behaves on real topography images
 
 ## Forward-Only Scan Justification
 

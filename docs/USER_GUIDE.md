@@ -63,6 +63,10 @@ Top-level sections (see `config.example.yaml`):
   - `metric_type`, `units`, `expected_units`, `on_unit_mismatch` (`error|warn|skip_row`), `on_missing_units` (`error|warn|skip_row`), `assume_units` (force a unit when the file has none).
   - `threshold` (particle mode), other mode-specific params.
   - `review_pack` (optional, particle mode): write a `review.csv` template + simple PNG panels under `<output_dir>/review/` to support manual verification.
+    - Panels are 2-up images:
+      - left: processed grayscale field
+      - right: processed field with the particle mask overlaid in red
+    - A practical use case is a dedicated "representative images" job whose `input_root` points at a curated directory of TIFFs selected for figures or appendix review.
 - `grid`: filename regex with named groups `row`/`col` to add grid indices. Optional `index_base: 1` converts SmartScan-style `RC001001` to zero-based indices stored in the CSV.
 - `summarize`: `recursive: false|true` to control recursive search for TIFFs.
   - Topo particle summary options (see `config.topo_particle_summary.yaml`): `grid_policy` (`keep_all|require_full_grid|intersect_grid|manual_review`), `grid_rows`, `grid_cols`, `grid_index_base`, `exclude_samples`, `exclude_source_files`.
@@ -127,6 +131,10 @@ Top-level sections (see `config.example.yaml`):
 - Forward/Backward (and other) filename metadata: the pygwy runner attaches best-effort keys like `file.channel`, `file.direction`, `file.grid_id`, `file.date_code` which you can include as CSV columns via `csv_modes`.
 - Optional per-image exports: `modes.<mode>.python_data_filtering.export_raw_csv|export_filtered_csv` write `*_raw.csv`/`*_filtered.csv` under `<output_dir>/pyfilter/` unless `export_dir` is set.
 - Particle/grain export note (Py2): `*_particles.csv` / `*_grains.csv` are written under `<output_dir>/particles/` and `<output_dir>/grains/`. If they are missing, check for Windows path-length issues; the runner uses long-path support for these exports.
+- Review-pack note (Py2, particle mode): with `review_pack.enable: true`, the runner also writes:
+  - `<output_dir>/review/review.csv`
+  - `<output_dir>/review/panels/*_particle_panel.png`
+  These are useful for thesis figure selection and manual mask verification.
 
 ## 8) Notes for pygwy (Py2) processing
 - Requires 32-bit Python 2.7 and 32-bit Gwyddion/pygwy on Windows.

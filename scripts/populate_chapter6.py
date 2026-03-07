@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import json
 import math
 from collections import defaultdict
 from dataclasses import dataclass
@@ -11,6 +12,7 @@ from statistics import mean, stdev
 
 from docx import Document
 from docx.shared import Inches
+from topo_report_synthesis import build_bundle
 
 PRIMARY_JOB = "particle_forward_medianbg_mean"
 COMPARISON_JOB = "particle_forward_flatten_mean"
@@ -448,6 +450,19 @@ def _sample_rows(root: RootStats) -> list[list[str]]:
 
 
 def _write(doc_path: Path, wt10: RootStats, wt25: RootStats) -> None:
+    synthesis_path = wt10.root.parent / "topo_report_synthesis.json"
+    synthesis = None
+    if synthesis_path.exists():
+        try:
+            synthesis = json.loads(synthesis_path.read_text(encoding="utf-8"))
+        except Exception:
+            synthesis = None
+    if synthesis is None:
+        try:
+            synthesis = build_bundle(wt10.root, wt25.root)
+        except Exception:
+            synthesis = None
+
     overview = _overview_plot(wt10, wt25)
     crossover = _crossover_plot(wt10, wt25)
     p10 = wt10.method_stats[PRIMARY_JOB]
@@ -463,6 +478,8 @@ def _write(doc_path: Path, wt10: RootStats, wt25: RootStats) -> None:
     doc.add_heading("Chapter 6 Draft - Stage 1 Results and Feasibility Decision", level=0)
     doc.add_paragraph(f"Draft generated: {datetime.now().strftime('%Y-%m-%d %H:%M')}")
     doc.add_paragraph("Scope: measurement feasibility, scan efficiency, and decision thresholds only.")
+    if synthesis is not None:
+        doc.add_paragraph(f"Shared synthesis source: {synthesis_path if synthesis_path.exists() else 'in-memory synthesis bundle'}")
 
     doc.add_heading("6.1 Processing Validation - Baseline PEGDA (No SiNP)", level=1)
     doc.add_paragraph("Baseline PEGDA validation in this chapter is carried primarily by the modulus method-comparison study. That study was used to evaluate forward/backward agreement, route consistency, and the practical effect of pixel loss before extending the Stage 1 logic to the particle-count workflow.")
@@ -537,7 +554,17 @@ def _write(doc_path: Path, wt10: RootStats, wt25: RootStats) -> None:
     doc.add_paragraph(f"Primary-route isolated counts averaged {_pm(p10.mean_isolated, p10.std_isolated)} per scan for {wt10.label} and {_pm(p25.mean_isolated, p25.std_isolated)} per scan for {wt25.label}. Scans with at least one isolated particle accounted for {p10.pct_with_isolated:.1f}% and {p25.pct_with_isolated:.1f}% of the two datasets, respectively.")
     doc.add_paragraph(f"The key result is that the higher-loading dataset did not produce a proportionally larger isolated-particle yield. Mean isolated counts remained close ({p10.mean_isolated:.2f} versus {p25.mean_isolated:.2f} isolated particles per scan) even though candidate density increased.")
     doc.add_paragraph("As in the retained-count maps, the isolated-count heatmaps summarize mean isolated-particle count at each scan position across the grouped sample sets. They are therefore useful for showing spatial distribution, but not for showing the full between-sample spread at each position.")
-    _table(doc, "Table 6.5 - Sample-level isolated-particle yield under the primary route", ["System", "Sample set", "Scans", "Mean isolated/scan", "Std", "% scans with >=1 isolated"], _sample_rows(wt10) + _sample_rows(wt25))
+    sample_table_rows = _sample_rows(wt10) + _sample_rows(wt25)
+    if synthesis and synthesis.get("sample_rows"):
+        sample_table_rows = [[
+            r.get("system", ""),
+            r.get("sample_set", "").replace("_", " "),
+            r.get("scans", ""),
+            r.get("mean_isolated_per_scan", ""),
+            r.get("std_isolated_per_scan", ""),
+            f"{r.get('pct_scans_with_isolated', '')}%",
+        ] for r in synthesis.get("sample_rows", [])]
+    _table(doc, "Table 6.5 - Sample-level isolated-particle yield under the primary route", ["System", "Sample set", "Scans", "Mean isolated/scan", "Std", "% scans with >=1 isolated"], sample_table_rows)
     _figure(doc, "Figure 6.5 - Histograms of isolated-particle counts per scan for the primary route, separated by 10 wt% and 25 wt% SiNP.", [wt10.root / "fig_isolated_count_hist.png", wt25.root / "fig_isolated_count_hist.png"])
     _figure(doc, "Figure 6.6 - Isolated-particle grid heatmaps for the primary route, separated by SiNP loading.", [wt10.root / "summary_outputs" / "combined" / f"fig_isolated_count_grid_wt10_{PRIMARY_JOB}.png", wt25.root / "summary_outputs" / "combined" / f"fig_isolated_count_grid_wt25_{PRIMARY_JOB}.png"])
     _figure(
@@ -559,17 +586,50 @@ def _write(doc_path: Path, wt10: RootStats, wt25: RootStats) -> None:
     doc.add_heading("6.3.2 Required Scans for 95% Confidence", level=2)
     doc.add_paragraph(f"Using the Poisson baseline fit, a target of {TARGET_ISOLATED} isolated particles, and {int(CONFIDENCE * 100)}% confidence, the primary route required {f10.n_required_095} scans for {wt10.label} and {f25.n_required_095} scans for {wt25.label}. Both analyzed inventories greatly exceed those requirements.")
     doc.add_paragraph("In Table 6.5, primary lambda is the mean isolated-particle count per scan under the primary route. The observed zero-isolated rate is the empirical fraction of scans with zero isolated particles. The required-scan value is the smallest number of scans for which the modeled probability of obtaining at least 30 isolated particles reaches 95%.")
-    _table(doc, "Table 6.6 - Required scans for isolated-particle sufficiency under the primary route", ["System", "Primary lambda", "Observed zero-isolated rate", "Required scans (95%)", "Available scans"], [[wt10.label, f"{f10.mean_per_scan:.3f}", _pct(f10.zero_rate_obs), str(f10.n_required_095), str(p10.maps)], [wt25.label, f"{f25.mean_per_scan:.3f}", _pct(f25.zero_rate_obs), str(f25.n_required_095), str(p25.maps)]])
+    required_rows = [[wt10.label, f"{f10.mean_per_scan:.3f}", _pct(f10.zero_rate_obs), str(f10.n_required_095), str(p10.maps)], [wt25.label, f"{f25.mean_per_scan:.3f}", _pct(f25.zero_rate_obs), str(f25.n_required_095), str(p25.maps)]]
+    if synthesis and synthesis.get("required_scan_rows"):
+        required_rows = [[
+            r.get("system", ""),
+            r.get("primary_lambda", ""),
+            _pct(float(r.get("observed_zero_isolated_rate", 0) or 0)),
+            r.get("required_scans_095", ""),
+            r.get("available_scans", ""),
+        ] for r in synthesis.get("required_scan_rows", [])]
+    _table(doc, "Table 6.6 - Required scans for isolated-particle sufficiency under the primary route", ["System", "Primary lambda", "Observed zero-isolated rate", "Required scans (95%)", "Available scans"], required_rows)
 
     doc.add_heading("6.4 Grain Metrics", level=1)
     doc.add_paragraph("Grain exports are now available for the full method matrix. These do not replace particle or isolation statistics, but they strengthen the segmentation-quality discussion and provide an additional diameter-based consistency check.")
-    _table(doc, "Table 6.7 - Grain summary across the full method matrix", ["System", "Method", "Grain total", "Grain kept", "Grain isolated", "Kept diameter mean +/- std", "Isolated diameter mean +/- std"], _grain_rows(wt10) + _grain_rows(wt25))
+    grain_table_rows = _grain_rows(wt10) + _grain_rows(wt25)
+    if synthesis and synthesis.get("grain_rows"):
+        grain_table_rows = [[
+            r.get("system", ""),
+            r.get("method", ""),
+            r.get("grain_total", ""),
+            r.get("grain_kept", ""),
+            r.get("grain_isolated", ""),
+            f"{r.get('kept_mean_diameter_nm', '')} +/- {r.get('kept_std_diameter_nm', '')} nm",
+            f"{r.get('isolated_mean_diameter_nm', '')} +/- {r.get('isolated_std_diameter_nm', '')} nm",
+        ] for r in synthesis.get("grain_rows", [])]
+    _table(doc, "Table 6.7 - Grain summary across the full method matrix", ["System", "Method", "Grain total", "Grain kept", "Grain isolated", "Kept diameter mean +/- std", "Isolated diameter mean +/- std"], grain_table_rows)
     _figure(doc, "Figure 6.7 - Full-method grain diameter summaries for PEGDA, 1 wt% TPO, no coating, separated by 10 wt% and 25 wt% SiNP. Bar plots show method-wise mean +/- standard deviation; box plots show the corresponding diameter distributions.", [wt10.root / "summary_outputs" / "compare_by_wt" / "fig_grain_diameter_nm_kept_mean_by_job.png", wt10.root / "summary_outputs" / "compare_by_wt" / "fig_grain_diameter_nm_isolated_box_by_job.png", wt25.root / "summary_outputs" / "compare_by_wt" / "fig_grain_diameter_nm_kept_mean_by_job.png", wt25.root / "summary_outputs" / "compare_by_wt" / "fig_grain_diameter_nm_isolated_box_by_job.png"], width=5.5)
 
     doc.add_heading("6.5 Processing Route Sensitivity", level=1)
     doc.add_paragraph(f"The practical sensitivity question is not whether the processing routes produce visually different maps, but whether they materially change isolated-particle yield and therefore the number of scans needed for Stage 1 sufficiency. Relative to the primary route, the comparison route ({COMPARISON_JOB}) reduced mean isolated yield from {_pm(p10.mean_isolated, p10.std_isolated)} to {_pm(c10.mean_isolated, c10.std_isolated)} per scan in {wt10.label} and from {_pm(p25.mean_isolated, p25.std_isolated)} to {_pm(c25.mean_isolated, c25.std_isolated)} per scan in {wt25.label}. The corresponding 95% scan requirements increased from {f10.n_required_095} to {cf10.n_required_095} scans and from {f25.n_required_095} to {cf25.n_required_095} scans.")
     doc.add_paragraph("The full method table should be interpreted provisionally. A targeted post-generation verification identified a mask write-back issue in the thresholded particle-analysis path, so the full all-method matrix must be regenerated after that fix before any final claim is made about whether threshold variants truly collapse within a preprocessing family.")
-    _table(doc, "Table 6.8 - All-method comparison with loading-normalized isolation yield", ["System", "Method", "Job/profile", "Mean isolated/scan", "Std", "Zero-isolated rate", "Req. scans (95%)", "Relative to primary", "Isolated/scan/wt%"], _method_rows(wt10) + _method_rows(wt25))
+    method_table_rows = _method_rows(wt10) + _method_rows(wt25)
+    if synthesis and synthesis.get("method_rows"):
+        method_table_rows = [[
+            r.get("system", ""),
+            r.get("method", ""),
+            r.get("job", ""),
+            r.get("mean_isolated_per_scan", ""),
+            r.get("std_isolated_per_scan", ""),
+            _pct(float(r.get("zero_isolated_rate", 0) or 0)),
+            r.get("required_scans_095", ""),
+            r.get("relative_to_primary", ""),
+            r.get("isolated_per_scan_per_wt", ""),
+        ] for r in synthesis.get("method_rows", [])]
+    _table(doc, "Table 6.8 - All-method comparison with loading-normalized isolation yield", ["System", "Method", "Job/profile", "Mean isolated/scan", "Std", "Zero-isolated rate", "Req. scans (95%)", "Relative to primary", "Isolated/scan/wt%"], method_table_rows)
     _figure(doc, "Figure 6.8 - Full-method comparison of mean isolated-particle yield by job and SiNP loading for PEGDA, 1 wt% TPO, no coating. These plots summarize how preprocessing and threshold choices affect isolated-particle yield.", [wt10.root / "summary_outputs" / "compare_by_wt" / "fig_isolated_count_mean_by_job_10pct.png", wt25.root / "summary_outputs" / "compare_by_wt" / "fig_isolated_count_mean_by_job_25pct.png"])
     _figure(doc, "Figure 6.9 - Aggregate Poisson success-probability curves for all methods, separated by 10 wt% and 25 wt% SiNP. Horizontal dashed lines mark the 90%, 95%, and 99% success thresholds; vertical markers show the 95%-requirement scan count for each method.", [wt10.root / "summary_outputs" / "fits" / "risk_aggregate_wt_percent_10_poisson.png", wt25.root / "summary_outputs" / "fits" / "risk_aggregate_wt_percent_25_poisson.png"])
 
@@ -578,7 +638,15 @@ def _write(doc_path: Path, wt10: RootStats, wt25: RootStats) -> None:
     p_cross_25 = _availability_crossover_p(f25.mean_per_scan, p25.maps, TARGET_ISOLATED, CONFIDENCE)
     doc.add_paragraph("The Stage 2 trigger is expressed as a sensitivity study in confirmation probability p. The question is how far the confirmation rate could drop before the current Stage 1 scan pool would no longer meet the 30-particle, 95%-confidence target.")
     doc.add_paragraph("Figure 6.10 should be read as follows: the x-axis is the assumed fraction of Stage 1 isolated candidates that would later be confirmed as true particles in Stage 2, and the y-axis is the number of scans required to still achieve the Stage 2 target. The horizontal reference line is the number of scans already available. The crossover value p* is therefore the minimum confirmation fraction required for the currently available inventory to remain sufficient; it is not the probability that a crossover event occurs.")
-    _table(doc, "Table 6.9 - Minimum confirmation fraction p* required for the current scan inventory to remain sufficient", ["System", "Primary lambda", "Available scans", "Minimum confirmation fraction p*"], [[wt10.label, f"{f10.mean_per_scan:.3f}", str(p10.maps), f"{p_cross_10:.3f}" if p_cross_10 is not None else "not reachable"], [wt25.label, f"{f25.mean_per_scan:.3f}", str(p25.maps), f"{p_cross_25:.3f}" if p_cross_25 is not None else "not reachable"]])
+    crossover_rows = [[wt10.label, f"{f10.mean_per_scan:.3f}", str(p10.maps), f"{p_cross_10:.3f}" if p_cross_10 is not None else "not reachable"], [wt25.label, f"{f25.mean_per_scan:.3f}", str(p25.maps), f"{p_cross_25:.3f}" if p_cross_25 is not None else "not reachable"]]
+    if synthesis and synthesis.get("crossover_rows"):
+        crossover_rows = [[
+            r.get("system", ""),
+            r.get("primary_lambda", ""),
+            r.get("available_scans", ""),
+            r.get("minimum_confirmation_fraction_pstar", ""),
+        ] for r in synthesis.get("crossover_rows", [])]
+    _table(doc, "Table 6.9 - Minimum confirmation fraction p* required for the current scan inventory to remain sufficient", ["System", "Primary lambda", "Available scans", "Minimum confirmation fraction p*"], crossover_rows)
     _figure(doc, "Figure 6.10 - Required scan count versus confirmation probability p across the full method matrix, with the available-scan inventory shown as a horizontal reference and labeled crossover points for the primary and comparison routes. PEGDA, 1 wt% TPO, no coating, separated by 10 wt% and 25 wt% SiNP.", [crossover], width=6.6)
 
     doc.add_heading("6.7 Stage 1 Decision", level=1)

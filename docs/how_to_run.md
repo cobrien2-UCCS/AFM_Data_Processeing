@@ -33,6 +33,25 @@ py -3 scripts/fit_particle_distributions.py --config "configs/TEST configs/Examp
 
 Note: grain/particle exports (`*_grains.csv`, `*_particles.csv`) are written by the Py2 runner under `<out_root>/<system>/<sample>/<job>/grains|particles/`. If they are missing, check for Windows path-length constraints.
 
+## Curated representative image pack
+
+For thesis figures or appendix review images, the current codebase already supports a simple mask-overlay panel workflow:
+
+1. Put the selected TIFFs into a curated directory.
+2. Point a dedicated particle job at that directory via `jobs.<name>.input_root`.
+3. Enable `modes.<particle_mode>.review_pack`.
+4. Run the job normally.
+
+The runner will write:
+- `review/review.csv`
+- `review/panels/*_particle_panel.png`
+
+This is the recommended current path for:
+- isolated-particle examples
+- clumped-particle examples
+- dense non-clumped examples
+- sparse/single-particle examples
+
 ## Legacy: manual steps
 If you want to run the steps yourself:
 1) Generate manifest (Py3)

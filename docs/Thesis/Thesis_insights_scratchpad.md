@@ -24,3 +24,13 @@ so they do not get lost (even if they belong in another chapter later).
   - not yet sufficient for broad modulus generalization
 - A fuller modulus comparison should later be repeated across more grouped samples, separated by side, and then extended to composite PEGDA-SiNP and Li-containing systems.
 - Add a future figure idea: a workflow/data-flow chart to explain the pipeline architecture and report-generation path more clearly than prose alone.
+## Representative Particle Image Set
+
+- Keep a small representative image set to visually explain what the Stage 1 particle workflow is doing.
+- Purpose:
+  - show the appearance of isolated particles
+  - show clumped-particle fields
+  - show dense but relatively non-clumped fields
+  - show sparse / single-particle fields
+  - show how the mask behaves on topography images
+- These images are useful for Chapter 5 workflow explanation, Chapter 6 supporting context, and appendix/SOP material.

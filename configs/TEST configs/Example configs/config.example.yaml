@@ -96,6 +96,10 @@ modes:
     #   image_format: "png"
     #   panel_basename_max_len: 120
     #   csv_name: "review.csv"
+    # Practical thesis-figure use:
+    # - point a dedicated job at a curated input directory of selected TIFFs
+    # - enable review_pack
+    # - the runner writes review/review.csv + review/panels/*_particle_panel.png
     units: "count"
     expected_units: "count"
     on_unit_mismatch: "error"
@@ -218,6 +222,15 @@ plotting_modes:
     label_units_mode: "manual"
     yaxis_format: "engineering"
     yaxis_places: 3
+
+# Example dedicated representative-image job:
+# jobs:
+#   particle_review_pack:
+#     input_root: "C:/AFM_REVIEW_INPUT"
+#     output_root: "out/topo_particle/review_pack"
+#     run_name_template: "particle_review_pack"
+#     profile: "particle_count_basic"
+#     pattern: "**/*Z Height*Forward*.tif;**/*Z Height*Forward*.tiff"
     label_mode: "grid_rowcol"
     label_max_len: 30
   histogram_avg:

@@ -31,6 +31,11 @@ See `config.example.yaml` for a concrete example.
     - `image_format` (optional, default `png`)
     - `panel_basename_max_len` (optional, default `120`)
     - `csv_name` (optional, default `review.csv`)
+    - Current behavior: saves a 2-panel image for each selected scan
+      - left: processed grayscale field
+      - right: same field with the particle mask overlaid in red
+    - Recommended use for thesis figures: point a dedicated `jobs.<name>.input_root` at a curated directory of selected TIFFs and enable `review_pack` for that particle mode
+    - Current limitation: category labels from parent folders are **not** automatically written into `review.csv`; use folder structure or external notes for now
 - `grid`: `filename_regex` with named groups `row`/`col` to set grid indices. Optional `index_base` (0 or 1) converts filename indices to zero-based values stored in `grid.row_idx`/`grid.col_idx`.
 - `filename_parsing` (optional): list of regex -> key maps for filename metadata (e.g., `patterns: [{ regex: "LOC_RC(?P<row>\\d{3})(?P<col>\\d{3})", map: {row: "grid.row_idx", col: "grid.col_idx"} }, ...]`). Falls back to `grid.filename_regex`.
 - `summarize`: `recursive` flag for TIFF search.
