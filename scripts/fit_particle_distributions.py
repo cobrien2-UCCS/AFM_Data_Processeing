@@ -38,6 +38,9 @@ JOB_STYLE_ORDER = [
     ("particle_forward_flatten_max_fixed0_p95", {"color": "#7f7f7f", "linestyle": ":", "marker": "<", "linewidth": 1.8}),
 ]
 JOB_STYLES = dict(JOB_STYLE_ORDER)
+JOB_ORDER_INDEX = {job: idx for idx, (job, _) in enumerate(JOB_STYLE_ORDER)}
+PRIMARY_JOB = "particle_forward_medianbg_mean"
+COMPARISON_JOB = "particle_forward_flatten_mean"
 
 
 def job_label(job):
@@ -756,19 +759,21 @@ def main():
             for group_key, items in grouped.items():
                 plt.figure(figsize=(9, 5))
                 available_scans = None
-                label_offset_idx = 0
-                for label, job, curve in items:
+                items = sorted(items, key=lambda x: JOB_ORDER_INDEX.get(x[1], 999) if 'JOB_ORDER_INDEX' in globals() else x[1])
+                for item_idx, (label, job, curve) in enumerate(items):
                     xs = [row["n_scans"] for row in curve]
                     ys = [row["success_prob"] for row in curve]
                     style = job_style(job)
+                    step = max(1, int(len(xs) / 12.0)) if xs else 1
+                    offset = item_idx % step if step > 1 else 0
                     line, = plt.plot(
                         xs,
                         ys,
                         linewidth=style.get("linewidth", 1.8),
                         linestyle=style.get("linestyle", "-"),
                         marker=style.get("marker"),
-                        markevery=max(1, int(len(xs) / 10.0)) if xs else 1,
-                        markersize=4,
+                        markevery=(offset, step) if xs and len(xs) > step else step,
+                        markersize=5,
                         color=style.get("color"),
                         label=job_label(job),
                     )
@@ -785,20 +790,29 @@ def main():
                         n_req_095 = None
                     if n_req_095:
                         plt.axvline(n_req_095, color=line.get_color(), linestyle=":", linewidth=0.9, alpha=0.65)
-                        plt.scatter([n_req_095], [0.95], color=line.get_color(), marker=style.get("marker") or "o", s=30, zorder=5)
-                        if job in ("particle_forward_medianbg_mean", "particle_forward_flatten_mean"):
-                            y_offsets = [0.915, 0.875, 0.835, 0.795]
-                            y_annot = y_offsets[label_offset_idx % len(y_offsets)]
-                            label_offset_idx += 1
+                        marker_style = style.get("marker") or "o"
+                        marker_color = line.get_color()
+                        marker_size = 32
+                        if job == PRIMARY_JOB:
+                            marker_style = "*"
+                            marker_color = "#d4a017"
+                            marker_size = 85
+                        elif job == COMPARISON_JOB:
+                            marker_style = "D"
+                            marker_color = "#111111"
+                            marker_size = 42
+                        plt.scatter([n_req_095], [0.95], color=marker_color, edgecolors="black", linewidths=0.5, marker=marker_style, s=marker_size, zorder=6)
+                        if job in (PRIMARY_JOB, COMPARISON_JOB):
+                            y_annot = 0.64 if job == PRIMARY_JOB else 0.48
                             plt.text(
                                 n_req_095 + 0.8,
                                 y_annot,
                                 "%s\nn95=%d" % (job_label(job), n_req_095),
-                                va="top",
+                                va="center",
                                 ha="left",
                                 fontsize=7,
-                                color=line.get_color(),
-                                bbox=dict(boxstyle="round,pad=0.18", fc="white", ec=line.get_color(), alpha=0.85),
+                                color=marker_color if job == PRIMARY_JOB else line.get_color(),
+                                bbox=dict(boxstyle="round,pad=0.20", fc="white", ec=(marker_color if job == PRIMARY_JOB else line.get_color()), alpha=0.92),
                             )
                     band = model_bands.get((label, model))
                     if band:
@@ -814,15 +828,17 @@ def main():
                     plt.text(x_max, y_text, " %.0f%%" % (100.0 * level), va="top", ha="right", fontsize=8, color=color)
                 if available_scans:
                     plt.axvline(available_scans, color="black", linestyle="--", linewidth=1.1)
+                    plt.scatter([available_scans], [0.95], color="#d4a017", edgecolors="black", linewidths=0.5, marker="*", s=95, zorder=7)
                     plt.text(
-                        available_scans,
-                        0.04,
+                        available_scans + 1.0,
+                        0.56,
                         "Available\nscans = %d" % available_scans,
-                        rotation=90,
-                        va="bottom",
-                        ha="right",
+                        rotation=0,
+                        va="center",
+                        ha="left",
                         fontsize=8,
                         color="black",
+                        bbox=dict(boxstyle="round,pad=0.18", fc="white", ec="#444444", alpha=0.92),
                     )
                 group_label = format_group_label(aggregate_by, group_key)
                 title = "P(total >= %d) with uncertainty\n(%s | %s)" % (target_total, group_label, model)
@@ -830,7 +846,7 @@ def main():
                 plt.xlabel("Number of scans")
                 plt.ylabel("P(total isolated >= target)")
                 plt.ylim(0.0, 1.0)
-                plt.legend(fontsize=8, ncol=2, frameon=False, loc="lower right")
+                plt.legend(fontsize=8, ncol=2, frameon=True, framealpha=0.94, facecolor="white", edgecolor="#666666", loc="lower center", bbox_to_anchor=(0.5, 0.02))
                 plt.tight_layout()
                 out_name = "risk_aggregate_%s_%s.png" % (slugify(group_label or "all"), model)
                 plt.savefig(out_dir / out_name, dpi=160)

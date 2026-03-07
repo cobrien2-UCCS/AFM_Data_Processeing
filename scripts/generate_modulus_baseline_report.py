@@ -264,7 +264,20 @@ def build_report(
         f"Unit note: the source `summary.csv` files for this study record modulus in {SOURCE_MODULUS_UNIT}. "
         f"To improve readability, modulus-derived values in the tables and plots below are displayed in "
         f"{DISPLAY_MODULUS_UNIT} by dividing the source-reported {SOURCE_MODULUS_UNIT} values by 1,000,000. "
-        f"The baseline inventory table still reports the source unit exactly as provided by the pipeline."
+        f"The baseline inventory table still reports the source unit exactly as provided by the pipeline. "
+        f"For the current TIFF path, that source unit should be treated as the active workflow label, not yet as independently confirmed instrument metadata."
+    )
+    doc.add_paragraph(
+        "Verification note: a direct one-file runner check on the current modulus TIFFs showed that pygwy did not detect "
+        "embedded z-units for that file (`get_si_unit_z()` returned empty), and the runner therefore populated the output "
+        "unit from the workflow default/fallback path. The current `kPa` labeling should therefore be treated as the "
+        "active workflow assumption for these TIFFs, not yet as independently validated source metadata truth."
+    )
+    doc.add_paragraph(
+        "Additional caution: that same one-file verification run also exported a negative modulus value. The broader "
+        "modulus method-comparison CSV sets used in this report remained non-negative, so the comparative route-validation "
+        "results are still usable. However, the absolute modulus value path should be treated as provisional pending "
+        "targeted re-validation of the TIFF unit/processing chain."
     )
 
     _add_heading_paragraph(doc, "Workflow and method definitions")
@@ -363,6 +376,16 @@ def build_report(
                 (backward_baseline_rows[0]["source_file"] if backward_baseline_rows else ""),
                 str(backward_baseline_summary),
             ],
+        ],
+    )
+    _add_table(
+        doc,
+        "Table M1b - Unit provenance interpretation used in this report",
+        ["Output family", "Current unit behavior", "Interpretation"],
+        [
+            ["Modulus source summaries", "Pipeline outputs currently show kPa", "Treat as workflow-level fallback/normalization unless verified against instrument/export metadata; absolute values remain provisional."],
+            ["Particle count outputs", "Count-based; no physical z-unit", "Unitless counts of retained or isolated particles."],
+            ["Particle/grain diameter outputs", "nm encoded in metric/column names", "Derived geometric metrics, not inherited z-units from the TIFF field."],
         ],
     )
 

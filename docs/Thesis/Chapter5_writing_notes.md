@@ -25,6 +25,7 @@
   - **5.5 Required Map Count for 95% Confidence**
   - **5.6 Processing-Route Validation**
 - Keep nomenclature, software environment, and default parameters as supporting material inside `5.1`, not as large stand-alone numbered sections.
+- Use the agreed thesis nomenclature as consistently as possible once a term has been defined; avoid renaming the same workflow object across sections, captions, and tables.
 - Keep appendix SOP material out of the numbered section flow.
 
 ## Nomenclature Placement
@@ -32,6 +33,7 @@
 - Nomenclature is still needed, but if Chapter 5 is kept strict to the outline it should be a compact support table inside `5.1`, not a major stand-alone section.
 - If the thesis later gets a front-matter nomenclature or glossary section, that material can be moved there with minimal rewriting.
 - The goal is still to define the project vocabulary once, clearly, so later chapters can reference it instead of re-explaining it.
+- Modulus unit handling remains under validation. A one-file modulus verification run produced a negative exported modulus value while the broader modulus comparison CSV sets remained non-negative; treat this as an unresolved processing/data-validation issue rather than a settled physical result.
 
 ## Terminology (Use Consistently)
 
@@ -183,6 +185,7 @@
 
 - Chapter 5 must explicitly define the processing methods in reader-facing language, not just by config/job name.
 - Put the short-form definitions in **5.1 Particle Counting Workflow** so the reader can interpret later tables and figures without reading code or config files.
+- Add a short unit-provenance note in `5.1`: a direct one-file modulus verification run showed missing detected z-units in pygwy for the current TIFF path, so the present `kPa` label should be described as a workflow fallback/normalization assumption pending upstream metadata verification.
 - At minimum, define:
   - `medianbg_mean`
   - `medianbg_fixed0`

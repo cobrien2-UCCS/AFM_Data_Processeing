@@ -12,6 +12,7 @@
 - Terms such as `job`, `profile`, `processing mode`, `candidate particle`, `isolated particle`, `grain`, and `baseline` should be defined in Chapter 5.
 - In Chapter 6, use those terms consistently and add only short reminder phrases when needed.
 - At the first use of specialized workflow language, add a brief pointer back to Chapter 5 definitions.
+- Use the agreed nomenclature consistently across section text, captions, and tables; avoid swapping labels for the same object mid-chapter.
 
 ## Ordering Matters
 
@@ -190,9 +191,11 @@ These belong in appendices, supplementary material, or selective in-text callout
 - The forward-only choice used in the topography Stage 1 workflow should be tied back to the baseline modulus forward/backward agreement here, but only briefly because the method rationale is already defined in Chapter 5.
 - A separate modulus report artifact is acceptable and likely helpful, but Chapter 6 should use only the figures/tables needed to satisfy the outline's baseline-validation requirement.
 - `6.1` should also make the unit provenance explicit:
-  - modulus source summaries in this workflow carry `units = kPa`
+  - modulus source summaries in this workflow currently carry `units = kPa`
+  - a direct one-file verification run showed that pygwy did not detect embedded z-units for the tested modulus TIFF, so this should be framed as a workflow fallback/default assignment pending upstream metadata verification
   - count outputs are count-based and do not inherit a physical z-unit
   - particle/grain diameter outputs are derived geometric metrics reported in `nm`
+- Keep the negative-value modulus verification issue separate from the validated modulus comparison outputs: the one-file unit-verification run exported a negative modulus value, but the broader modulus comparison CSV sets used for baseline validation remained non-negative. This should be framed as an open validation issue that may require a targeted modulus rerun.
 
 - In the particle-count subsection, explain what the histogram **frequency** axis means:
   - it is the number of scans falling at each retained-particle count.

@@ -5,6 +5,8 @@ so they do not get lost (even if they belong in another chapter later).
 
 ## Results/Insights (paste + date)
 - 
+- Use agreed thesis nomenclature consistently across chapters, captions, tables, and report artifacts so the same workflow object is not renamed in different places.
+- The one-file modulus unit-verification run produced a negative exported modulus value even though the broader modulus comparison CSV sets remain non-negative. Treat this as an unresolved validation issue and likely trigger for a targeted modulus rerun once the unit path is clarified.
 
 ## Figures/Tables To Add Later
 - 

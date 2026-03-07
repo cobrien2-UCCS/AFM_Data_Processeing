@@ -1,0 +1,2 @@
+source_file,channel,direction,grid_id,date_code,mode,metric_type,avg_value_original,std_value_original,units_original,unit_source,unit_conversion_factor,avg_value,std_value,units,nx,ny,row_idx,col_idx
+PEGDA01TPO000SiNP_Sam01_S1_P__GrID000_LOC_RC001001-5.00x5.00-Modulus_Forward-251021-CRO.tiff,Modulus,Forward,0,251021,modulus_basic,modulus,-152145808.16734785,320100430.7623106,kPa,default,1.0,-152145808.16734785,320100430.7623106,kPa,512,512,0,0

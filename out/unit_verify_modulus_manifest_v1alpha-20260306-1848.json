@@ -1,0 +1,218 @@
+{
+  "manifest_version": "1.0",
+  "processing_mode": "modulus_basic",
+  "csv_mode": "default_scalar",
+  "input_root": "C:\\Users\\Conor O'Brien\\Documents\\GitHub\\AFM-Data-Management\\out\\unit_verify_modulus_input_v1alpha-20260306-1848",
+  "pattern": "*.tif;*.tiff",
+  "files": [
+    "C:\\Users\\Conor O'Brien\\Documents\\GitHub\\AFM-Data-Management\\out\\unit_verify_modulus_input_v1alpha-20260306-1848\\PEGDA01TPO000SiNP_Sam01_S1_P__GrID000_LOC_RC001001-5.00x5.00-Modulus_Forward-251021-CRO.tiff"
+  ],
+  "input_filters": {
+    "filters_applied": false,
+    "include_regex": [],
+    "exclude_regex": []
+  },
+  "output_dir": "C:\\Users\\Conor O'Brien\\Documents\\GitHub\\AFM-Data-Management\\out\\unit_verify_modulus_run_v1alpha-20260306-1848",
+  "output_csv": "C:\\Users\\Conor O'Brien\\Documents\\GitHub\\AFM-Data-Management\\out\\unit_verify_modulus_run_v1alpha-20260306-1848\\summary.csv",
+  "grid": {
+    "index_base": 1,
+    "filename_regex": "LOC_RC(?P<row>\\d{3})(?P<col>\\d{3})"
+  },
+  "channel_defaults": {
+    "modulus_family": "modulus",
+    "topography_family": "height"
+  },
+  "mode_definition": {
+    "channel_family": "modulus",
+    "plane_level": true,
+    "median_size": 3,
+    "line_level_x": false,
+    "line_level_y": false,
+    "clip_percentiles": null,
+    "metric_type": "modulus",
+    "units": "kPa",
+    "expected_units": "kPa",
+    "on_unit_mismatch": "error"
+  },
+  "csv_mode_definition": {
+    "columns": [
+      {
+        "name": "source_file",
+        "from": "core.source_file"
+      },
+      {
+        "name": "channel",
+        "from": "file.channel",
+        "default": ""
+      },
+      {
+        "name": "direction",
+        "from": "file.direction",
+        "default": ""
+      },
+      {
+        "name": "grid_id",
+        "from": "file.grid_id",
+        "default": ""
+      },
+      {
+        "name": "date_code",
+        "from": "file.date_code",
+        "default": ""
+      },
+      {
+        "name": "mode",
+        "from": "core.mode"
+      },
+      {
+        "name": "metric_type",
+        "from": "core.metric_type"
+      },
+      {
+        "name": "avg_value_original",
+        "from": "core.avg_value_original",
+        "default": ""
+      },
+      {
+        "name": "std_value_original",
+        "from": "core.std_value_original",
+        "default": ""
+      },
+      {
+        "name": "units_original",
+        "from": "core.units_original",
+        "default": ""
+      },
+      {
+        "name": "unit_source",
+        "from": "core.unit_source",
+        "default": ""
+      },
+      {
+        "name": "unit_conversion_factor",
+        "from": "core.unit_conversion_factor",
+        "default": ""
+      },
+      {
+        "name": "avg_value",
+        "from": "core.avg_value"
+      },
+      {
+        "name": "std_value",
+        "from": "core.std_value"
+      },
+      {
+        "name": "units",
+        "from": "core.units"
+      },
+      {
+        "name": "nx",
+        "from": "core.nx"
+      },
+      {
+        "name": "ny",
+        "from": "core.ny"
+      },
+      {
+        "name": "row_idx",
+        "from": "grid.row_idx",
+        "default": -1
+      },
+      {
+        "name": "col_idx",
+        "from": "grid.col_idx",
+        "default": -1
+      }
+    ],
+    "on_missing_field": "warn_null"
+  },
+  "unit_conversions": {
+    "modulus_basic": {
+      "kPa": {
+        "target": "kPa",
+        "factor": 1.0
+      },
+      "MPa": {
+        "target": "kPa",
+        "factor": 1000.0
+      },
+      "GPa": {
+        "target": "kPa",
+        "factor": "1e6"
+      },
+      "Pa": {
+        "target": "kPa",
+        "factor": 0.001
+      }
+    },
+    "topography_flat": {
+      "kPa": {
+        "target": "kPa",
+        "factor": 1.0
+      },
+      "MPa": {
+        "target": "kPa",
+        "factor": 1000.0
+      },
+      "GPa": {
+        "target": "kPa",
+        "factor": "1e6"
+      },
+      "Pa": {
+        "target": "kPa",
+        "factor": 0.001
+      }
+    },
+    "particle_count_basic": {
+      "kPa": {
+        "target": "kPa",
+        "factor": 1.0
+      },
+      "MPa": {
+        "target": "kPa",
+        "factor": 1000.0
+      },
+      "GPa": {
+        "target": "kPa",
+        "factor": "1e6"
+      },
+      "Pa": {
+        "target": "kPa",
+        "factor": 0.001
+      }
+    },
+    "raw_noop": {
+      "kPa": {
+        "target": "kPa",
+        "factor": 1.0
+      },
+      "MPa": {
+        "target": "kPa",
+        "factor": 1000.0
+      },
+      "GPa": {
+        "target": "kPa",
+        "factor": "1e6"
+      },
+      "Pa": {
+        "target": "kPa",
+        "factor": 0.001
+      }
+    }
+  },
+  "filename_parsing": {},
+  "debug": {
+    "enable": false,
+    "level": "info",
+    "artifacts": [],
+    "sample_limit": 3,
+    "out_dir": "out/debug",
+    "log_fields": [
+      "units",
+      "mask_counts",
+      "stats_counts"
+    ],
+    "raise_on_warn": false,
+    "echo_config": false
+  }
+}

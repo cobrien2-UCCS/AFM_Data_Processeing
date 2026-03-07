@@ -1,0 +1,41 @@
+fit:
+  enable: true
+  input_roots: []
+  count_field: "count_isolated"
+  stratify_by: ["wt_percent", "scraped", "job"]
+  count_models: ["poisson"]
+  min_samples: 5
+  target_total: 30
+  reliability_levels: [0.9, 0.95, 0.99]
+  max_scans: 200
+  random_seed: 13
+  mc_samples: 2000
+  output_dir: "summary_outputs/fits"
+
+  plot:
+    enable: true
+    histogram: true
+    risk_curve: true
+    hist_max_bin: null
+    combine_models: true
+    combine_uncertainty: false
+    aggregate_uncertainty: true
+    aggregate_by: ["wt_percent", "scraped"]
+    aggregate_model: "poisson"
+
+  checks:
+    var_mean_ratio_warn: 1.2
+    zero_ratio_warn: 1.5
+    min_mean: 0.05
+
+  uncertainty:
+    enable: true
+    bootstrap: 200
+    band_percentiles: [5, 95]
+    include_models: ["poisson", "nb"]
+
+  method_compare:
+    enable: true
+    stratify_by: []
+    count_field: "count_isolated"
+    hist_max_bin: null

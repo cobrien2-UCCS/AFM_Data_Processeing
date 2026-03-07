@@ -100,6 +100,15 @@ def build_doc(docx_path: Path) -> None:
         "environments by design: a Python 2.7 path constrained by the Windows pygwy/Gwyddion stack and a separate Python "
         "3 environment for all downstream analysis products."
     )
+    doc.add_paragraph(
+        "A unit-provenance distinction is important for the modulus-side validation work that informs this chapter. In the "
+        "current workflow, the runner first asks pygwy for the active field z-unit and only then applies any configured "
+        "normalization. A direct one-file verification run on the current PEGDA modulus TIFFs showed that pygwy did not "
+        "detect an embedded modulus z-unit for that file, so the present `kPa` labeling reflects the workflow fallback/"
+        "normalization path rather than independently confirmed source metadata. This does not prevent relative route "
+        "comparison, but it does mean that absolute physical unit assignment must be treated as under validation until it "
+        "is confirmed against the instrument export path or a Gwyddion GUI parity check."
+    )
     _add_table(
         doc,
         ["Component", "Version / role"],

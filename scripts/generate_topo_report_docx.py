@@ -125,11 +125,15 @@ def _pretty_aggregate_plot_name(path):
     m = re.search(r"risk_aggregate_(.+)_poisson$", stem)
     label = m.group(1) if m else stem
     label = label.replace("wt_percent_", "").replace("_", " ")
-    label = label.replace("scraped Non Scraped", "Non-scraped")
-    label = label.replace("scraped Scraped", "Scraped")
-    label = label.replace("scraped All scrape states", "All scrape states")
+    label = re.sub(r"\s+", " ", label).strip()
+    label = re.sub(r"\bAll scrape states\b", "All scrape states", label, flags=re.I)
+    label = re.sub(r"\bNon[- ]scraped\b", "Non-scraped", label, flags=re.I)
+    label = re.sub(r"\bScraped\b", "Scraped", label, flags=re.I)
     label = re.sub(r"\b10\b", "10%", label)
     label = re.sub(r"\b25\b", "25%", label)
+    label = re.sub(r"^(10%|25%)\\s+All scrape states$", r"\\1 | All scrape states", label)
+    label = re.sub(r"^(10%|25%)\\s+Non-scraped$", r"\\1 | Non-scraped", label)
+    label = re.sub(r"^(10%|25%)\\s+Scraped$", r"\\1 | Scraped", label)
     return label.strip()
 
 
@@ -564,8 +568,14 @@ def main():
         # Aggregate uncertainty plots (Poisson)
         for base in (input_bases or [OUT_BASE]):
             fit_dir = base / "summary_outputs" / "fits"
-            for path in sorted(fit_dir.glob("risk_aggregate_*_poisson.png")):
-                doc.add_paragraph(f"Aggregate Poisson uncertainty: {_pretty_aggregate_plot_name(path)}")
+            newest_by_label = {}
+            for path in fit_dir.glob("risk_aggregate_*_poisson.png"):
+                label = _pretty_aggregate_plot_name(path)
+                prev = newest_by_label.get(label)
+                if prev is None or path.stat().st_mtime > prev.stat().st_mtime:
+                    newest_by_label[label] = path
+            for label, path in sorted(newest_by_label.items()):
+                doc.add_paragraph(f"Aggregate Poisson uncertainty: {label}")
                 add_picture_if_exists(doc, path, width_in=5.5)
                 doc.add_paragraph(
                     "Reading guide: each curve shows the modeled probability of reaching the target isolated-particle total as the number of scans increases. "

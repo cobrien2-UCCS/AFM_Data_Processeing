@@ -23,6 +23,10 @@ NOMINAL_GRID = "21 x 21"
 DIAMETER_FILTER_NM = "350-550"
 ISOLATION_DISTANCE_NM = "900"
 ASSET_DIR = Path("docs/Thesis/generated_assets")
+MODULUS_ASSET_DIR = Path(r"C:\Users\Conor O'Brien\Dropbox\03_AML\00 IN-BOX\AFM Topo Particle processing OUT\modulus_baseline_assets")
+MODULUS_PAIRED_SUMMARY = Path("out/method_compare/fwd_bwd_20260223_173826/fwd_bwd_summary.csv")
+MODULUS_FORWARD_COMPARE_DIR = Path("out/method_compare/compare_20260306_180402")
+MODULUS_BACKWARD_COMPARE_DIR = Path("out/method_compare/compare_20260306_180452")
 
 JOB_ORDER = [
     "particle_forward_medianbg_mean",
@@ -247,6 +251,33 @@ def _table(doc: Document, title: str, headers: list[str], rows: list[list[str]])
             cells[i].text = value
 
 
+def _modulus_paired_rows(path: Path) -> list[list[str]]:
+    if not path.exists():
+        return []
+    rows = _read_csv(path)
+    out: list[list[str]] = []
+    labels = {
+        "gwy_stats": "Baseline Gwyddion stats",
+        "gwy_ops_py_stats": "Gwyddion preprocess + Python stats",
+        "raw_minmax": "Raw export + min/max filter",
+        "raw_chauvenet": "Raw export + Chauvenet",
+        "raw_three_sigma": "Raw export + 3-sigma",
+    }
+    for row in rows:
+        out.append(
+            [
+                labels.get(row.get("method", ""), row.get("method", "")),
+                row.get("n_pairs", ""),
+                f"{_f(row.get('median_ratio_avg')):.3f}",
+                f"{_f(row.get('mean_ratio_avg')):.3f}",
+                f"{_f(row.get('median_delta_avg')) / 1e6:.3f}",
+                f"{_f(row.get('mean_delta_avg')) / 1e6:.3f}",
+                f"{_f(row.get('mean_delta_n_valid')):.1f}",
+            ]
+        )
+    return out
+
+
 def _poisson_success(mu: float, target: int) -> float:
     if mu <= 0:
         return 0.0
@@ -434,14 +465,40 @@ def _write(doc_path: Path, wt10: RootStats, wt25: RootStats) -> None:
     doc.add_paragraph("Scope: measurement feasibility, scan efficiency, and decision thresholds only.")
 
     doc.add_heading("6.1 Processing Validation - Baseline PEGDA (No SiNP)", level=1)
-    doc.add_paragraph("Baseline validation still depends on the topo-only PEGDA rerun for a direct false-positive bound. For this draft, the workflow credibility argument rests on the completed method-validation work and the consistency of the completed Stage 1 outputs.")
-    doc.add_paragraph("Unit provenance should be stated explicitly for this section. In this workflow, Gwyddion-derived outputs inherit the physical unit attached to the active data field. The baseline modulus source summaries used here explicitly report units = kPa, and that source-unit tag is carried through the exported comparison tables before any report-level rescaling for readability. By contrast, the Stage 1 particle-count outputs are count-based summaries and therefore do not inherit a physical z-unit, while particle and grain diameter summaries are derived geometric metrics reported in nm.")
-    doc.add_paragraph("Figure 6.1 gives an early orienting summary so the chapter does not open without a figure.")
-    _figure(doc, "Figure 6.1 - Stage 1 overview for PEGDA, 1 wt% TPO, no coating, comparing 10 wt% and 25 wt% SiNP. Bars show mean candidate and isolated counts per scan with standard deviations.", [overview])
+    doc.add_paragraph("Baseline PEGDA validation in this chapter is carried primarily by the modulus method-comparison study. That study was used to evaluate forward/backward agreement, route consistency, and the practical effect of pixel loss before extending the Stage 1 logic to the particle-count workflow.")
+    doc.add_paragraph("The modulus baseline artifact is limited in scope: it was performed on one PEGDA sample and one fracture-surface side, so it should be interpreted as method-validation evidence rather than a population-level PEGDA modulus study. Even with that scope limit, the paired forward/backward comparison and the route-consistency summaries provide the direct baseline-validation evidence requested in the thesis outline.")
+    doc.add_paragraph("Unit provenance should be stated explicitly for this section. In this workflow, Gwyddion-derived outputs inherit the physical unit attached to the active data field when that unit is actually present in the imported field metadata. A direct one-file verification run on the current PEGDA modulus TIFFs showed that pygwy did not detect an embedded modulus z-unit for that file, so the current modulus source summaries carrying units = kPa should be treated as a workflow-level fallback/default assignment rather than fully verified source metadata truth. That same one-file verification run also produced a negative modulus export, so the absolute modulus value path should be treated as provisional pending targeted re-validation of the TIFF unit/processing chain. By contrast, the Stage 1 particle-count outputs are count-based summaries and therefore do not inherit a physical z-unit, while particle and grain diameter summaries are derived geometric metrics reported in nm.")
+    _table(
+        doc,
+        "Table 6.1 - Paired forward/backward modulus baseline summary by method",
+        ["Method", "Paired scans", "Median B/F ratio", "Mean B/F ratio", "Median delta avg (GPa-equiv.)", "Mean delta avg (GPa-equiv.)", "Mean delta n_valid"],
+        _modulus_paired_rows(MODULUS_PAIRED_SUMMARY),
+    )
+    _figure(
+        doc,
+        "Figure 6.1 - Baseline PEGDA modulus validation figures. The paired-ratio box plot summarizes forward/backward agreement by method, while the absolute-modulus bars show method-level forward and backward modulus summaries with standard-error bars. These figures support route consistency and the forward-only selection used later in the Stage 1 topography workflow.",
+        [
+            MODULUS_ASSET_DIR / "paired_ratio_boxplot.png",
+            MODULUS_ASSET_DIR / "forward_absolute_modulus_bar.png",
+            MODULUS_ASSET_DIR / "backward_absolute_modulus_bar.png",
+        ],
+        width=5.5,
+    )
+    _figure(
+        doc,
+        "Figure 6.1b - Forward and backward baseline PEGDA modulus heatmaps plus one representative delta-versus-baseline comparison heatmap. These plots show the spatial baseline field for each scan direction and one example of how a comparison route shifts the baseline modulus pattern.",
+        [
+            MODULUS_FORWARD_COMPARE_DIR / "plots" / "heatmap_two_panel__baseline.png",
+            MODULUS_BACKWARD_COMPARE_DIR / "plots" / "heatmap_two_panel__baseline.png",
+            MODULUS_FORWARD_COMPARE_DIR / "plots" / "heatmap_two_panel__delta_vs_baseline__raw_chauvenet.png",
+        ],
+        width=5.5,
+    )
+    _figure(doc, "Figure 6.1c - Stage 1 overview for PEGDA, 1 wt% TPO, no coating, comparing 10 wt% and 25 wt% SiNP. Bars show mean candidate and isolated counts per scan with standard deviations.", [overview])
 
     doc.add_heading("6.2 Stage 1 - Particle Presence in PEGDA-SiNP", level=1)
     doc.add_heading("6.2.1 Scan Inventory", level=2)
-    _table(doc, "Table 6.1 - Scan inventory used for the current Stage 1 analysis", ["System", "Sample sets", "Scans analyzed", "Scan size (um x um)", "Pixel grid", "Resolution (nm/pixel)", "Nominal map grid"], [[wt10.label, str(len(wt10.samples)), str(p10.maps), SCAN_SIZE_UM, PIXEL_GRID, RESOLUTION_NM_PER_PIXEL, NOMINAL_GRID], [wt25.label, str(len(wt25.samples)), str(p25.maps), SCAN_SIZE_UM, PIXEL_GRID, RESOLUTION_NM_PER_PIXEL, NOMINAL_GRID]])
+    _table(doc, "Table 6.2 - Scan inventory used for the current Stage 1 analysis", ["System", "Sample sets", "Scans analyzed", "Scan size (um x um)", "Pixel grid", "Resolution (nm/pixel)", "Nominal map grid"], [[wt10.label, str(len(wt10.samples)), str(p10.maps), SCAN_SIZE_UM, PIXEL_GRID, RESOLUTION_NM_PER_PIXEL, NOMINAL_GRID], [wt25.label, str(len(wt25.samples)), str(p25.maps), SCAN_SIZE_UM, PIXEL_GRID, RESOLUTION_NM_PER_PIXEL, NOMINAL_GRID]])
     doc.add_paragraph(f"{wt10.label} contributed {p10.maps} scans across {len(wt10.samples)} sample sets. {wt25.label} contributed {p25.maps} scans across {len(wt25.samples)} sample sets. Each scan is a 5 um x 5 um AFM image on a nominal 21 x 21 survey grid with 512 x 512 pixels.")
     doc.add_paragraph("The nominal survey layout was 21 x 21 scans, but the analyzed inventories reflect only scans that were actually collected and retained in the grouped dataset. Some 25 wt% grouped sample sets were therefore incomplete relative to the nominal grid, even though the total analyzed inventory remained well above the later scan-sufficiency threshold.")
 
@@ -450,7 +507,7 @@ def _write(doc_path: Path, wt10: RootStats, wt25: RootStats) -> None:
     doc.add_paragraph(f"The {wt25.label} set showed a modest increase in candidate density relative to {wt10.label} ({p25.mean_count / p10.mean_count:.2f}x), but this stage still describes candidate features, not fully validated true particles.")
     doc.add_paragraph("Figures 6.2A and 6.2B show histograms of retained candidate-particle count per scan. In these plots, frequency is the number of scans falling at each retained-count value. For both loadings, the highest frequencies occur at low retained counts, indicating that most scans contain only a small number of retained candidate particles rather than large multi-particle populations.")
     doc.add_paragraph("Figures 6.3A and 6.3B are mean count maps across the grouped sample sets for each loading. They show that retained candidate particles are distributed across the surveyed grid rather than concentrated at a single localized region. These maps summarize mean count only; they do not show per-position standard deviation, which should be treated as a separate variability layer if spatial uncertainty is discussed in detail.")
-    _table(doc, "Table 6.2 - Primary-method candidate count summary", ["System", "Mean count/scan", "Std", "Min", "Max", "Zero-count rate"], [[wt10.label, f"{p10.mean_count:.2f}", f"{p10.std_count:.2f}", str(p10.min_count), str(p10.max_count), _pct(p10.zero_count_rate)], [wt25.label, f"{p25.mean_count:.2f}", f"{p25.std_count:.2f}", str(p25.min_count), str(p25.max_count), _pct(p25.zero_count_rate)]])
+    _table(doc, "Table 6.3 - Primary-method candidate count summary", ["System", "Mean count/scan", "Std", "Min", "Max", "Zero-count rate"], [[wt10.label, f"{p10.mean_count:.2f}", f"{p10.std_count:.2f}", str(p10.min_count), str(p10.max_count), _pct(p10.zero_count_rate)], [wt25.label, f"{p25.mean_count:.2f}", f"{p25.std_count:.2f}", str(p25.min_count), str(p25.max_count), _pct(p25.zero_count_rate)]])
     _figure(doc, "Figure 6.2 - Particle-count histograms for PEGDA, 1 wt% TPO, no coating, with 10 wt% and 25 wt% SiNP under the primary route.", [wt10.root / "fig_particle_count_hist.png", wt25.root / "fig_particle_count_hist.png"])
     _figure(doc, "Figure 6.3 - Particle-count grid heatmaps for the primary route, separated by SiNP loading.", [wt10.root / "summary_outputs" / "combined" / f"fig_particle_count_grid_wt10_{PRIMARY_JOB}.png", wt25.root / "summary_outputs" / "combined" / f"fig_particle_count_grid_wt25_{PRIMARY_JOB}.png"])
     _figure(
@@ -471,7 +528,7 @@ def _write(doc_path: Path, wt10: RootStats, wt25: RootStats) -> None:
 
     doc.add_heading("6.2.3 Particle Diameter Distribution", level=2)
     doc.add_paragraph(f"After applying the configured {DIAMETER_FILTER_NM} nm filter, retained particle diameter averaged {_pm(wt10.diameter_mean_nm, wt10.diameter_std_nm, 'nm')} for {wt10.label} and {_pm(wt25.diameter_mean_nm, wt25.diameter_std_nm, 'nm')} for {wt25.label}. The retained means remain centered on the expected SiNP size band.")
-    _table(doc, "Table 6.3 - Retained particle diameter summary", ["System", "Filter band (nm)", "Mean diameter (nm)", "Std diameter (nm)"], [[wt10.label, DIAMETER_FILTER_NM, f"{wt10.diameter_mean_nm:.2f}", f"{wt10.diameter_std_nm:.2f}"], [wt25.label, DIAMETER_FILTER_NM, f"{wt25.diameter_mean_nm:.2f}", f"{wt25.diameter_std_nm:.2f}"]])
+    _table(doc, "Table 6.4 - Retained particle diameter summary", ["System", "Filter band (nm)", "Mean diameter (nm)", "Std diameter (nm)"], [[wt10.label, DIAMETER_FILTER_NM, f"{wt10.diameter_mean_nm:.2f}", f"{wt10.diameter_std_nm:.2f}"], [wt25.label, DIAMETER_FILTER_NM, f"{wt25.diameter_mean_nm:.2f}", f"{wt25.diameter_std_nm:.2f}"]])
     _figure(doc, "Figure 6.4 - Retained particle-diameter histograms for PEGDA, 1 wt% TPO, no coating, comparing 10 wt% and 25 wt% SiNP after filtering.", [wt10.root / "fig_particle_diameter_hist.png", wt25.root / "fig_particle_diameter_hist.png"])
 
     doc.add_heading("6.3 Isolation Analysis", level=1)
@@ -480,7 +537,7 @@ def _write(doc_path: Path, wt10: RootStats, wt25: RootStats) -> None:
     doc.add_paragraph(f"Primary-route isolated counts averaged {_pm(p10.mean_isolated, p10.std_isolated)} per scan for {wt10.label} and {_pm(p25.mean_isolated, p25.std_isolated)} per scan for {wt25.label}. Scans with at least one isolated particle accounted for {p10.pct_with_isolated:.1f}% and {p25.pct_with_isolated:.1f}% of the two datasets, respectively.")
     doc.add_paragraph(f"The key result is that the higher-loading dataset did not produce a proportionally larger isolated-particle yield. Mean isolated counts remained close ({p10.mean_isolated:.2f} versus {p25.mean_isolated:.2f} isolated particles per scan) even though candidate density increased.")
     doc.add_paragraph("As in the retained-count maps, the isolated-count heatmaps summarize mean isolated-particle count at each scan position across the grouped sample sets. They are therefore useful for showing spatial distribution, but not for showing the full between-sample spread at each position.")
-    _table(doc, "Table 6.4 - Sample-level isolated-particle yield under the primary route", ["System", "Sample set", "Scans", "Mean isolated/scan", "Std", "% scans with >=1 isolated"], _sample_rows(wt10) + _sample_rows(wt25))
+    _table(doc, "Table 6.5 - Sample-level isolated-particle yield under the primary route", ["System", "Sample set", "Scans", "Mean isolated/scan", "Std", "% scans with >=1 isolated"], _sample_rows(wt10) + _sample_rows(wt25))
     _figure(doc, "Figure 6.5 - Histograms of isolated-particle counts per scan for the primary route, separated by 10 wt% and 25 wt% SiNP.", [wt10.root / "fig_isolated_count_hist.png", wt25.root / "fig_isolated_count_hist.png"])
     _figure(doc, "Figure 6.6 - Isolated-particle grid heatmaps for the primary route, separated by SiNP loading.", [wt10.root / "summary_outputs" / "combined" / f"fig_isolated_count_grid_wt10_{PRIMARY_JOB}.png", wt25.root / "summary_outputs" / "combined" / f"fig_isolated_count_grid_wt25_{PRIMARY_JOB}.png"])
     _figure(
@@ -502,17 +559,17 @@ def _write(doc_path: Path, wt10: RootStats, wt25: RootStats) -> None:
     doc.add_heading("6.3.2 Required Scans for 95% Confidence", level=2)
     doc.add_paragraph(f"Using the Poisson baseline fit, a target of {TARGET_ISOLATED} isolated particles, and {int(CONFIDENCE * 100)}% confidence, the primary route required {f10.n_required_095} scans for {wt10.label} and {f25.n_required_095} scans for {wt25.label}. Both analyzed inventories greatly exceed those requirements.")
     doc.add_paragraph("In Table 6.5, primary lambda is the mean isolated-particle count per scan under the primary route. The observed zero-isolated rate is the empirical fraction of scans with zero isolated particles. The required-scan value is the smallest number of scans for which the modeled probability of obtaining at least 30 isolated particles reaches 95%.")
-    _table(doc, "Table 6.5 - Required scans for isolated-particle sufficiency under the primary route", ["System", "Primary lambda", "Observed zero-isolated rate", "Required scans (95%)", "Available scans"], [[wt10.label, f"{f10.mean_per_scan:.3f}", _pct(f10.zero_rate_obs), str(f10.n_required_095), str(p10.maps)], [wt25.label, f"{f25.mean_per_scan:.3f}", _pct(f25.zero_rate_obs), str(f25.n_required_095), str(p25.maps)]])
+    _table(doc, "Table 6.6 - Required scans for isolated-particle sufficiency under the primary route", ["System", "Primary lambda", "Observed zero-isolated rate", "Required scans (95%)", "Available scans"], [[wt10.label, f"{f10.mean_per_scan:.3f}", _pct(f10.zero_rate_obs), str(f10.n_required_095), str(p10.maps)], [wt25.label, f"{f25.mean_per_scan:.3f}", _pct(f25.zero_rate_obs), str(f25.n_required_095), str(p25.maps)]])
 
     doc.add_heading("6.4 Grain Metrics", level=1)
     doc.add_paragraph("Grain exports are now available for the full method matrix. These do not replace particle or isolation statistics, but they strengthen the segmentation-quality discussion and provide an additional diameter-based consistency check.")
-    _table(doc, "Table 6.6 - Grain summary across the full method matrix", ["System", "Method", "Grain total", "Grain kept", "Grain isolated", "Kept diameter mean +/- std", "Isolated diameter mean +/- std"], _grain_rows(wt10) + _grain_rows(wt25))
+    _table(doc, "Table 6.7 - Grain summary across the full method matrix", ["System", "Method", "Grain total", "Grain kept", "Grain isolated", "Kept diameter mean +/- std", "Isolated diameter mean +/- std"], _grain_rows(wt10) + _grain_rows(wt25))
     _figure(doc, "Figure 6.7 - Full-method grain diameter summaries for PEGDA, 1 wt% TPO, no coating, separated by 10 wt% and 25 wt% SiNP. Bar plots show method-wise mean +/- standard deviation; box plots show the corresponding diameter distributions.", [wt10.root / "summary_outputs" / "compare_by_wt" / "fig_grain_diameter_nm_kept_mean_by_job.png", wt10.root / "summary_outputs" / "compare_by_wt" / "fig_grain_diameter_nm_isolated_box_by_job.png", wt25.root / "summary_outputs" / "compare_by_wt" / "fig_grain_diameter_nm_kept_mean_by_job.png", wt25.root / "summary_outputs" / "compare_by_wt" / "fig_grain_diameter_nm_isolated_box_by_job.png"], width=5.5)
 
     doc.add_heading("6.5 Processing Route Sensitivity", level=1)
     doc.add_paragraph(f"The practical sensitivity question is not whether the processing routes produce visually different maps, but whether they materially change isolated-particle yield and therefore the number of scans needed for Stage 1 sufficiency. Relative to the primary route, the comparison route ({COMPARISON_JOB}) reduced mean isolated yield from {_pm(p10.mean_isolated, p10.std_isolated)} to {_pm(c10.mean_isolated, c10.std_isolated)} per scan in {wt10.label} and from {_pm(p25.mean_isolated, p25.std_isolated)} to {_pm(c25.mean_isolated, c25.std_isolated)} per scan in {wt25.label}. The corresponding 95% scan requirements increased from {f10.n_required_095} to {cf10.n_required_095} scans and from {f25.n_required_095} to {cf25.n_required_095} scans.")
     doc.add_paragraph("The full method table should be interpreted provisionally. A targeted post-generation verification identified a mask write-back issue in the thresholded particle-analysis path, so the full all-method matrix must be regenerated after that fix before any final claim is made about whether threshold variants truly collapse within a preprocessing family.")
-    _table(doc, "Table 6.7 - All-method comparison with loading-normalized isolation yield", ["System", "Method", "Job/profile", "Mean isolated/scan", "Std", "Zero-isolated rate", "Req. scans (95%)", "Relative to primary", "Isolated/scan/wt%"], _method_rows(wt10) + _method_rows(wt25))
+    _table(doc, "Table 6.8 - All-method comparison with loading-normalized isolation yield", ["System", "Method", "Job/profile", "Mean isolated/scan", "Std", "Zero-isolated rate", "Req. scans (95%)", "Relative to primary", "Isolated/scan/wt%"], _method_rows(wt10) + _method_rows(wt25))
     _figure(doc, "Figure 6.8 - Full-method comparison of mean isolated-particle yield by job and SiNP loading for PEGDA, 1 wt% TPO, no coating. These plots summarize how preprocessing and threshold choices affect isolated-particle yield.", [wt10.root / "summary_outputs" / "compare_by_wt" / "fig_isolated_count_mean_by_job_10pct.png", wt25.root / "summary_outputs" / "compare_by_wt" / "fig_isolated_count_mean_by_job_25pct.png"])
     _figure(doc, "Figure 6.9 - Aggregate Poisson success-probability curves for all methods, separated by 10 wt% and 25 wt% SiNP. Horizontal dashed lines mark the 90%, 95%, and 99% success thresholds; vertical markers show the 95%-requirement scan count for each method.", [wt10.root / "summary_outputs" / "fits" / "risk_aggregate_wt_percent_10_poisson.png", wt25.root / "summary_outputs" / "fits" / "risk_aggregate_wt_percent_25_poisson.png"])
 
@@ -521,7 +578,7 @@ def _write(doc_path: Path, wt10: RootStats, wt25: RootStats) -> None:
     p_cross_25 = _availability_crossover_p(f25.mean_per_scan, p25.maps, TARGET_ISOLATED, CONFIDENCE)
     doc.add_paragraph("The Stage 2 trigger is expressed as a sensitivity study in confirmation probability p. The question is how far the confirmation rate could drop before the current Stage 1 scan pool would no longer meet the 30-particle, 95%-confidence target.")
     doc.add_paragraph("Figure 6.10 should be read as follows: the x-axis is the assumed fraction of Stage 1 isolated candidates that would later be confirmed as true particles in Stage 2, and the y-axis is the number of scans required to still achieve the Stage 2 target. The horizontal reference line is the number of scans already available. The crossover value p* is therefore the minimum confirmation fraction required for the currently available inventory to remain sufficient; it is not the probability that a crossover event occurs.")
-    _table(doc, "Table 6.8 - Minimum confirmation fraction p* required for the current scan inventory to remain sufficient", ["System", "Primary lambda", "Available scans", "Minimum confirmation fraction p*"], [[wt10.label, f"{f10.mean_per_scan:.3f}", str(p10.maps), f"{p_cross_10:.3f}" if p_cross_10 is not None else "not reachable"], [wt25.label, f"{f25.mean_per_scan:.3f}", str(p25.maps), f"{p_cross_25:.3f}" if p_cross_25 is not None else "not reachable"]])
+    _table(doc, "Table 6.9 - Minimum confirmation fraction p* required for the current scan inventory to remain sufficient", ["System", "Primary lambda", "Available scans", "Minimum confirmation fraction p*"], [[wt10.label, f"{f10.mean_per_scan:.3f}", str(p10.maps), f"{p_cross_10:.3f}" if p_cross_10 is not None else "not reachable"], [wt25.label, f"{f25.mean_per_scan:.3f}", str(p25.maps), f"{p_cross_25:.3f}" if p_cross_25 is not None else "not reachable"]])
     _figure(doc, "Figure 6.10 - Required scan count versus confirmation probability p across the full method matrix, with the available-scan inventory shown as a horizontal reference and labeled crossover points for the primary and comparison routes. PEGDA, 1 wt% TPO, no coating, separated by 10 wt% and 25 wt% SiNP.", [crossover], width=6.6)
 
     doc.add_heading("6.7 Stage 1 Decision", level=1)
