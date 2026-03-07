@@ -17,6 +17,16 @@ SCAN_SIZE_UM = (5.0, 5.0)
 GRID = (512, 512)
 RES_NM = 5000.0 / 512.0
 TARGET_ISOLATED = 30
+DEFAULT_JOB_ORDER = [
+    "particle_forward_medianbg_mean",
+    "particle_forward_medianbg_fixed0",
+    "particle_forward_medianbg_p95",
+    "particle_forward_medianbg_max_fixed0_p95",
+    "particle_forward_flatten_mean",
+    "particle_forward_flatten_fixed0",
+    "particle_forward_flatten_p95",
+    "particle_forward_flatten_max_fixed0_p95",
+]
 
 
 def read_inventory():
@@ -199,11 +209,54 @@ def summarize_numeric(values):
     }
 
 
-def _plot_hist(values, title, xlabel, out_path, bins=30, color="#4C78A8"):
+def merged_job_order(preferred, available):
+    preferred = preferred or []
+    available = list(available or [])
+    ordered = []
+    for job in preferred:
+        if job in available and job not in ordered:
+            ordered.append(job)
+    for job in DEFAULT_JOB_ORDER:
+        if job in available and job not in ordered:
+            ordered.append(job)
+    for job in sorted(available):
+        if job not in ordered:
+            ordered.append(job)
+    return ordered
+
+
+def infer_wt_label_from_samples(samples):
+    wts = sorted({w for w in (_wt_percent_from_sample(s) for s in samples) if w})
+    if len(wts) == 1:
+        return "%d wt%% SiNP" % wts[0]
+    if len(wts) > 1:
+        return ", ".join("%d wt%%" % w for w in wts)
+    return ""
+
+
+def infer_wt_label_from_grain_rows(rows):
+    samples = []
+    for row in rows or []:
+        sample = row.get("sample")
+        if sample:
+            samples.append(sample)
+    return infer_wt_label_from_samples(samples)
+
+
+def _plot_hist(values, title, xlabel, out_path, bins=30, color="#4C78A8", mean_band=False):
     if not values:
         return
     plt.figure(figsize=(6, 4))
     plt.hist(values, bins=bins, color=color, edgecolor="black")
+    if mean_band and values:
+        mu = stats.mean(values)
+        sigma = stats.pstdev(values) if len(values) > 1 else 0.0
+        ax = plt.gca()
+        if sigma > 0:
+            ax.axvspan(mu - sigma, mu + sigma, color="#999999", alpha=0.18, label="mean +/- std")
+        ax.axvline(mu, color="black", linestyle="--", linewidth=1.2, label="mean")
+        if sigma > 0:
+            ax.legend(frameon=False, fontsize=8)
     plt.title(title)
     plt.xlabel(xlabel)
     plt.ylabel("Frequency")
@@ -804,9 +857,10 @@ def main():
                 continue
             _plot_hist(
                 vals,
-                "Particle Diameter\n%s (wt%d%%)" % (job, wt),
+                "Particle Diameter Distribution\n%s\n%d wt%% SiNP" % (job, wt),
                 "Diameter (nm)",
                 diam_dir / ("hist_diameter_%s_wt%d.png" % (job, wt)),
+                mean_band=True,
             )
 
     if counts:
@@ -820,9 +874,19 @@ def main():
         plt.close()
 
     if diameters:
+        wt_label = infer_wt_label_from_samples(diameters_by_sample.keys())
         plt.figure(figsize=(6,4))
         plt.hist(diameters, bins=30, color="#F58518", edgecolor="black")
-        plt.title("Particle Diameter Distribution\n(filtered)")
+        mu = stats.mean(diameters)
+        sigma = stats.pstdev(diameters) if len(diameters) > 1 else 0.0
+        ax = plt.gca()
+        if sigma > 0:
+            ax.axvspan(mu - sigma, mu + sigma, color="#999999", alpha=0.18, label="mean +/- std")
+        ax.axvline(mu, color="black", linestyle="--", linewidth=1.2, label="mean")
+        if sigma > 0:
+            ax.legend(frameon=False, fontsize=8)
+        title_suffix = "\n%s" % wt_label if wt_label else ""
+        plt.title("Particle Diameter Distribution\n(filtered)%s" % title_suffix)
         plt.xlabel("Diameter (nm)")
         plt.ylabel("Frequency")
         plt.tight_layout()
@@ -914,7 +978,7 @@ def main():
         plt.close()
 
     if counts_by_job:
-        job_order = (args.job_order or []) or list(counts_by_job.keys())
+        job_order = merged_job_order(args.job_order, counts_by_job.keys())
         job_labels = [wrap_label(j, 18, 2) for j in job_order]
         means = [stats.mean(counts_by_job.get(j, [])) if counts_by_job.get(j) else 0.0 for j in job_order]
         stds = [stats.pstdev(counts_by_job.get(j, [])) if len(counts_by_job.get(j, [])) > 1 else 0.0 for j in job_order]
@@ -929,7 +993,7 @@ def main():
         plt.close()
 
     if isolated_by_job:
-        job_order = (args.job_order or []) or list(isolated_by_job.keys())
+        job_order = merged_job_order(args.job_order, isolated_by_job.keys())
         job_labels = [wrap_label(j, 18, 2) for j in job_order]
         means = [stats.mean(isolated_by_job.get(j, [])) if isolated_by_job.get(j) else 0.0 for j in job_order]
         stds = [stats.pstdev(isolated_by_job.get(j, [])) if len(isolated_by_job.get(j, [])) > 1 else 0.0 for j in job_order]
@@ -949,7 +1013,7 @@ def main():
         out_dir.mkdir(parents=True, exist_ok=True)
         wt_groups = sorted({wt for (_, wt) in counts_by_job_wt.keys()})
         for wt in wt_groups:
-            jobs = args.job_order or sorted({job for (job, w) in counts_by_job_wt.keys() if w == wt})
+            jobs = merged_job_order(args.job_order, {job for (job, w) in counts_by_job_wt.keys() if w == wt})
             if not jobs:
                 continue
             means = [stats.mean(counts_by_job_wt.get((job, wt), [])) if counts_by_job_wt.get((job, wt)) else 0.0 for job in jobs]
@@ -957,7 +1021,7 @@ def main():
             labels = [wrap_label(j, 18, 2) for j in jobs]
             plt.figure(figsize=(9,4))
             plt.bar(labels, means, yerr=stds, color="#4C78A8", capsize=4)
-            plt.title("Mean Kept Particle Count per Scan\nby Job (%s)" % wt)
+            plt.title("Mean Kept Particle Count per Scan\nby Job (%s SiNP)" % wt)
             plt.xlabel("Job")
             plt.ylabel("Particles per scan (mean +/- std)")
             plt.xticks(rotation=30, ha="right")
@@ -969,7 +1033,7 @@ def main():
             iso_stds = [stats.pstdev(isolated_by_job_wt.get((job, wt), [])) if len(isolated_by_job_wt.get((job, wt), [])) > 1 else 0.0 for job in jobs]
             plt.figure(figsize=(9,4))
             plt.bar(labels, iso_means, yerr=iso_stds, color="#54A24B", capsize=4)
-            plt.title("Mean Isolated Particle Count per Scan\nby Job (%s)" % wt)
+            plt.title("Mean Isolated Particle Count per Scan\nby Job (%s SiNP)" % wt)
             plt.xlabel("Job")
             plt.ylabel("Isolated particles per scan (mean +/- std)")
             plt.xticks(rotation=30, ha="right")
@@ -1644,36 +1708,44 @@ def main():
                     plt.savefig(out_path, dpi=300)
                     plt.close()
 
-                job_order = args.job_order or sorted(rows_by_job.keys())
+                job_order = merged_job_order(args.job_order, rows_by_job.keys())
                 kept_by_job = {j: _job_vals(rows_by_job.get(j, []), "kept") for j in job_order}
                 iso_by_job = {j: _job_vals(rows_by_job.get(j, []), "isolated") for j in job_order}
                 kept_by_job = {j: v for j, v in kept_by_job.items() if v}
                 iso_by_job = {j: v for j, v in iso_by_job.items() if v}
 
                 if kept_by_job:
+                    all_grain_rows = []
+                    for _job_name, _rows in rows_by_job.items():
+                        all_grain_rows.extend(_rows)
+                    wt_label = infer_wt_label_from_grain_rows(all_grain_rows)
                     _bar_with_error(
                         kept_by_job,
                         trend_dir / "fig_grain_diameter_nm_kept_mean_by_job.png",
-                        "Mean Grain Diameter (kept)\nby Job",
+                        "Mean Grain Diameter (kept)\nby Job%s" % (("\n" + wt_label) if wt_label else ""),
                         "Diameter (nm, mean +/- std)",
                     )
                     _boxplot(
                         kept_by_job,
                         trend_dir / "fig_grain_diameter_nm_kept_box_by_job.png",
-                        "Grain Diameter Distribution (kept)\nby Job",
+                        "Grain Diameter Distribution (kept)\nby Job%s" % (("\n" + wt_label) if wt_label else ""),
                         "Diameter (nm)",
                     )
                 if iso_by_job:
+                    all_grain_rows = []
+                    for _job_name, _rows in rows_by_job.items():
+                        all_grain_rows.extend(_rows)
+                    wt_label = infer_wt_label_from_grain_rows(all_grain_rows)
                     _bar_with_error(
                         iso_by_job,
                         trend_dir / "fig_grain_diameter_nm_isolated_mean_by_job.png",
-                        "Mean Grain Diameter (isolated)\nby Job",
+                        "Mean Grain Diameter (isolated)\nby Job%s" % (("\n" + wt_label) if wt_label else ""),
                         "Diameter (nm, mean +/- std)",
                     )
                     _boxplot(
                         iso_by_job,
                         trend_dir / "fig_grain_diameter_nm_isolated_box_by_job.png",
-                        "Grain Diameter Distribution (isolated)\nby Job",
+                        "Grain Diameter Distribution (isolated)\nby Job%s" % (("\n" + wt_label) if wt_label else ""),
                         "Diameter (nm)",
                     )
 

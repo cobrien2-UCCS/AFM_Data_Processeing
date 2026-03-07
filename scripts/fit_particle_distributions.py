@@ -17,6 +17,66 @@ except Exception:  # pragma: no cover
 
 
 DEFAULT_OUT_BASE = Path(r"C:\Users\Conor O'Brien\Dropbox\03_AML\00 IN-BOX\AFM Topo Particle processing OUT")
+JOB_LABELS = {
+    "particle_forward_medianbg_mean": "Median BG + mean",
+    "particle_forward_medianbg_fixed0": "Median BG + fixed 0",
+    "particle_forward_medianbg_p95": "Median BG + p95",
+    "particle_forward_medianbg_max_fixed0_p95": "Median BG + max(fixed 0, p95)",
+    "particle_forward_flatten_mean": "Flatten + mean",
+    "particle_forward_flatten_fixed0": "Flatten + fixed 0",
+    "particle_forward_flatten_p95": "Flatten + p95",
+    "particle_forward_flatten_max_fixed0_p95": "Flatten + max(fixed 0, p95)",
+}
+JOB_STYLE_ORDER = [
+    ("particle_forward_medianbg_mean", {"color": "#1f77b4", "linestyle": "-", "marker": "o", "linewidth": 2.4}),
+    ("particle_forward_medianbg_fixed0", {"color": "#2ca02c", "linestyle": "--", "marker": "s", "linewidth": 1.8}),
+    ("particle_forward_medianbg_p95", {"color": "#d62728", "linestyle": "-.", "marker": "^", "linewidth": 1.8}),
+    ("particle_forward_medianbg_max_fixed0_p95", {"color": "#9467bd", "linestyle": ":", "marker": "D", "linewidth": 1.8}),
+    ("particle_forward_flatten_mean", {"color": "#ff7f0e", "linestyle": "-", "marker": "P", "linewidth": 2.4}),
+    ("particle_forward_flatten_fixed0", {"color": "#8c564b", "linestyle": "--", "marker": "X", "linewidth": 1.8}),
+    ("particle_forward_flatten_p95", {"color": "#e377c2", "linestyle": "-.", "marker": "v", "linewidth": 1.8}),
+    ("particle_forward_flatten_max_fixed0_p95", {"color": "#7f7f7f", "linestyle": ":", "marker": "<", "linewidth": 1.8}),
+]
+JOB_STYLES = dict(JOB_STYLE_ORDER)
+
+
+def job_label(job):
+    return JOB_LABELS.get(job, job)
+
+
+def job_style(job):
+    return JOB_STYLES.get(job, {"color": None, "linestyle": "-", "marker": None, "linewidth": 1.8})
+
+
+def format_group_value(field, value):
+    value = "" if value is None else str(value).strip()
+    field = str(field or "")
+    if field == "wt_percent":
+        return value or "Unknown wt%"
+    if field == "scraped":
+        if not value:
+            return "All scrape states"
+        if value.lower().replace(" ", "") == "nonscraped":
+            return "Non-scraped"
+        return value
+    if field == "job":
+        return job_label(value)
+    return value or "Unknown"
+
+
+def format_group_label(fields, values):
+    parts = []
+    for field, value in zip(fields, values):
+        if not field:
+            continue
+        pretty = format_group_value(field, value)
+        if field == "wt_percent":
+            parts.append(pretty)
+        elif field == "scraped":
+            parts.append(pretty)
+        else:
+            parts.append("%s=%s" % (field, pretty))
+    return " | ".join(parts) if parts else "All samples"
 
 
 def load_config(path):
@@ -315,7 +375,8 @@ def plot_risk_curve(curve, levels, out_path, title):
         color = "#666666" if abs(level - 0.95) < 1e-9 else "#999999"
         linewidth = 1.3 if abs(level - 0.95) < 1e-9 else 1.0
         plt.axhline(level, color=color, linestyle="--", linewidth=linewidth)
-        plt.text(x_max, level, " %.0f%%" % (100.0 * level), va="bottom", ha="right", fontsize=8, color=color)
+        y_text = max(0.015, level - 0.02)
+        plt.text(x_max, y_text, " %.0f%%" % (100.0 * level), va="top", ha="right", fontsize=8, color=color)
     plt.title(title)
     plt.xlabel("Number of scans")
     plt.ylabel("P(total isolated >= target)")
@@ -340,7 +401,8 @@ def plot_risk_band(curve, band, levels, out_path, title, color="#54A24B"):
         line_color = "#666666" if abs(level - 0.95) < 1e-9 else "#999999"
         linewidth = 1.3 if abs(level - 0.95) < 1e-9 else 1.0
         plt.axhline(level, color=line_color, linestyle="--", linewidth=linewidth)
-        plt.text(x_max, level, " %.0f%%" % (100.0 * level), va="bottom", ha="right", fontsize=8, color=line_color)
+        y_text = max(0.015, level - 0.02)
+        plt.text(x_max, y_text, " %.0f%%" % (100.0 * level), va="top", ha="right", fontsize=8, color=line_color)
     plt.title(title)
     plt.xlabel("Number of scans")
     plt.ylabel("P(total isolated >= target)")
@@ -694,10 +756,22 @@ def main():
             for group_key, items in grouped.items():
                 plt.figure(figsize=(9, 5))
                 available_scans = None
+                label_offset_idx = 0
                 for label, job, curve in items:
                     xs = [row["n_scans"] for row in curve]
                     ys = [row["success_prob"] for row in curve]
-                    plt.plot(xs, ys, linewidth=1.8, label=job)
+                    style = job_style(job)
+                    line, = plt.plot(
+                        xs,
+                        ys,
+                        linewidth=style.get("linewidth", 1.8),
+                        linestyle=style.get("linestyle", "-"),
+                        marker=style.get("marker"),
+                        markevery=max(1, int(len(xs) / 10.0)) if xs else 1,
+                        markersize=4,
+                        color=style.get("color"),
+                        label=job_label(job),
+                    )
                     row_out = summary_lookup.get((label, model), {})
                     if available_scans is None:
                         try:
@@ -710,47 +784,53 @@ def main():
                     except Exception:
                         n_req_095 = None
                     if n_req_095:
-                        plt.axvline(n_req_095, color="#BBBBBB", linestyle=":", linewidth=0.8, alpha=0.7)
-                        plt.text(
-                            n_req_095,
-                            0.965,
-                            "%s: %d" % (job, n_req_095),
-                            rotation=90,
-                            va="top",
-                            ha="right",
-                            fontsize=7,
-                            alpha=0.9,
-                        )
+                        plt.axvline(n_req_095, color=line.get_color(), linestyle=":", linewidth=0.9, alpha=0.65)
+                        plt.scatter([n_req_095], [0.95], color=line.get_color(), marker=style.get("marker") or "o", s=30, zorder=5)
+                        if job in ("particle_forward_medianbg_mean", "particle_forward_flatten_mean"):
+                            y_offsets = [0.915, 0.875, 0.835, 0.795]
+                            y_annot = y_offsets[label_offset_idx % len(y_offsets)]
+                            label_offset_idx += 1
+                            plt.text(
+                                n_req_095 + 0.8,
+                                y_annot,
+                                "%s\nn95=%d" % (job_label(job), n_req_095),
+                                va="top",
+                                ha="left",
+                                fontsize=7,
+                                color=line.get_color(),
+                                bbox=dict(boxstyle="round,pad=0.18", fc="white", ec=line.get_color(), alpha=0.85),
+                            )
                     band = model_bands.get((label, model))
                     if band:
                         lower = [b["p_low"] for b in band]
                         upper = [b["p_high"] for b in band]
-                        plt.fill_between(xs, lower, upper, alpha=0.12)
+                        plt.fill_between(xs, lower, upper, color=line.get_color(), alpha=0.08)
                 for level in reliability_levels:
                     color = "#666666" if abs(level - 0.95) < 1e-9 else "#999999"
                     linewidth = 1.3 if abs(level - 0.95) < 1e-9 else 1.0
                     plt.axhline(level, color=color, linestyle="--", linewidth=linewidth)
                     x_max = max(xs) if xs else 1
-                    plt.text(x_max, level, " %.0f%%" % (100.0 * level), va="bottom", ha="right", fontsize=8, color=color)
+                    y_text = max(0.015, level - 0.02)
+                    plt.text(x_max, y_text, " %.0f%%" % (100.0 * level), va="top", ha="right", fontsize=8, color=color)
                 if available_scans:
                     plt.axvline(available_scans, color="black", linestyle="--", linewidth=1.1)
                     plt.text(
                         available_scans,
-                        0.06,
-                        "Available scans = %d" % available_scans,
+                        0.04,
+                        "Available\nscans = %d" % available_scans,
                         rotation=90,
                         va="bottom",
                         ha="right",
                         fontsize=8,
                         color="black",
                     )
-                group_label = ", ".join("%s=%s" % (f, v) for f, v in zip(aggregate_by, group_key) if f)
+                group_label = format_group_label(aggregate_by, group_key)
                 title = "P(total >= %d) with uncertainty\n(%s | %s)" % (target_total, group_label, model)
                 plt.title(title)
                 plt.xlabel("Number of scans")
                 plt.ylabel("P(total isolated >= target)")
                 plt.ylim(0.0, 1.0)
-                plt.legend(fontsize=8)
+                plt.legend(fontsize=8, ncol=2, frameon=False, loc="lower right")
                 plt.tight_layout()
                 out_name = "risk_aggregate_%s_%s.png" % (slugify(group_label or "all"), model)
                 plt.savefig(out_dir / out_name, dpi=160)

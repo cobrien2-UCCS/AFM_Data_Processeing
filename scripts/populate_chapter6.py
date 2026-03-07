@@ -45,6 +45,16 @@ JOB_LABELS = {
     "particle_forward_flatten_p95": "Flatten + p95 threshold",
     "particle_forward_flatten_max_fixed0_p95": "Flatten + fixed 0 + p95",
 }
+JOB_STYLES = {
+    "particle_forward_medianbg_mean": {"color": "#1f77b4", "linestyle": "-", "marker": "o", "linewidth": 2.5},
+    "particle_forward_medianbg_fixed0": {"color": "#2ca02c", "linestyle": "--", "marker": "s", "linewidth": 1.8},
+    "particle_forward_medianbg_p95": {"color": "#d62728", "linestyle": "-.", "marker": "^", "linewidth": 1.8},
+    "particle_forward_medianbg_max_fixed0_p95": {"color": "#9467bd", "linestyle": ":", "marker": "D", "linewidth": 1.8},
+    "particle_forward_flatten_mean": {"color": "#ff7f0e", "linestyle": "-", "marker": "P", "linewidth": 2.5},
+    "particle_forward_flatten_fixed0": {"color": "#8c564b", "linestyle": "--", "marker": "X", "linewidth": 1.8},
+    "particle_forward_flatten_p95": {"color": "#e377c2", "linestyle": "-.", "marker": "v", "linewidth": 1.8},
+    "particle_forward_flatten_max_fixed0_p95": {"color": "#7f7f7f", "linestyle": ":", "marker": "<", "linewidth": 1.8},
+}
 
 
 @dataclass
@@ -310,30 +320,45 @@ def _crossover_plot(wt10: RootStats, wt25: RootStats) -> Path:
     for ax, root in zip(axes, [wt10, wt25]):
         available_scans = root.method_stats[PRIMARY_JOB].maps
         max_scans = max(available_scans, 220)
+        label_offsets = {PRIMARY_JOB: -18, COMPARISON_JOB: 18}
         for job in JOB_ORDER:
             lam = root.method_fits[job].mean_per_scan
             ys = [_required_scans(lam, p, TARGET_ISOLATED, CONFIDENCE, max_scans) for p in ps]
-            ax.plot(ps, ys, linewidth=1.4, label=_job_label(job))
+            style = JOB_STYLES.get(job, {})
+            ax.plot(
+                ps,
+                ys,
+                linewidth=style.get("linewidth", 1.4),
+                linestyle=style.get("linestyle", "-"),
+                marker=style.get("marker"),
+                markevery=max(1, int(len(ps) / 10.0)),
+                markersize=4,
+                color=style.get("color"),
+                label=_job_label(job),
+            )
             if job in (PRIMARY_JOB, COMPARISON_JOB):
                 p_cross = _availability_crossover_p(lam, available_scans, TARGET_ISOLATED, CONFIDENCE)
                 if p_cross is not None and 0.0 < p_cross <= 1.0:
                     y_cross = _required_scans(lam, p_cross, TARGET_ISOLATED, CONFIDENCE, max_scans)
-                    ax.scatter([p_cross], [y_cross], s=24, zorder=4)
+                    ax.scatter([p_cross], [y_cross], s=34, zorder=5, color=style.get("color"), marker=style.get("marker", "o"))
                     ax.annotate(
-                        f"{_job_label(job)}\np*={p_cross:.3f}",
+                        f"{_job_label(job)}\np* = {p_cross:.3f}",
                         xy=(p_cross, y_cross),
-                        xytext=(6, -10 if job == PRIMARY_JOB else 10),
+                        xytext=(8, label_offsets.get(job, 10)),
                         textcoords="offset points",
                         fontsize=7,
+                        va="center",
+                        ha="left",
+                        bbox=dict(boxstyle="round,pad=0.2", fc="white", ec=style.get("color", "black"), alpha=0.9),
                     )
         ax.axhline(available_scans, color="black", linestyle="--", linewidth=1.1, label="Available scans")
-        ax.text(0.985, available_scans, f"Available scans = {available_scans}", ha="right", va="bottom", fontsize=8)
+        ax.text(0.985, available_scans - 4, f"Available scans\n= {available_scans}", ha="right", va="top", fontsize=8)
         ax.set_title(f"{root.label}\nRequired scans vs confirmation probability")
         ax.set_xlabel("Confirmation probability p")
         ax.grid(alpha=0.25)
     axes[0].set_ylabel("Required scans for 95% confidence")
     handles, labels = axes[0].get_legend_handles_labels()
-    fig.legend(handles, labels, loc="upper center", ncol=3, fontsize=8, frameon=False)
+    fig.legend(handles, labels, loc="upper center", ncol=2, fontsize=8, frameon=False)
     fig.tight_layout(rect=(0, 0, 1, 0.9))
     fig.savefig(out, dpi=200)
     plt.close(fig)

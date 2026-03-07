@@ -24,6 +24,8 @@ from typing import Any, Dict, Iterable, List, Optional, Tuple
 
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib.colors import TwoSlopeNorm
+from matplotlib.patches import Rectangle
 
 
 def _isfinite(x: Any) -> bool:
@@ -121,7 +123,10 @@ def discover_method_summaries(methods_root: Path) -> Dict[str, Path]:
     found: Dict[str, Path] = {}
     for summary in methods_root.rglob("summary.csv"):
         try:
-            method_name = summary.parents[1].name  # <method>/config.<...>/summary.csv
+            if summary.parent.name.startswith("config."):
+                method_name = summary.parents[1].name  # <method>/config.<...>/summary.csv
+            else:
+                method_name = summary.parent.name  # <method>/summary.csv
         except Exception:
             continue
         if method_name not in found:
@@ -242,18 +247,53 @@ def plot_two_panel_heatmap(
     right_label: str,
     cmap_left: str = "viridis",
     cmap_right: str = "magma",
+    center_zero: bool = False,
+    outline_mask: Optional[np.ndarray] = None,
+    outline_color: str = "black",
+    outline_width: float = 1.6,
 ):
     if left.size == 0 or right.size == 0:
         return
     fig, axes = plt.subplots(1, 2, figsize=(10.0, 4.5), constrained_layout=True)
 
-    im0 = axes[0].imshow(left, origin="lower", aspect="auto", cmap=cmap_left)
+    norm0 = None
+    norm1 = None
+    if center_zero:
+        finite_left = left[np.isfinite(left)]
+        finite_right = right[np.isfinite(right)]
+        if finite_left.size:
+            vmax0 = float(np.nanmax(np.abs(finite_left)))
+            if vmax0 > 0:
+                norm0 = TwoSlopeNorm(vmin=-vmax0, vcenter=0.0, vmax=vmax0)
+        if finite_right.size:
+            vmax1 = float(np.nanmax(np.abs(finite_right)))
+            if vmax1 > 0:
+                norm1 = TwoSlopeNorm(vmin=-vmax1, vcenter=0.0, vmax=vmax1)
+
+    im0 = axes[0].imshow(left, origin="lower", aspect="auto", cmap=cmap_left, norm=norm0)
     axes[0].set_title(left_label)
     plt.colorbar(im0, ax=axes[0], fraction=0.046, pad=0.04)
 
-    im1 = axes[1].imshow(right, origin="lower", aspect="auto", cmap=cmap_right)
+    im1 = axes[1].imshow(right, origin="lower", aspect="auto", cmap=cmap_right, norm=norm1)
     axes[1].set_title(right_label)
     plt.colorbar(im1, ax=axes[1], fraction=0.046, pad=0.04)
+
+    if outline_mask is not None and outline_mask.shape == left.shape:
+        rows, cols = outline_mask.shape
+        for ax in axes:
+            for ri in range(rows):
+                for ci in range(cols):
+                    if bool(outline_mask[ri, ci]):
+                        ax.add_patch(
+                            Rectangle(
+                                (ci - 0.5, ri - 0.5),
+                                1.0,
+                                1.0,
+                                fill=False,
+                                edgecolor=outline_color,
+                                linewidth=outline_width,
+                            )
+                        )
 
     fig.suptitle(title)
     out_path.parent.mkdir(parents=True, exist_ok=True)
@@ -353,6 +393,8 @@ def main() -> int:
             long_rows.append(
                 {
                     "source_file": k,
+                    "row_idx": row_idx if row_idx is not None else "",
+                    "col_idx": col_idx if col_idx is not None else "",
                     "method": mn,
                     "avg_value": avg_m if avg_m is not None else "",
                     "std_value": std_m if std_m is not None else "",
@@ -401,6 +443,8 @@ def main() -> int:
         out_dir / "comparison_long.csv",
         [
             "source_file",
+            "row_idx",
+            "col_idx",
             "method",
             "avg_value",
             "std_value",
@@ -468,6 +512,7 @@ def main() -> int:
     if any(r.row_idx is not None and r.col_idx is not None for r in baseline_rows):
         b_avg_grid, _, _ = build_grid(baseline_rows, "avg_value")
         b_std_grid, _, _ = build_grid(baseline_rows, "std_value")
+        b_n_grid, _, _ = build_grid(baseline_rows, "n_valid")
         plot_two_panel_heatmap(
             plots_dir / "heatmap_two_panel__baseline.png",
             title="baseline (gwyddion_only)",
@@ -480,6 +525,10 @@ def main() -> int:
             rs = method_rows[mn]
             m_avg_grid, _, _ = build_grid(rs, "avg_value")
             m_std_grid, _, _ = build_grid(rs, "std_value")
+            m_n_grid, _, _ = build_grid(rs, "n_valid")
+            lost_mask = None
+            if m_n_grid.shape == b_avg_grid.shape:
+                lost_mask = np.isfinite(m_n_grid) & np.isfinite(b_n_grid) & (m_n_grid < b_n_grid)
             plot_two_panel_heatmap(
                 plots_dir / f"heatmap_two_panel__{mn}.png",
                 title=mn,
@@ -487,6 +536,7 @@ def main() -> int:
                 right=m_std_grid,
                 left_label="avg_value",
                 right_label="std_value",
+                outline_mask=lost_mask,
             )
             # Delta vs baseline.
             if m_avg_grid.shape == b_avg_grid.shape:
@@ -501,6 +551,8 @@ def main() -> int:
                     right_label="delta std_value",
                     cmap_left="coolwarm",
                     cmap_right="coolwarm",
+                    center_zero=True,
+                    outline_mask=lost_mask,
                 )
 
     print(f"Wrote comparison CSVs to {out_dir}")

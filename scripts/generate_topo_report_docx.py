@@ -120,6 +120,19 @@ def _risk_prob_at(curve_rows, match, n_scans):
     return ""
 
 
+def _pretty_aggregate_plot_name(path):
+    stem = path.stem
+    m = re.search(r"risk_aggregate_(.+)_poisson$", stem)
+    label = m.group(1) if m else stem
+    label = label.replace("wt_percent_", "").replace("_", " ")
+    label = label.replace("scraped Non Scraped", "Non-scraped")
+    label = label.replace("scraped Scraped", "Scraped")
+    label = label.replace("scraped All scrape states", "All scrape states")
+    label = re.sub(r"\b10\b", "10%", label)
+    label = re.sub(r"\b25\b", "25%", label)
+    return label.strip()
+
+
 def collect_debug_stats(bases):
     rows = []
     for base in bases:
@@ -552,7 +565,7 @@ def main():
         for base in (input_bases or [OUT_BASE]):
             fit_dir = base / "summary_outputs" / "fits"
             for path in sorted(fit_dir.glob("risk_aggregate_*_poisson.png")):
-                doc.add_paragraph(f"Aggregate Poisson uncertainty: {path.name}")
+                doc.add_paragraph(f"Aggregate Poisson uncertainty: {_pretty_aggregate_plot_name(path)}")
                 add_picture_if_exists(doc, path, width_in=5.5)
                 doc.add_paragraph(
                     "Reading guide: each curve shows the modeled probability of reaching the target isolated-particle total as the number of scans increases. "

@@ -2,18 +2,19 @@
 
 This file is a prose blueprint for drafting Chapter 6 quickly from the current Stage 1 outputs.
 
-## 6.1 Processing Validation - Baseline PEGDA (No SiNP)
+## 6.1 Baseline PEGDA Validation
 
 Opening sentence:
-The results chapter begins by establishing that the processing workflow is sufficiently stable to support interpretation of particle-containing systems.
+The results chapter begins with baseline PEGDA validation, using the modulus workflow to establish that the processing routes and scan-direction choices were sufficiently stable to support interpretation of the Stage 1 particle dataset.
 
 Evidence to include:
-- baseline method-comparison figure
+- modulus forward/backward comparison
+- modulus method-comparison summary
 - short statement on internal consistency
-- note on any false-positive topo detections if available
+- note on any baseline topography false-positive detections if available
 
 Closing sentence:
-Taken together, the baseline results justify treating the subsequent Stage 1 particle statistics as products of a controlled and internally consistent workflow.
+Taken together, the baseline PEGDA results justify treating the subsequent Stage 1 particle statistics as products of a controlled and internally consistent workflow.
 
 ## 6.2.1 Scan Inventory
 

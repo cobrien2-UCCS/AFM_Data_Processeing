@@ -15,14 +15,15 @@
 
 ## Ordering Matters
 
-1. Start with baseline validation (pipeline credibility).
-2. Then particle presence and diameter distribution.
+1. Start with **baseline PEGDA validation**, and this should explicitly include the **modulus baseline workflow**.
+2. Then move to particle presence and diameter distribution.
 3. Then isolation, required scans, and the decision statement.
 4. Then processing-route sensitivity.
-5. Then Stage 2 trigger / crossover synthesis.
+5. Then Stage 2 trigger / crossover synthesis only if it remains tightly tied to feasibility.
 
 ## Must-Haves in Chapter 6
 
+- Baseline PEGDA validation section must include modulus results, not just topography credibility language.
 - Scan inventory table: number of scans, scan size, pixels, nm/pixel, nominal grid size.
 - Explicitly state whether zero-count scans exist and show the zero-rate in a table or statement.
 - Required scans must be reported per wt% and, if multiple jobs are discussed, per method.
@@ -51,12 +52,16 @@
 
 ### 6.1 Processing Validation - Baseline PEGDA (No SiNP)
 
-- Insert one baseline validation figure near the end of the subsection, after the paragraph that establishes workflow credibility.
-- Best figure type:
-  - baseline method-comparison bar plot, or
-  - forward/backward comparison if that is the clearest baseline validation
-- Purpose:
-  - show that the workflow is stable before any particle-containing claims are made
+- This subsection should be treated as **baseline PEGDA validation through the modulus workflow**.
+- The purpose is not only to say the pipeline is credible, but to show that the prior modulus study established:
+  - forward/backward agreement
+  - route consistency
+  - a defensible basis for carrying only forward scans into the present Stage 1 topography workflow
+- Best figures/tables:
+  - forward vs backward modulus comparison
+  - modulus method-comparison summary table
+  - one compact baseline validation bar plot or comparison figure
+- If a separate modulus report artifact is generated, Chapter 6 should pull only the key summary outputs into the body.
 
 ### 6.2.1 Scan Inventory
 
@@ -142,7 +147,8 @@
 
 ## Recommended Main-Text Figures for Chapter 6
 
-- Figure 6.1: baseline validation figure
+- Figure 6.1: modulus baseline validation figure
+- Figure 6.2: modulus forward/backward or route-comparison summary figure
 - Figure 6.2: particle count histogram by wt%
 - Figure 6.3: particle count grid heatmap by wt%
 - Figure 6.4: particle diameter histogram by wt%
@@ -158,6 +164,7 @@
 - Excess duplicate heatmaps
 - All grain plots at once
 - Full debugging artifact figures
+- Full modulus companion-report detail beyond the key baseline validation summaries
 
 These belong in appendices, supplementary material, or selective in-text callouts.
 
@@ -174,6 +181,10 @@ These belong in appendices, supplementary material, or selective in-text callout
   - provisional method conclusions pending rerun/fix propagation
 
 ## New Points To Carry Into Drafting
+
+- `6.1` must explicitly say that the baseline PEGDA validation was carried by the modulus workflow and that this section is the results-side counterpart to the Chapter 5 processing-route validation logic.
+- The forward-only choice used in the topography Stage 1 workflow should be tied back to the baseline modulus forward/backward agreement here, but only briefly because the method rationale is already defined in Chapter 5.
+- A separate modulus report artifact is acceptable and likely helpful, but Chapter 6 should use only the figures/tables needed to satisfy the outline's baseline-validation requirement.
 
 - In the particle-count subsection, explain what the histogram **frequency** axis means:
   - it is the number of scans falling at each retained-particle count.
