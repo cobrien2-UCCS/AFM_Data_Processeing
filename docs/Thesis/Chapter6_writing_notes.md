@@ -266,3 +266,26 @@ These belong in appendices, supplementary material, or selective in-text callout
   - enough scans to fit or trust the count model
   - enough scans to reach the isolated-particle target
 - This belongs in discussion/limits because it is about model justification, not just the observed result.
+
+## Next Session Lock List For Chapter 6
+
+- Treat the current chapter as mostly locked and focus only on targeted figure/table cleanup plus added discussion text.
+- Figure 6.3:
+  - pair the `10 wt%` mean map with its `10 wt%` standard-deviation companion
+  - pair the `25 wt%` mean map with its `25 wt%` standard-deviation companion
+  - do not separate them as `10 mean, 25 mean, 10 std, 25 std`
+- Figure 6.4:
+  - add explicit `10 wt%` and `25 wt%` wording in the titles
+- Figure 6.5 / isolated-count figures:
+  - keep the same mean-plus-std pairing logic used for Figure 6.3
+- Table 6.7:
+  - move the large method-level grain table to appendix/supporting material
+- Grain section in the main body:
+  - keep the compact grain summary table
+  - keep the grain distribution / box-plot figure
+- Table 6.8:
+  - keep as a summary table, not the oversized all-detail version
+- Figure 6.8:
+  - use box plots rather than the old crowded all-method presentation
+- Add more thesis-style discussion text throughout the chapter using the user's direct observations, rather than report/log phrasing.
+- Keep a representative raw particle/topography image near the front of `6.2.2`, before the mean density maps.

@@ -287,3 +287,14 @@
 Reference math file:
 
 - `docs/Thesis/Reference Material/secondary_particle_validation_math.md`
+
+## Next Session Lock List For Chapter 5
+
+- Clarify the Poisson-model explanation in more reader-facing language.
+- Explain more carefully why the current Stage 1 count model may not look like the reader's intuitive idea of a Poisson trend.
+- Add a clearer explanation of the crossover design figure:
+  - what the x-axis means
+  - what the y-axis means
+  - what the available-scan line means
+  - what the crossover point means physically
+- Keep this as a methods/definitions task first; do not let it drift into Chapter 6-style result interpretation.

@@ -14,9 +14,19 @@ so they do not get lost (even if they belong in another chapter later).
 
 ## Figures/Tables To Add Later
 - 
+- Chapter 6 next-step figure cleanup:
+  - pair `10 wt%` mean + std maps together and `25 wt%` mean + std maps together
+  - add explicit wt% titles to the particle-diameter figures
+  - move the large grain method table to appendix/supporting material
+  - keep the compact grain summary plus grain box plots in the main body
+  - convert the crowded method comparison figure to box-plot style where appropriate
+  - keep a representative raw particle/topography image near the front of `6.2.2`
 
 ## Open Questions
 - 
+- Chapter 5 still needs a clearer plain-language explanation of:
+  - how the Poisson sufficiency calculation is being used
+  - why the crossover figure is defined the way it is
 
 ## Future Work Notes
 - The current analysis stack should be refactored into a more reproducible, robust, and predictable pipeline.
