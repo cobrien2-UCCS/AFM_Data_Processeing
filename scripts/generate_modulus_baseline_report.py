@@ -5,11 +5,16 @@ import csv
 from collections import defaultdict
 from datetime import datetime
 from pathlib import Path
+import statistics as stats
 from statistics import mean, median
 
 from docx import Document
 from docx.shared import Inches
 import matplotlib.pyplot as plt
+
+SOURCE_MODULUS_UNIT = "kPa"
+DISPLAY_MODULUS_UNIT = "GPa-equivalent"
+DISPLAY_MODULUS_SCALE = 1e-6
 
 
 def _read_csv(path: Path) -> list[dict[str, str]]:
@@ -73,6 +78,29 @@ def _plot_boxplot(out_path: Path, title: str, labels: list[str], series: list[li
     plt.close(fig)
 
 
+def _plot_bar_with_error(
+    out_path: Path,
+    title: str,
+    labels: list[str],
+    means: list[float],
+    stds: list[float],
+    ylabel: str,
+) -> None:
+    if not means:
+        return
+    fig, ax = plt.subplots(figsize=(10.5, 5.5))
+    x = range(len(labels))
+    ax.bar(x, means, yerr=stds, capsize=4, color="#4C78A8", edgecolor="black")
+    ax.set_xticks(list(x))
+    ax.set_xticklabels(labels, rotation=30, ha="right")
+    ax.set_title(title)
+    ax.set_ylabel(ylabel)
+    fig.tight_layout()
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(out_path, dpi=300)
+    plt.close(fig)
+
+
 def _aggregate_compare_rows(rows: list[dict[str, str]]) -> dict[str, dict[str, float]]:
     grouped: dict[str, dict[str, list[float]]] = defaultdict(lambda: defaultdict(list))
     for row in rows:
@@ -115,6 +143,70 @@ def _aggregate_compare_rows(rows: list[dict[str, str]]) -> dict[str, dict[str, f
     return out
 
 
+def _absolute_method_summary(rows: list[dict[str, str]]) -> dict[str, dict[str, float]]:
+    grouped: dict[str, dict[str, list[float]]] = defaultdict(lambda: defaultdict(list))
+    for row in rows:
+        method = row["method"]
+        avg = _f(row.get("avg_value"))
+        std = _f(row.get("std_value"))
+        n_valid = _f(row.get("n_valid"))
+        if avg == avg:
+            grouped[method]["avg_value"].append(avg)
+        if std == std:
+            grouped[method]["std_value"].append(std)
+        if n_valid == n_valid:
+            grouped[method]["n_valid"].append(n_valid)
+    out: dict[str, dict[str, float]] = {}
+    for method, metrics in grouped.items():
+        avgs = metrics.get("avg_value", [])
+        stds = metrics.get("std_value", [])
+        nvals = metrics.get("n_valid", [])
+        out[method] = {
+            "n_scans": len(avgs),
+            "mean_avg_value": mean(avgs) if avgs else float("nan"),
+            "std_avg_value": stats.pstdev(avgs) if len(avgs) > 1 else 0.0,
+            "se_avg_value": (stats.pstdev(avgs) / (len(avgs) ** 0.5)) if len(avgs) > 1 else 0.0,
+            "mean_std_value": mean(stds) if stds else float("nan"),
+            "std_std_value": stats.pstdev(stds) if len(stds) > 1 else 0.0,
+            "mean_n_valid": mean(nvals) if nvals else float("nan"),
+        }
+    return out
+
+
+def _pixel_loss_summary(rows: list[dict[str, str]]) -> dict[str, dict[str, float]]:
+    grouped: dict[str, dict[str, list[float]]] = defaultdict(lambda: defaultdict(list))
+    for row in rows:
+        method = row["method"]
+        delta_n = _f(row.get("delta_n_valid"))
+        n_valid_baseline = _f(row.get("n_valid_baseline"))
+        if delta_n != delta_n:
+            continue
+        pixels_lost = max(0.0, -delta_n)
+        grouped[method]["pixels_lost"].append(pixels_lost)
+        if n_valid_baseline == n_valid_baseline and n_valid_baseline > 0:
+            grouped[method]["pct_lost"].append(100.0 * pixels_lost / n_valid_baseline)
+    out: dict[str, dict[str, float]] = {}
+    for method, metrics in grouped.items():
+        vals = metrics.get("pixels_lost", [])
+        pct_vals = metrics.get("pct_lost", [])
+        out[method] = {
+            "n_scans": len(vals),
+            "mean_pixels_lost": mean(vals) if vals else float("nan"),
+            "std_pixels_lost": stats.pstdev(vals) if len(vals) > 1 else 0.0,
+            "se_pixels_lost": (stats.pstdev(vals) / (len(vals) ** 0.5)) if len(vals) > 1 else 0.0,
+            "max_pixels_lost": max(vals) if vals else float("nan"),
+            "scans_with_loss": sum(1 for v in vals if v > 0),
+            "mean_pct_lost": mean(pct_vals) if pct_vals else float("nan"),
+            "std_pct_lost": stats.pstdev(pct_vals) if len(pct_vals) > 1 else 0.0,
+            "se_pct_lost": (stats.pstdev(pct_vals) / (len(pct_vals) ** 0.5)) if len(pct_vals) > 1 else 0.0,
+            "max_pct_lost": max(pct_vals) if pct_vals else float("nan"),
+            "scans_gt_5pct": sum(1 for v in pct_vals if v > 5.0),
+            "scans_gt_10pct": sum(1 for v in pct_vals if v > 10.0),
+            "scans_gt_25pct": sum(1 for v in pct_vals if v > 25.0),
+        }
+    return out
+
+
 def _load_baseline_inventory(path: Path) -> tuple[int, str]:
     rows = _read_csv(path)
     units = rows[0].get("units", "") if rows else ""
@@ -127,6 +219,10 @@ def _fmt_ratio(value: float) -> str:
 
 def _fmt_num(value: float) -> str:
     return "" if value != value else f"{value:.3e}"
+
+
+def _fmt_modulus_display(value: float) -> str:
+    return "" if value != value else f"{value * DISPLAY_MODULUS_SCALE:.3f}"
 
 
 def build_report(
@@ -146,6 +242,10 @@ def build_report(
 
     forward_agg = _aggregate_compare_rows(forward_long)
     backward_agg = _aggregate_compare_rows(backward_long)
+    forward_abs = _absolute_method_summary(forward_long)
+    backward_abs = _absolute_method_summary(backward_long)
+    forward_loss = _pixel_loss_summary(forward_long)
+    backward_loss = _pixel_loss_summary(backward_long)
     n_forward, units_forward = _load_baseline_inventory(forward_baseline_summary)
     n_backward, units_backward = _load_baseline_inventory(backward_baseline_summary)
     output_dir = output_docx.parent
@@ -159,6 +259,12 @@ def build_report(
         "This report summarizes the baseline PEGDA modulus method-comparison results used to support Chapter 6, "
         "Section 6.1 (Baseline PEGDA Validation). Its purpose is to document forward/backward agreement, route "
         "consistency, and the practical basis for restricting the Stage 1 topography workflow to forward scans."
+    )
+    doc.add_paragraph(
+        f"Unit note: the source `summary.csv` files for this study record modulus in {SOURCE_MODULUS_UNIT}. "
+        f"To improve readability, modulus-derived values in the tables and plots below are displayed in "
+        f"{DISPLAY_MODULUS_UNIT} by dividing the source-reported {SOURCE_MODULUS_UNIT} values by 1,000,000. "
+        f"The baseline inventory table still reports the source unit exactly as provided by the pipeline."
     )
 
     _add_heading_paragraph(doc, "Workflow and method definitions")
@@ -205,9 +311,24 @@ def build_report(
         "baseline route or, in the paired case, close agreement between scan directions."
     )
     doc.add_paragraph(
+        "Important interpretation note: the absolute-modulus summary tables report the spread of scan-level mean modulus "
+        "values across the whole dataset for each method. That is a between-scan variability measure. It is different "
+        "from the within-scan spatial standard deviation shown in individual scan summaries or from the visually smoother "
+        "mean heatmaps."
+    )
+    doc.add_paragraph(
+        "To keep the bar plots readable, the bar-plot error bars in this report use standard error rather than full "
+        "standard deviation. The full standard deviation values remain listed in the summary tables."
+    )
+    doc.add_paragraph(
         "In the grouped bar plots, each bar summarizes a method-level modulus comparison against the baseline route. In the "
         "heatmaps, the baseline heatmap shows the spatial distribution of the baseline modulus summaries, while the "
         "delta-versus-baseline heatmaps show how a comparison route shifts the spatial pattern relative to that same baseline."
+    )
+    doc.add_paragraph(
+        "Outlined cells indicate scan positions where the comparison method retained fewer valid pixels than the baseline "
+        "route. The outline is drawn in dark gray so it can be distinguished from the red-blue diverging color scale used "
+        "for modulus differences."
     )
     doc.add_paragraph(
         "A visually quiet or nearly blank delta heatmap does not necessarily indicate missing data. In several cases, "
@@ -257,14 +378,21 @@ def build_report(
     _add_table(
         doc,
         "Table M2 - Forward method comparison summary",
-        ["Method", "Scans", "Mean ratio vs baseline", "Median ratio vs baseline", "Mean delta avg", "Mean delta n_valid"],
+        [
+            "Method",
+            "Scans",
+            "Mean ratio vs baseline",
+            "Median ratio vs baseline",
+            f"Mean delta avg ({DISPLAY_MODULUS_UNIT})",
+            "Mean delta n_valid",
+        ],
         [
             [
                 method_labels.get(m, m),
                 str(int(forward_agg[m]["n_scans"])),
                 _fmt_ratio(forward_agg[m]["mean_ratio_avg"]),
                 _fmt_ratio(forward_agg[m]["median_ratio_avg"]),
-                _fmt_num(forward_agg[m]["mean_delta_avg"]),
+                _fmt_modulus_display(forward_agg[m]["mean_delta_avg"]),
                 _fmt_num(forward_agg[m]["mean_delta_n"]),
             ]
             for m in method_order
@@ -275,32 +403,172 @@ def build_report(
     _add_table(
         doc,
         "Table M3 - Backward method comparison summary",
-        ["Method", "Scans", "Mean ratio vs baseline", "Median ratio vs baseline", "Mean delta avg", "Mean delta n_valid"],
+        [
+            "Method",
+            "Scans",
+            "Mean ratio vs baseline",
+            "Median ratio vs baseline",
+            f"Mean delta avg ({DISPLAY_MODULUS_UNIT})",
+            "Mean delta n_valid",
+        ],
         [
             [
                 method_labels.get(m, m),
                 str(int(backward_agg[m]["n_scans"])),
                 _fmt_ratio(backward_agg[m]["mean_ratio_avg"]),
                 _fmt_ratio(backward_agg[m]["median_ratio_avg"]),
-                _fmt_num(backward_agg[m]["mean_delta_avg"]),
+                _fmt_modulus_display(backward_agg[m]["mean_delta_avg"]),
                 _fmt_num(backward_agg[m]["mean_delta_n"]),
             ]
             for m in method_order
             if m in backward_agg
         ],
     )
+    _add_table(
+        doc,
+        "Table M3a - Absolute modulus summary by method",
+        [
+            "Direction",
+            "Method",
+            "Scans",
+            f"Mean modulus ({DISPLAY_MODULUS_UNIT})",
+            f"Std of scan means across dataset ({DISPLAY_MODULUS_UNIT})",
+            f"Mean per-scan std ({DISPLAY_MODULUS_UNIT})",
+            "Mean n_valid",
+        ],
+        [
+            [
+                "Forward",
+                method_labels.get(m, m),
+                str(int(forward_abs[m]["n_scans"])),
+                _fmt_modulus_display(forward_abs[m]["mean_avg_value"]),
+                _fmt_modulus_display(forward_abs[m]["std_avg_value"]),
+                _fmt_modulus_display(forward_abs[m]["mean_std_value"]),
+                _fmt_num(forward_abs[m]["mean_n_valid"]),
+            ]
+            for m in method_order
+            if m in forward_abs
+        ] + [
+            [
+                "Backward",
+                method_labels.get(m, m),
+                str(int(backward_abs[m]["n_scans"])),
+                _fmt_modulus_display(backward_abs[m]["mean_avg_value"]),
+                _fmt_modulus_display(backward_abs[m]["std_avg_value"]),
+                _fmt_modulus_display(backward_abs[m]["mean_std_value"]),
+                _fmt_num(backward_abs[m]["mean_n_valid"]),
+            ]
+            for m in method_order
+            if m in backward_abs
+        ],
+    )
+    _add_table(
+        doc,
+        "Table M3b - Pixels lost relative to baseline by method",
+        ["Direction", "Method", "Mean pixels lost", "Std pixels lost", "Max pixels lost", "Scans with any loss"],
+        [
+            [
+                "Forward",
+                method_labels.get(m, m),
+                _fmt_num(forward_loss[m]["mean_pixels_lost"]),
+                _fmt_num(forward_loss[m]["std_pixels_lost"]),
+                _fmt_num(forward_loss[m]["max_pixels_lost"]),
+                str(int(forward_loss[m]["scans_with_loss"])),
+            ]
+            for m in method_order
+            if m in forward_loss
+        ] + [
+            [
+                "Backward",
+                method_labels.get(m, m),
+                _fmt_num(backward_loss[m]["mean_pixels_lost"]),
+                _fmt_num(backward_loss[m]["std_pixels_lost"]),
+                _fmt_num(backward_loss[m]["max_pixels_lost"]),
+                str(int(backward_loss[m]["scans_with_loss"])),
+            ]
+            for m in method_order
+            if m in backward_loss
+        ],
+    )
+    _add_table(
+        doc,
+        "Table M3c - Percent pixels lost relative to baseline by method",
+        ["Direction", "Method", "Mean % lost", "Std % lost", "Max % lost", "Scans >5%", "Scans >10%", "Scans >25%"],
+        [
+            [
+                "Forward",
+                method_labels.get(m, m),
+                _fmt_ratio(forward_loss[m]["mean_pct_lost"]),
+                _fmt_ratio(forward_loss[m]["std_pct_lost"]),
+                _fmt_ratio(forward_loss[m]["max_pct_lost"]),
+                str(int(forward_loss[m]["scans_gt_5pct"])),
+                str(int(forward_loss[m]["scans_gt_10pct"])),
+                str(int(forward_loss[m]["scans_gt_25pct"])),
+            ]
+            for m in method_order
+            if m in forward_loss
+        ] + [
+            [
+                "Backward",
+                method_labels.get(m, m),
+                _fmt_ratio(backward_loss[m]["mean_pct_lost"]),
+                _fmt_ratio(backward_loss[m]["std_pct_lost"]),
+                _fmt_ratio(backward_loss[m]["max_pct_lost"]),
+                str(int(backward_loss[m]["scans_gt_5pct"])),
+                str(int(backward_loss[m]["scans_gt_10pct"])),
+                str(int(backward_loss[m]["scans_gt_25pct"])),
+            ]
+            for m in method_order
+            if m in backward_loss
+        ],
+    )
+    _add_table(
+        doc,
+        "Table M3b - Pixels lost relative to baseline by method",
+        ["Direction", "Method", "Mean pixels lost", "Std pixels lost", "Max pixels lost", "Scans with any loss"],
+        [
+            [
+                "Forward",
+                method_labels.get(m, m),
+                _fmt_num(forward_loss[m]["mean_pixels_lost"]),
+                _fmt_num(forward_loss[m]["std_pixels_lost"]),
+                _fmt_num(forward_loss[m]["max_pixels_lost"]),
+                str(int(forward_loss[m]["scans_with_loss"])),
+            ]
+            for m in method_order
+            if m in forward_loss
+        ] + [
+            [
+                "Backward",
+                method_labels.get(m, m),
+                _fmt_num(backward_loss[m]["mean_pixels_lost"]),
+                _fmt_num(backward_loss[m]["std_pixels_lost"]),
+                _fmt_num(backward_loss[m]["max_pixels_lost"]),
+                str(int(backward_loss[m]["scans_with_loss"])),
+            ]
+            for m in method_order
+            if m in backward_loss
+        ],
+    )
 
     _add_table(
         doc,
         "Table M4 - Paired forward/backward method agreement summary",
-        ["Method", "Pairs", "Mean ratio (F/B)", "Median ratio (F/B)", "Mean delta avg (F-B)", "Mean delta n_valid (F-B)"],
+        [
+            "Method",
+            "Pairs",
+            "Mean ratio (F/B)",
+            "Median ratio (F/B)",
+            f"Mean delta avg (F-B, {DISPLAY_MODULUS_UNIT})",
+            "Mean delta n_valid (F-B)",
+        ],
         [
             [
                 method_labels.get(r["method"], r["method"]),
                 str(_i(r.get("n_pairs"))),
                 _fmt_ratio(_f(r.get("mean_ratio_avg"))),
                 _fmt_ratio(_f(r.get("median_ratio_avg"))),
-                _fmt_num(_f(r.get("mean_delta_avg"))),
+                _fmt_modulus_display(_f(r.get("mean_delta_avg"))),
                 _fmt_num(_f(r.get("mean_delta_n_valid"))),
             ]
             for r in paired_rows
@@ -309,10 +577,14 @@ def build_report(
     _add_table(
         doc,
         "Table M5 - Default processing parameters shared across modulus comparison methods",
-        ["Parameter", "Default value", "Meaning"],
+            ["Parameter", "Default value", "Meaning"],
         [
             ["Metric", "Modulus", "Per-scan modulus summary from AFM modulus TIFFs."],
-            ["Units", "kPa", "Normalized modulus unit used for comparison outputs."],
+            [
+                "Units",
+                f"Source: {SOURCE_MODULUS_UNIT}; report display: {DISPLAY_MODULUS_UNIT}",
+                "The pipeline summary files report modulus in source-tagged kPa; report tables/plots rescale those values for readability.",
+            ],
             ["Scan size", "5 um x 5 um", "Per-scan image size."],
             ["Pixel grid", "512 x 512", "Nominal pixel resolution of each scan."],
             ["Baseline route", "modulus_gwy_stats / gwy_stats", "Gwyddion preprocessing + Gwyddion statistics."],
@@ -339,8 +611,14 @@ def build_report(
     )
 
     labels = [method_labels[m] for m in method_order]
-    forward_delta_series = [[_f(r["delta_avg"]) for r in forward_long if r["method"] == m and _f(r["delta_avg"]) == _f(r["delta_avg"])] for m in method_order]
-    backward_delta_series = [[_f(r["delta_avg"]) for r in backward_long if r["method"] == m and _f(r["delta_avg"]) == _f(r["delta_avg"])] for m in method_order]
+    forward_delta_series = [
+        [_f(r["delta_avg"]) * DISPLAY_MODULUS_SCALE for r in forward_long if r["method"] == m and _f(r["delta_avg"]) == _f(r["delta_avg"])]
+        for m in method_order
+    ]
+    backward_delta_series = [
+        [_f(r["delta_avg"]) * DISPLAY_MODULUS_SCALE for r in backward_long if r["method"] == m and _f(r["delta_avg"]) == _f(r["delta_avg"])]
+        for m in method_order
+    ]
     paired_ratio_series = [
         [_f(r["ratio_avg"]) for r in paired_long if r["method"] == m and _f(r["ratio_avg"]) == _f(r["ratio_avg"])]
         for m in method_order
@@ -351,9 +629,75 @@ def build_report(
     forward_box = asset_dir / "forward_delta_avg_boxplot.png"
     backward_box = asset_dir / "backward_delta_avg_boxplot.png"
     paired_box = asset_dir / "paired_ratio_boxplot.png"
-    _plot_boxplot(forward_box, "Forward modulus comparison: delta avg vs baseline", labels, forward_delta_series, "Delta avg (kPa)")
-    _plot_boxplot(backward_box, "Backward modulus comparison: delta avg vs baseline", labels, backward_delta_series, "Delta avg (kPa)")
+    forward_abs_bar = asset_dir / "forward_absolute_modulus_bar.png"
+    backward_abs_bar = asset_dir / "backward_absolute_modulus_bar.png"
+    forward_loss_bar = asset_dir / "forward_pixels_lost_bar.png"
+    backward_loss_bar = asset_dir / "backward_pixels_lost_bar.png"
+    forward_pct_loss_bar = asset_dir / "forward_percent_pixels_lost_bar.png"
+    backward_pct_loss_bar = asset_dir / "backward_percent_pixels_lost_bar.png"
+    _plot_boxplot(
+        forward_box,
+        "Forward modulus comparison: delta avg vs baseline",
+        labels,
+        forward_delta_series,
+        f"Delta avg ({DISPLAY_MODULUS_UNIT})",
+    )
+    _plot_boxplot(
+        backward_box,
+        "Backward modulus comparison: delta avg vs baseline",
+        labels,
+        backward_delta_series,
+        f"Delta avg ({DISPLAY_MODULUS_UNIT})",
+    )
     _plot_boxplot(paired_box, "Paired forward/backward ratio by method", paired_ratio_labels, paired_ratio_series, "Mean ratio (F/B)")
+    _plot_bar_with_error(
+        forward_abs_bar,
+        "Forward absolute modulus by method",
+        [method_labels[m] for m in method_order if m in forward_abs],
+        [forward_abs[m]["mean_avg_value"] * DISPLAY_MODULUS_SCALE for m in method_order if m in forward_abs],
+        [forward_abs[m]["se_avg_value"] * DISPLAY_MODULUS_SCALE for m in method_order if m in forward_abs],
+        f"Mean modulus ({DISPLAY_MODULUS_UNIT})",
+    )
+    _plot_bar_with_error(
+        backward_abs_bar,
+        "Backward absolute modulus by method",
+        [method_labels[m] for m in method_order if m in backward_abs],
+        [backward_abs[m]["mean_avg_value"] * DISPLAY_MODULUS_SCALE for m in method_order if m in backward_abs],
+        [backward_abs[m]["se_avg_value"] * DISPLAY_MODULUS_SCALE for m in method_order if m in backward_abs],
+        f"Mean modulus ({DISPLAY_MODULUS_UNIT})",
+    )
+    _plot_bar_with_error(
+        forward_loss_bar,
+        "Forward pixels lost relative to baseline by method",
+        [method_labels[m] for m in method_order if m in forward_loss],
+        [forward_loss[m]["mean_pixels_lost"] for m in method_order if m in forward_loss],
+        [forward_loss[m]["se_pixels_lost"] for m in method_order if m in forward_loss],
+        "Pixels lost vs baseline",
+    )
+    _plot_bar_with_error(
+        backward_loss_bar,
+        "Backward pixels lost relative to baseline by method",
+        [method_labels[m] for m in method_order if m in backward_loss],
+        [backward_loss[m]["mean_pixels_lost"] for m in method_order if m in backward_loss],
+        [backward_loss[m]["se_pixels_lost"] for m in method_order if m in backward_loss],
+        "Pixels lost vs baseline",
+    )
+    _plot_bar_with_error(
+        forward_pct_loss_bar,
+        "Forward percent pixels lost relative to baseline by method",
+        [method_labels[m] for m in method_order if m in forward_loss],
+        [forward_loss[m]["mean_pct_lost"] for m in method_order if m in forward_loss],
+        [forward_loss[m]["se_pct_lost"] for m in method_order if m in forward_loss],
+        "Percent pixels lost vs baseline",
+    )
+    _plot_bar_with_error(
+        backward_pct_loss_bar,
+        "Backward percent pixels lost relative to baseline by method",
+        [method_labels[m] for m in method_order if m in backward_loss],
+        [backward_loss[m]["mean_pct_lost"] for m in method_order if m in backward_loss],
+        [backward_loss[m]["se_pct_lost"] for m in method_order if m in backward_loss],
+        "Percent pixels lost vs baseline",
+    )
 
     _add_figure(
         doc,
@@ -372,18 +716,48 @@ def build_report(
     )
     _add_figure(
         doc,
-        "Figure M3a - Forward modulus box plot of delta avg vs baseline by method.",
+        f"Figure M3a - Forward modulus box plot of delta avg vs baseline by method ({DISPLAY_MODULUS_UNIT} display).",
         forward_box,
     )
     _add_figure(
         doc,
-        "Figure M3b - Backward modulus box plot of delta avg vs baseline by method.",
+        f"Figure M3b - Backward modulus box plot of delta avg vs baseline by method ({DISPLAY_MODULUS_UNIT} display).",
         backward_box,
     )
     _add_figure(
         doc,
         "Figure M3c - Paired forward/backward ratio box plot by method.",
         paired_box,
+    )
+    _add_figure(
+        doc,
+        f"Figure M3d - Forward absolute modulus by method ({DISPLAY_MODULUS_UNIT} display). Bars show mean modulus across scans; error bars show standard error across scans.",
+        forward_abs_bar,
+    )
+    _add_figure(
+        doc,
+        f"Figure M3e - Backward absolute modulus by method ({DISPLAY_MODULUS_UNIT} display). Bars show mean modulus across scans; error bars show standard error across scans.",
+        backward_abs_bar,
+    )
+    _add_figure(
+        doc,
+        "Figure M3f - Forward pixels lost relative to baseline by method. Bars show mean pixels lost; error bars show standard error across scans.",
+        forward_loss_bar,
+    )
+    _add_figure(
+        doc,
+        "Figure M3g - Backward pixels lost relative to baseline by method. Bars show mean pixels lost; error bars show standard error across scans.",
+        backward_loss_bar,
+    )
+    _add_figure(
+        doc,
+        "Figure M3h - Forward percent pixels lost relative to baseline by method. Bars show mean percent loss; error bars show standard error across scans.",
+        forward_pct_loss_bar,
+    )
+    _add_figure(
+        doc,
+        "Figure M3i - Backward percent pixels lost relative to baseline by method. Bars show mean percent loss; error bars show standard error across scans.",
+        backward_pct_loss_bar,
     )
     _add_figure(
         doc,

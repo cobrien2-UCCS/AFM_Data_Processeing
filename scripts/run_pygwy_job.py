@@ -3087,8 +3087,15 @@ def _apply_units(result, processing_mode, mode_def, manifest, detected_unit):
     """Apply unit detection, conversion, and mismatch policy."""
     detected_unit = _normalize_unit_name(detected_unit)
     current_unit = detected_unit or _normalize_unit_name(result.get("core.units")) or _normalize_unit_name(mode_def.get("units"))
+    result["core.avg_value_original"] = result.get("core.avg_value")
+    result["core.std_value_original"] = result.get("core.std_value")
+    result["core.units_original"] = current_unit or result.get("core.units")
+    if result.get("_debug.unit_source") is not None:
+        result["core.unit_source"] = result.get("_debug.unit_source")
     conversions = (manifest.get("unit_conversions") or {}).get(processing_mode, {})
     conversions = _normalize_unit_conversions(conversions)
+    result["core.unit_conversion_factor"] = 1.0
+    result["core.units_normalized"] = current_unit or result.get("core.units")
     if current_unit in conversions:
         conv = conversions.get(current_unit) or {}
         try:
@@ -3100,6 +3107,8 @@ def _apply_units(result, processing_mode, mode_def, manifest, detected_unit):
             result["core.avg_value"] = float(result.get("core.avg_value", 0.0)) * factor
             result["core.std_value"] = float(abs(factor)) * float(result.get("core.std_value", 0.0))
             current_unit = target_unit
+            result["core.unit_conversion_factor"] = factor
+            result["core.units_normalized"] = target_unit
         except Exception as exc:
             sys.stderr.write("WARN: unit conversion failed (%s): %s\n" % (current_unit, exc))
 
@@ -3116,6 +3125,7 @@ def _apply_units(result, processing_mode, mode_def, manifest, detected_unit):
             raise RuntimeError(msg)
 
     result["core.units"] = current_unit or result.get("core.units")
+    result["core.units_normalized"] = result.get("core.units")
     return result
 
 

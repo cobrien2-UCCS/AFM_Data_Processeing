@@ -139,6 +139,11 @@ csv_modes:
       - { name: "date_code", from: "file.date_code", default: "" }
       - { name: "mode", from: "core.mode" }
       - { name: "metric_type", from: "core.metric_type" }
+      - { name: "avg_value_original", from: "core.avg_value_original", default: "" }
+      - { name: "std_value_original", from: "core.std_value_original", default: "" }
+      - { name: "units_original", from: "core.units_original", default: "" }
+      - { name: "unit_source", from: "core.unit_source", default: "" }
+      - { name: "unit_conversion_factor", from: "core.unit_conversion_factor", default: "" }
       - { name: "avg_value", from: "core.avg_value" }
       - { name: "std_value", from: "core.std_value" }
       - { name: "units", from: "core.units" }
@@ -175,6 +180,11 @@ result_schemas:
       - { field: "date_code", type: "string", column: "date_code" }
       - { field: "mode", type: "string", column: "mode" }
       - { field: "metric_type", type: "string", column: "metric_type" }
+      - { field: "avg_value_original", type: "float", column: "avg_value_original" }
+      - { field: "std_value_original", type: "float", column: "std_value_original" }
+      - { field: "units_original", type: "string", column: "units_original" }
+      - { field: "unit_source", type: "string", column: "unit_source" }
+      - { field: "unit_conversion_factor", type: "float", column: "unit_conversion_factor" }
       - { field: "avg_value", type: "float", column: "avg_value" }
       - { field: "std_value", type: "float", column: "std_value" }
       - { field: "units", type: "string", column: "units" }

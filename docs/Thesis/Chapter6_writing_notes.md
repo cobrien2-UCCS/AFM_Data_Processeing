@@ -24,6 +24,10 @@
 ## Must-Haves in Chapter 6
 
 - Baseline PEGDA validation section must include modulus results, not just topography credibility language.
+- Baseline PEGDA validation section must also state how units are carried through the workflow:
+  - Gwyddion-derived outputs inherit the physical unit attached to the active data field.
+  - In the current modulus baseline workflow, the source `summary.csv` files explicitly report `kPa`.
+  - Any report-level rescaling for readability should be identified as a display conversion, not a change to the underlying source data.
 - Scan inventory table: number of scans, scan size, pixels, nm/pixel, nominal grid size.
 - Explicitly state whether zero-count scans exist and show the zero-rate in a table or statement.
 - Required scans must be reported per wt% and, if multiple jobs are discussed, per method.
@@ -185,6 +189,10 @@ These belong in appendices, supplementary material, or selective in-text callout
 - `6.1` must explicitly say that the baseline PEGDA validation was carried by the modulus workflow and that this section is the results-side counterpart to the Chapter 5 processing-route validation logic.
 - The forward-only choice used in the topography Stage 1 workflow should be tied back to the baseline modulus forward/backward agreement here, but only briefly because the method rationale is already defined in Chapter 5.
 - A separate modulus report artifact is acceptable and likely helpful, but Chapter 6 should use only the figures/tables needed to satisfy the outline's baseline-validation requirement.
+- `6.1` should also make the unit provenance explicit:
+  - modulus source summaries in this workflow carry `units = kPa`
+  - count outputs are count-based and do not inherit a physical z-unit
+  - particle/grain diameter outputs are derived geometric metrics reported in `nm`
 
 - In the particle-count subsection, explain what the histogram **frequency** axis means:
   - it is the number of scans falling at each retained-particle count.

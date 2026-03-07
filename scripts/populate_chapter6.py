@@ -435,6 +435,7 @@ def _write(doc_path: Path, wt10: RootStats, wt25: RootStats) -> None:
 
     doc.add_heading("6.1 Processing Validation - Baseline PEGDA (No SiNP)", level=1)
     doc.add_paragraph("Baseline validation still depends on the topo-only PEGDA rerun for a direct false-positive bound. For this draft, the workflow credibility argument rests on the completed method-validation work and the consistency of the completed Stage 1 outputs.")
+    doc.add_paragraph("Unit provenance should be stated explicitly for this section. In this workflow, Gwyddion-derived outputs inherit the physical unit attached to the active data field. The baseline modulus source summaries used here explicitly report units = kPa, and that source-unit tag is carried through the exported comparison tables before any report-level rescaling for readability. By contrast, the Stage 1 particle-count outputs are count-based summaries and therefore do not inherit a physical z-unit, while particle and grain diameter summaries are derived geometric metrics reported in nm.")
     doc.add_paragraph("Figure 6.1 gives an early orienting summary so the chapter does not open without a figure.")
     _figure(doc, "Figure 6.1 - Stage 1 overview for PEGDA, 1 wt% TPO, no coating, comparing 10 wt% and 25 wt% SiNP. Bars show mean candidate and isolated counts per scan with standard deviations.", [overview])
 

@@ -249,7 +249,7 @@ def plot_two_panel_heatmap(
     cmap_right: str = "magma",
     center_zero: bool = False,
     outline_mask: Optional[np.ndarray] = None,
-    outline_color: str = "black",
+    outline_color: str = "#444444",
     outline_width: float = 1.6,
 ):
     if left.size == 0 or right.size == 0:
