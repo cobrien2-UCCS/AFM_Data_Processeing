@@ -60,6 +60,7 @@
 - Include contrapositive / zero-risk language: the risk of scanning and getting zero isolated true particles.
 - Include the Stage 2 crossover definition and plot, even if it is presented as a sensitivity analysis over `p`.
 - Include the rationale for using **forward scans only** in the topo workflow.
+- State explicitly that the active reported particle diameter band for the current Stage 1 work remains `350-550 nm`.
 
 ## Math Hygiene
 
@@ -101,6 +102,10 @@
   - `docs/Thesis/topo_particle_gwyddion_gui_sop.md`
 - Add a second appendix/support artifact for representative particle-image selection and mask overlays:
   - `docs/Thesis/topo_particle_representative_image_sop.md`
+- Add a project-environment appendix planning file:
+  - `docs/Thesis/appendix_project_environment_inventory.md`
+- Add a repository/data-structure planning file:
+  - `docs/repo_data_structure_plan.md`
 - When mentioned in Chapter 5, refer to the SOP only as a **verification artifact** or **appendix aid**.
 - State clearly that the representative image panels exist to show:
   - what the Stage 1 program is doing visually
@@ -223,6 +228,42 @@
   - report and chapter outputs
 - This should stay as a placeholder for now if the final diagram is not ready.
 - Add a second Chapter 5 figure placeholder for a representative fractured surface versus a manually flattened/scraped surface so the reader can see why this preparation accommodation was sometimes necessary.
+
+## Diameter Filtering Clarifications
+
+- The current diameter filter is based on **equivalent circular diameter**, which means the retained grain area is converted into the diameter of a circle with the same area.
+- This is a useful and standard simplification for segmentation output, but it assumes circular equivalence even when the retained grain is not perfectly circular.
+- Verify whether any circularity-based filtering was active in the current particle workflow. If not, state that explicitly and carry it as a limitation / future-work item rather than implying shape was fully controlled.
+- Keep the wording conservative: the reported particle diameter is an **effective segmented diameter**, not proof that the particle itself is circular.
+- If circularity was not used, add a short future-work note that shape descriptors such as circularity or aspect ratio could further refine the retained-particle definition.
+
+## Isolation Distance Rationale
+
+- The active isolation spacing is `900 nm`.
+- State why that value was chosen:
+  - it was based in part on the advisor-provided working number
+  - it also corresponds roughly to the largest retained particle diameter plus about one additional particle diameter of spacing
+- Make clear that this was a pragmatic Stage 1 isolation rule, not a claim that `900 nm` is a universal physical cutoff.
+- If needed, note that future work could test sensitivity of the required-scan result to the isolation-distance choice.
+
+## Fracture Surface Interpretation Note
+
+- Somewhere in Chapter 5, or in a short bridge to Chapters 3 and 4, state that topography only captures the apparent surface bump presented by the fractured particle at the exposed surface.
+- The full particle geometry is not observed in a single topographic scan after fracture.
+- This means the retained feature size is a surface-observed geometric proxy, not a full three-dimensional particle measurement.
+- This point may ultimately be explained more fully in Chapters 3 and 4, but Chapter 5 should still mention it briefly so the particle-count workflow is interpreted correctly.
+- Add a second caution that AFM only measures the visible accessible surface. Particles sitting below the effective fracture plane, or partially obscured by local surface topography, may still create apparent surface features or may be missed entirely.
+- This means some Stage 1 retained candidate particles may not lie exactly at the true fracture surface of interest for Stage 2 interrogation.
+- Treat this as a potential source of false positives for Stage 2 targeting and as one reason the Stage 1 scan requirement may understate the number of scans needed to obtain good confirmed candidates.
+
+## Standard Error Versus Standard Deviation
+
+- Add a short methods note that modulus summary plots use **standard error** when the goal is to show uncertainty in the estimated mean.
+- Particle-count summaries generally use **standard deviation** when the goal is to show between-scan variability in the observed count distribution.
+- State clearly that these are not interchangeable:
+  - standard deviation describes spread in the underlying observations
+  - standard error describes uncertainty in the estimated mean
+- This distinction matters and should be stated explicitly wherever both modulus and particle summaries appear in the same chapter set.
 
 ## Parameter Reporting Notes
 

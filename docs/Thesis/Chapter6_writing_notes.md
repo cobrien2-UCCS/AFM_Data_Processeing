@@ -198,6 +198,9 @@ These belong in appendices, supplementary material, or selective in-text callout
 - Keep the negative-value modulus verification issue separate from the validated modulus comparison outputs: the one-file unit-verification run exported a negative modulus value, but the broader modulus comparison CSV sets used for baseline validation remained non-negative. This should be framed as an open validation issue that may require a targeted modulus rerun.
 - Add a second modulus caution: the absolute modulus magnitude currently appears higher than expected for PEGDA, even when the field remains relatively uniform spatially. This should be framed as a likely systematic-offset issue rather than a random map artifact.
 - State that the present modulus baseline section remains useful for **relative route-consistency and forward/backward comparison**, but not yet as final proof of absolute PEGDA modulus magnitude.
+- Add a Stage 1 visibility limitation note: AFM only measures the visible accessible fracture surface. Some retained candidate particles may sit below the effective fracture plane or may be influenced by local topographic shadowing.
+- Use this to explain why Stage 1 count sufficiency does not automatically translate into the same number of good Stage 2 candidates.
+- This point should support the argument that more scans may ultimately be required if part of the Stage 1 candidate population proves inaccessible or unsuitable during Stage 2 follow-up.
 - Candidate causes to note:
   - unit/metadata interpretation
   - AFM setpoints or force regime
@@ -289,6 +292,19 @@ These belong in appendices, supplementary material, or selective in-text callout
   - use box plots rather than the old crowded all-method presentation
 - Add more thesis-style discussion text throughout the chapter using the user's direct observations, rather than report/log phrasing.
 - Keep a representative raw particle/topography image near the front of `6.2.2`, before the mean density maps.
+
+## New Notes From Chapter 5 Cleanup
+
+- When Chapter 6 refers back to the Stage 1 rule, state it explicitly rather than only saying the results are "based on" that rule.
+- The explicit results-side wording should stay close to:
+  - Stage 2 follow on work is justified only when the isolated candidate yield, under the defined processing route and filtering rules, is sufficient to meet the target candidate count at the stated confidence level.
+- When scan grouping is first discussed, spell out the grouped conditions clearly:
+  - `10 wt%` and `25 wt%`
+  - scraped and non scraped
+- Keep the forward-only dataset choice visible in the baseline or early methods-bridge text so the reader knows the particle results are based on forward scans only.
+- When discussing particle-count or isolation results, remember that images with strong scars or distortion may not be fully corrected by the current preprocessing route. This should be acknowledged as one reason a few scans may behave oddly even when the broader dataset is usable.
+- If a figure or table is carrying the practical decision point, say so directly in the surrounding prose instead of leaving the decision implied.
+- Use the limitations and future-work section to gather the method limits stated or implied across Chapters 3 through 5, rather than scattering every caveat evenly across all result subsections.
 
 ## Uncertainty / Error Sources To Acknowledge (Chapter 6)
 

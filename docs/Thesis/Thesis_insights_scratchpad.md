@@ -40,6 +40,7 @@ so they do not get lost (even if they belong in another chapter later).
 - Modulus future validation should also go back to raw pinpoint / force-curve data, AFM setpoints, calibration parameters, contact-model settings, and TIFF/export scaling to determine why the absolute modulus magnitude appears too high.
 - Add a future figure idea: a workflow/data-flow chart to explain the pipeline architecture and report-generation path more clearly than prose alone.
 - Add a future figure idea: fractured-surface versus manually flattened/scraped-surface example to explain why scraping was sometimes necessary for AFM access.
+- Add a second fracture-surface limitation note: AFM only sees the visible accessible surface. Some particles may sit below the effective fracture plane or be partially shadowed by local topography, which can create false positives or reduce the number of truly usable Stage 2 candidates.
 ## Representative Particle Image Set
 
 - Keep a small representative image set to visually explain what the Stage 1 particle workflow is doing.

@@ -19,133 +19,116 @@ def _add_table(doc: Document, headers: list[str], rows: list[list[str]]) -> None
             cells[i].text = value
 
 
-def _add_heading_paragraph(doc: Document, text: str) -> None:
-    p = doc.add_paragraph()
-    r = p.add_run(text)
-    r.bold = True
-
-
 def build_doc(docx_path: Path) -> None:
     doc = Document()
-    doc.add_heading("Chapter 5 Draft - Statistical Validation Framework (Stage 1)", level=0)
+    repo_root = Path(__file__).resolve().parents[1]
+    chapter5_image = repo_root / "docs" / "Thesis" / "Reference Material" / "Chapter 5 Images" / "to add" / "Grid Stucutre 21x21 50micrometer^2.png"
+
+    doc.add_heading("Chapter 5 Draft, Statistical Validation Framework (Stage 1)", level=0)
     doc.add_paragraph(f"Draft generated: {datetime.now().strftime('%Y-%m-%d %H:%M')}")
     doc.add_paragraph(
-        "This chapter defines the Stage 1 statistical validation framework used to determine whether the "
-        "fracture-surface topography dataset contains enough isolated particle candidates to justify Stage 2 "
-        "multi-channel interrogation. The chapter is methodological in scope: it defines the counting workflow, "
-        "filtering rules, isolation logic, and statistical decision criteria used later in Chapter 6."
-    )
-    doc.add_paragraph(
-        "The chapter does not present final per-system outcomes, interphase conclusions, or mechanistic "
-        "interpretation of electro-mechanical behavior. Those tasks belong to the results and discussion chapters."
+        "This chapter defines the Stage 1 statistical validation framework used to determine whether the fracture surface "
+        "topography dataset contains enough isolated particle candidates to justify Stage 2 multi channel interrogation. "
+        "The chapter defines how the data are organized, how candidate particles are detected, how diameter and isolation "
+        "rules are applied, how the isolation probability model is used, how route validation supports the chosen method, "
+        "and how the final Stage 1 decision rule is stated in Section 5.7. For all of Stage 1, the reported topography "
+        "dataset was limited to forward scans, using prior modulus comparison of forward and backward channels as the basis "
+        "for that dataset choice."
     )
 
-    doc.add_heading("5.1 Particle Counting Workflow", level=1)
+    doc.add_heading("5.1 Data Organization and Preprocessing", level=1)
     doc.add_paragraph(
-        "Chapter 5 defines the Stage 1 statistical validation framework used to determine whether the present fracture-surface "
-        "dataset contains enough isolated particle candidates to justify Stage 2. The first step in that framework is the "
-        "particle-counting workflow itself: how one topography scan is processed, how segmented grains are filtered, and how "
-        "the resulting outputs are exported for later statistical modeling."
+        "The Stage 1 workflow begins with organized topography scans collected on fracture surfaces and grouped for later "
+        "statistical analysis. Each scan is one AFM image acquired at one grid position. Those scans are organized into "
+        "grouped sample sets by SiNP loading and by surface condition so that later comparisons can be made without losing "
+        "track of physical sample provenance. For the present Stage 1 study, the primary grouped conditions were 10 wt% and "
+        "25 wt% SiNP loading, each further split into scraped and non scraped surface states."
+    )
+    doc.add_paragraph(
+        "The terminology used for the remainder of Chapters 5 and 6 is summarized in Table 5.1 so that the same workflow "
+        "objects are described consistently across the methods and results chapters."
     )
     _add_table(
         doc,
         ["Term", "Definition used in this thesis"],
         [
             ["Scan", "One 5 um x 5 um AFM image acquired at one grid position."],
-            ["Grid", "The nominal 21 x 21 survey layout spanning the larger fracture-surface area."],
-            ["Sample set", "One grouped collection of scans associated with one physical sample / surface condition."],
+            ["Grid", "The nominal 21 x 21 survey layout spanning the larger fracture surface area."],
+            ["Sample set", "One grouped collection of scans associated with one physical sample and one surface condition."],
             ["Job", "One named execution route that applies a defined preprocessing and threshold combination to a scan set and writes its own outputs."],
-            ["Profile", "The reusable recipe that a job points to in the config-driven workflow."],
-            ["Processing mode", "The operation chain used by a profile, implemented through Gwyddion/pygwy and supplemental Python logic."],
+            ["Profile", "The reusable recipe that a job points to in the config driven workflow."],
+            ["Processing mode", "The operation chain used by a profile, implemented through Gwyddion, pygwy, and supplemental Python logic."],
             ["Candidate particle", "A topographic grain that survives thresholding, diameter filtering, and edge exclusion in Stage 1."],
-            ["Isolated particle", "A candidate particle that also satisfies the center-to-center isolation rule."],
-            ["Confirmed particle", "A Stage 2 validated particle after multi-channel confirmation."],
-            ["Grain", "A segmented feature returned by Gwyddion grain analysis; not automatically equivalent to a true particle."],
-            ["Baseline", "The reference method or reference dataset used for comparison; the meaning is stated explicitly where used."],
-            ["Stage 1", "Topography-based survey analysis used to estimate particle presence, isolation frequency, and scan sufficiency."],
-            ["Stage 2", "Conditional follow-on analysis that would confirm candidate particles using multi-channel evidence."],
+            ["Isolated particle", "A candidate particle that also satisfies the center to center isolation rule."],
+            ["Confirmed particle", "A Stage 2 validated particle after multi channel confirmation."],
+            ["Grain", "A segmented feature returned by Gwyddion grain analysis and not automatically equivalent to a true particle."],
         ],
     )
+    doc.add_paragraph("Table 5.1. Core Chapter 5 terminology used throughout the Stage 1 statistical validation framework.")
     doc.add_paragraph(
-        "The term particle therefore has three different levels of specificity in this thesis: a grain is the raw "
-        "segmented object, a candidate particle is a grain retained after the Stage 1 rules are applied, and a "
-        "confirmed particle is a candidate that survives later Stage 2 validation. This distinction is necessary "
-        "because Stage 1 counts alone do not prove that every retained topographic feature is a true silica particle."
+        "The nominal survey geometry was a 21 x 21 grid of 5 um x 5 um scans collected across a larger fracture surface "
+        "region measuring 50 um x 50 um. Some grouped sample sets contain fewer scans than the nominal grid would imply because the original "
+        "inventory was incomplete or because scans were excluded during review. The nominal grid therefore describes the "
+        "intended acquisition structure, while the exact included scan counts are reported later as results."
+    )
+    if chapter5_image.exists():
+        doc.add_picture(str(chapter5_image), width=Inches(5.8))
+        doc.add_paragraph(
+            "Figure 5.1. Nominal Stage 1 survey grid structure used to organize the topography scan inventory before grouped aggregation."
+        )
+    doc.add_paragraph(
+        "The software environment used to generate the reported Stage 1 outputs consisted of Gwyddion 2.70.20260111 for the "
+        "core processing environment, Python 2.7.16 for the pygwy based per scan runner, and Python 3.14.2 for "
+        "aggregation, fitting, plotting, and report generation. Two Python environments were required because the current "
+        "Windows Gwyddion and pygwy tool chain is tied to Python 2.7, whereas the later analysis and reporting utilities "
+        "are maintained in Python 3. This software split is therefore a practical compatibility requirement rather than a "
+        "separate analytical design choice."
     )
     doc.add_paragraph(
-        "The Stage 1 dataset consisted of forward topography scans collected on fracture surfaces and later grouped by "
-        "SiNP loading and surface condition. Only forward scans were retained in the present workflow. This was a "
-        "method-selection decision based on the earlier modulus validation work, which showed close agreement between "
-        "forward and backward scan directions. As a result, including both directions in the Stage 1 topography survey "
-        "would have introduced redundancy without materially changing the feasibility question addressed here."
-    )
-    doc.add_paragraph(
-        "The nominal survey geometry was a 21 x 21 grid of 5 um x 5 um scans collected across a larger fracture-surface "
-        "region. For the present Stage 1 framework, scans were grouped by SiNP wt% and by scraped versus non-scraped "
-        "surface condition. Some grouped sample sets contained fewer scans than the nominal grid would imply, either "
-        "because the source inventory was incomplete or because scans were excluded during review. For that reason, the "
-        "nominal grid should be understood as the intended acquisition structure, while the actual included scan counts "
-        "are treated as reported results in Chapter 6. Chapter 3 provides the sample-preparation and fracture-surface "
-        "context, and Chapter 4 defines the AFM acquisition procedure from which these Stage 1 scan sets were drawn."
-    )
-    _add_heading_paragraph(doc, "Figure insert placeholder")
-    doc.add_paragraph(
-        "Insert a schematic showing: (1) the nominal 21 x 21 scan grid, (2) the relation between one scan and the larger "
-        "survey grid, and (3) the grouped data structure used in Stage 1 (wt% split, scraped/non-scraped split, and per-sample-set grouping)."
-    )
-    doc.add_paragraph(
-        "The software environment used to generate the reported Stage 1 outputs consisted of Gwyddion 2.70.20260111 for "
-        "the core grain-processing environment, Python 2.7.16 for the pygwy-backed per-scan runner, and Python 3.14.2 "
-        "for aggregation, fitting, plotting, and report generation. The present implementation therefore uses two Python "
-        "environments by design: a Python 2.7 path constrained by the Windows pygwy/Gwyddion stack and a separate Python "
-        "3 environment for all downstream analysis products."
-    )
-    doc.add_paragraph(
-        "A unit-provenance distinction is important for the modulus-side validation work that informs this chapter. In the "
-        "current workflow, the runner first asks pygwy for the active field z-unit and only then applies any configured "
-        "normalization. A direct one-file verification run on the current PEGDA modulus TIFFs showed that pygwy did not "
-        "detect an embedded modulus z-unit for that file, so the present `kPa` labeling reflects the workflow fallback/"
-        "normalization path rather than independently confirmed source metadata. This does not prevent relative route "
-        "comparison, but it does mean that absolute physical unit assignment must be treated as under validation until it "
-        "is confirmed against the instrument export path or a Gwyddion GUI parity check."
+        "Current modulus side comparison outputs do carry units, but a full verification still needs to be performed across "
+        "all relevant datasets by direct comparison tables and targeted reruns. The present kPa labeling should therefore "
+        "be treated as the active workflow interpretation for the validated comparison set, while broader cross dataset "
+        "unit confirmation remains future work."
     )
     _add_table(
         doc,
-        ["Component", "Version / role"],
+        ["Component", "Version and role"],
         [
-            ["Gwyddion", "2.70.20260111; core processing and grain-analysis environment."],
-            ["Python 2", "2.7.16; pygwy-backed per-scan processing runner."],
-            ["Python 3", "3.14.2; postprocessing, fitting, plotting, and report generation."],
-            ["Environment note", "The shell-default python points to Python 2 on this machine, so Python 3 steps are invoked explicitly."],
+            ["Gwyddion", "2.70.20260111, core processing and grain analysis environment."],
+            ["Python 2", "2.7.16, pygwy based per scan processing runner."],
+            ["Python 3", "3.14.2, postprocessing, fitting, plotting, and report generation."],
+            ["Environment note", "The shell default python points to Python 2 on this machine, so Python 3 steps are invoked explicitly."],
         ],
     )
+    doc.add_paragraph("Table 5.2. Software environment used to generate the Stage 1 processing, fitting, plotting, and reporting outputs.")
 
-    doc.add_heading("5.4 Particle Counting Workflow", level=1)
+    doc.add_heading("5.2 Particle Detection and Counting", level=1)
     doc.add_paragraph(
-        "The Stage 1 particle-counting workflow is config-driven. Raw TIFF inputs are grouped into jobs, each job points "
-        "to a reusable profile, and each profile resolves to a processing mode that defines the operation chain applied to "
-        "every scan. Core preprocessing and grain operations are executed through Gwyddion/pygwy so that leveling, line "
-        "correction, background removal, and grain measurement follow the same operation family available in the Gwyddion "
-        "environment. Python-side logic is used only where the workflow requires explicit, reproducible calculations not "
-        "available as a single Gwyddion GUI action, such as threshold-resolution bookkeeping, diameter conversion, and the "
-        "final isolation-distance check."
+        "The Stage 1 particle counting workflow is config driven. Raw TIFF inputs are grouped into jobs, each job points to "
+        "a reusable profile, and each profile resolves to a processing mode that defines the operation chain applied to every "
+        "scan. Core preprocessing and grain operations are executed through Gwyddion and pygwy so that leveling, line "
+        "correction, background removal, and grain measurement remain close to the native Gwyddion processing path."
     )
     doc.add_paragraph(
-        "For the current topography particle study, two preprocessing families were used. The median-background family "
+        "For the current topography particle study, two preprocessing families were used. The median background family "
         "applies horizontal row alignment, plane leveling, a second horizontal row alignment, median background removal, "
-        "and a 3-pixel median filter. The flatten-base family uses the same front-end alignment and plane-leveling steps, "
-        "but replaces median background removal with flatten-base correction before the same 3-pixel median filter. These "
-        "families were paired with multiple threshold rules so that Stage 1 sensitivity to threshold selection could be "
-        "tested without changing the rest of the measurement chain."
+        "and a 3 pixel median filter. The flatten base family uses the same front end alignment and plane leveling steps, "
+        "but replaces median background removal with flatten base correction before the same 3 pixel median filter."
+    )
+    doc.add_paragraph(
+        "These two preprocessing families are summarized in Table 5.3. The active job list that applies those families and "
+        "their threshold rules is given in Table 5.4, while the main default parameters used in the reported Stage 1 "
+        "workflow are listed in Table 5.5."
     )
     _add_table(
         doc,
         ["Job family", "Operation sequence", "Purpose"],
         [
-            ["Median background", "Align Rows -> Plane Level -> Align Rows -> Median background -> Median(3)", "Suppress scan-line artefacts and remove background using a median-based leveling route."],
-            ["Flatten base", "Align Rows -> Plane Level -> Align Rows -> Flatten Base -> Median(3)", "Suppress scan-line artefacts and remove background using a flatten-base route."],
+            ["Median background", "Align Rows, Plane Level, Align Rows, Median background, Median(3)", "Suppress scan line artefacts and remove background using a median based leveling route."],
+            ["Flatten base", "Align Rows, Plane Level, Align Rows, Flatten Base, Median(3)", "Suppress scan line artefacts and remove background using a flatten base route."],
         ],
     )
+    doc.add_paragraph("Table 5.3. Preprocessing families used in the Stage 1 particle workflow.")
     _add_table(
         doc,
         ["Active job", "Preprocessing family", "Threshold strategy", "Threshold parameters"],
@@ -160,30 +143,34 @@ def build_doc(docx_path: Path) -> None:
             ["particle_forward_flatten_max_fixed0_p95", "Flatten base", "max", "max(mean, 0.0, p95)"],
         ],
     )
+    doc.add_paragraph("Table 5.4. Active Stage 1 particle jobs and their threshold rules.")
     _add_table(
         doc,
-        ["Active default / setting", "Value used in current reported workflow"],
+        ["Active default or setting", "Value used in current reported workflow"],
         [
             ["Scan size", "5 um x 5 um per scan"],
             ["Nominal pixel grid", "512 x 512 pixels"],
             ["Row alignment", "Horizontal Align Rows, median method"],
-            ["Plane leveling", "Applied before the route-specific background step"],
+            ["Plane leveling", "Applied before the route specific background step"],
             ["Median filter size", "3 pixels"],
-            ["Diameter band", "Use the active config value for the reported run; e.g., the corrected rerun uses 250-550 nm"],
-            ["Isolation distance", "900 nm minimum center-to-center distance"],
-            ["Edge exclusion", "Enabled; grains intersecting the image border are removed"],
+            ["Diameter band", "350 to 550 nm for the current reported Stage 1 particle dataset"],
+            ["Isolation distance", "900 nm minimum center to center distance"],
+            ["Edge exclusion", "Enabled, grains intersecting the image border are removed"],
             ["Particle export", "Enabled"],
-            ["Particle mask export", "Enabled; review-only mask panels retained where configured"],
-            ["Grain export", "Enabled with per-grain geometric/property quantities"],
+            ["Particle mask export", "Enabled, review only mask panels retained where configured"],
+            ["Grain export", "Enabled with per grain geometric and property quantities"],
         ],
     )
+    doc.add_paragraph("Table 5.5. Active default parameters used for the reported Stage 1 particle workflow.")
     doc.add_paragraph(
         "After preprocessing, a thresholded mask is generated on the processed height field and passed to Gwyddion grain "
-        "labeling. The raw segmented grain count obtained at this stage is reported as count_total_raw. Each grain is then "
-        "converted to an equivalent circular diameter, filtered by the active diameter band, and checked for image-edge "
-        "contact. The retained candidate count after those filters is reported as count_total_filtered. Finally, the "
-        "retained grains are subjected to the isolation rule, producing count_isolated. The per-scan exports therefore "
-        "preserve the entire progression from raw segmentation to isolated candidates rather than only the final count."
+        "labeling. The resulting raw segmented grain count is reported as count_total_raw. Each grain is then converted to "
+        "an equivalent circular diameter, filtered by the active diameter band, and checked for image edge contact. The "
+        "retained candidate count after those filters is reported as count_total_filtered. Finally, the retained grains are "
+        "subjected to the isolation rule, producing count_isolated."
+    )
+    doc.add_paragraph(
+        "The specific exported Stage 1 variables preserved for later aggregation and modeling are listed in Table 5.6."
     )
     _add_table(
         doc,
@@ -191,111 +178,151 @@ def build_doc(docx_path: Path) -> None:
         [
             ["count_total_raw", "Raw grain count after thresholded grain segmentation."],
             ["count_total_filtered", "Count after diameter filtering and edge exclusion."],
-            ["count_isolated", "Count after the isolation-distance rule is also applied."],
+            ["count_isolated", "Count after the isolation rule is also applied."],
             ["mean_diam_nm", "Mean diameter of retained candidate particles in nanometers."],
-            ["std_diam_nm", "Standard deviation of retained candidate-particle diameter in nanometers."],
+            ["std_diam_nm", "Standard deviation of retained candidate particle diameter in nanometers."],
             ["threshold", "Numeric threshold used for that scan after preprocessing."],
-            ["threshold_source", "The rule that produced the threshold (mean, fixed 0, percentile, or combined maximum)."],
+            ["threshold_source", "The rule that produced the threshold, for example mean, fixed zero, percentile, or combined maximum."],
         ],
     )
+    doc.add_paragraph("Table 5.6. Per scan Stage 1 output fields preserved for later aggregation and statistical modeling.")
     doc.add_paragraph(
-        "The current threshold routes are: mean threshold, fixed zero threshold, percentile-95 threshold, and a combined "
-        "maximum threshold defined as max(mean, 0.0, p95). These routes are treated as controlled sensitivity variations "
-        "within the same Stage 1 framework rather than as separate experimental programs."
+        "If an image contains scars, distortion, or other strong artefacts, the current preprocessing route may not fully "
+        "repair those defects. For the present dataset most images were visually acceptable, but this remains a practical "
+        "limit of the current processing chain and should be revisited in later workflow improvements."
     )
 
-    doc.add_heading("5.2 Diameter Filtering", level=1)
+    doc.add_heading("5.3 Particle Diameter Distribution", level=1)
     doc.add_paragraph(
         "Each thresholded grain is converted to an equivalent circular diameter so that a physically interpretable size "
         "filter can be applied. The equivalent circular diameter is computed from grain area in pixel units and then "
         "converted to nanometers using the lateral pixel size of the AFM scan."
     )
     doc.add_paragraph("Equivalent circular diameter in pixels:")
-    doc.add_paragraph("d_eq,px = 2 * sqrt(A_px / pi)")
+    doc.add_paragraph(r"$d_{eq,px} = 2\sqrt{A_{px}/\pi}$")
     doc.add_paragraph("Diameter conversion to nanometers:")
-    doc.add_paragraph("d_eq,nm = d_eq,px * p_nm")
+    doc.add_paragraph(r"$d_{eq,nm} = d_{eq,px}\,p_{nm}$")
     doc.add_paragraph(
         "where A_px is the grain area in pixels and p_nm is the lateral size of one pixel in nanometers. The active "
-        "diameter band must always be taken from the run config used to generate the dataset. Earlier comparison runs used "
-        "350-550 nm, while the current corrected rerun uses 250-550 nm. The thesis text should therefore state the band "
-        "actually used for the specific generated outputs being discussed."
+        "diameter band for the current reported Stage 1 particle dataset is 350 to 550 nm."
     )
     doc.add_paragraph(
-        "Edge exclusion is applied after diameter filtering so that grains intersecting the image border are not counted "
-        "as retained candidates. Operationally, a grain is excluded if its center minus radius or center plus radius falls "
-        "outside the image extent. This prevents partial particles at the scan boundary from biasing both the diameter and "
-        "isolation statistics."
+        "Equivalent circular diameter is an area based simplification. It gives a practical segmented size measure for the "
+        "workflow, but it does not prove that the retained grain itself is circular. In the current reported workflow, this "
+        "effective diameter is the active retained size descriptor. A fuller shape screen, for example by circularity or "
+        "aspect ratio, would be a future refinement rather than part of the current reported method."
+    )
+    doc.add_paragraph(
+        "Fracture surface topography captures only the apparent exposed surface bump of a particle after fracture. The full "
+        "particle geometry is not observed in one topographic scan. The retained diameter should therefore be interpreted as "
+        "a surface observed effective diameter rather than a full three dimensional particle diameter."
+    )
+    doc.add_paragraph(
+        "Edge exclusion is applied after diameter filtering so that grains intersecting the image border are not counted as "
+        "retained candidates. This matters because a grain clipped by the image edge is only partially observed, which can "
+        "underestimate its apparent size, distort its center location, and change the apparent spacing to nearby retained "
+        "candidates."
     )
 
-    doc.add_heading("5.3 Isolation Criteria", level=1)
+    doc.add_heading("5.4 Isolation Analysis", level=1)
     doc.add_paragraph(
-        "Candidate particles are not automatically useful for Stage 2. The relevant Stage 1 quantity is the number of "
-        "candidate particles that remain spatially isolated enough to be interrogated individually. Isolation is defined "
-        "using a minimum center-to-center distance computed between every retained candidate and its nearest retained "
-        "neighbor."
+        "After the retained candidate particles have been defined, the next question is whether those candidates are far enough "
+        "apart to support later Stage 2 interrogation. The relevant Stage 1 quantity is therefore the number of retained "
+        "candidate particles that remain spatially isolated enough to be interrogated individually. Isolation is defined by "
+        "the minimum center to center distance between each retained candidate and its nearest retained neighbor. This "
+        "distinction matters because Stage 1 identifies surface features that are plausible particle targets, whereas Stage 2 "
+        "requires candidates whose local region can be interrogated with minimal interference from adjacent features."
     )
     doc.add_paragraph("Isolation rule:")
-    doc.add_paragraph("min(d_ij) >= 900 nm")
+    doc.add_paragraph(r"$\min(d_{ij}) \geq 900\ \mathrm{nm}$")
     doc.add_paragraph(
-        "where d_ij is the center-to-center distance between retained candidates i and j. A retained candidate is counted "
-        "as isolated only when its nearest retained neighbor is at least 900 nm away. This rule converts the Stage 1 "
-        "question from simple particle presence to usable particle availability, which is the quantity that matters for a "
-        "future Stage 2 interphase interrogation campaign."
+        "where d_ij is the center to center distance between retained candidates i and j. A retained candidate is counted "
+        "as isolated only when its nearest retained neighbor is at least 900 nm away. The purpose of this rule is to reduce "
+        "the likelihood that neighboring interphase regions or neighboring surface features will influence the later Stage 2 "
+        "measurement region. In that sense, the rule is a practical isolation criterion informed by the literature rather "
+        "than a claim that 900 nm is a universal physical cutoff."
+    )
+    doc.add_paragraph(
+        "The 900 nm spacing rule was retained as the active Stage 1 isolation criterion for the present study. It functions "
+        "as an operational spacing rule for later Stage 2 targeting rather than as a claim that 900 nm is a unique physical "
+        "boundary. In practical terms, Stage 1 asks whether the workflow can find enough retained candidates that satisfy this "
+        "spacing requirement to justify the next measurement stage."
     )
 
-    doc.add_heading("5.4 Isolation Probability Modeling", level=1)
+    doc.add_heading("5.5 Isolation Probability Model", level=1)
     doc.add_paragraph(
-        "The isolated-particle count per scan is treated as the primary random variable for the Stage 1 scan-sufficiency "
-        "model. Let X_i denote the isolated-particle count in scan i and let S_n = sum(X_i) denote the accumulated number "
-        "of isolated particles obtained after n scans. In the baseline formulation used here, the isolated count per scan "
-        "is modeled with a Poisson process having mean lambda."
+        "A count model is needed because Stage 1 is not trying to describe one scan in isolation. The goal is to estimate how "
+        "scan effort accumulates across many scans and whether the available dataset is large enough to justify a Stage 2 "
+        "follow on campaign. The isolation probability model provides the bridge from observed isolated candidate counts to a "
+        "formal scan sufficiency statement. Chapter 2 provides the broader probability background, while this section defines "
+        "how that logic is used in the present Stage 1 workflow."
+    )
+    doc.add_paragraph(
+        "The isolated particle count per scan is treated as the primary random variable in the Stage 1 scan sufficiency "
+        "model. Let X_i denote the isolated particle count in scan i, and let S_n denote the accumulated number of isolated "
+        "particles obtained after n scans. In the baseline formulation used here, X_i is modeled with a Poisson "
+        "distribution having mean lambda."
     )
     doc.add_paragraph("Poisson baseline:")
-    doc.add_paragraph("X_i ~ Poisson(lambda)")
-    doc.add_paragraph("S_n ~ Poisson(n * lambda)")
+    doc.add_paragraph(r"$X_i \sim \mathrm{Poisson}(\lambda)$")
+    doc.add_paragraph(r"$S_n \sim \mathrm{Poisson}(n\lambda)$")
     doc.add_paragraph(
-        "This model is used as a practical count model for Stage 1 feasibility. Its role is not to claim a perfect "
-        "microscopic physical model of particle occurrence, but to provide a reproducible way to translate observed "
-        "isolated-particle frequency into a scan budget and a zero-yield risk estimate. The corresponding contrapositive "
-        "question is the probability of scanning n regions and still obtaining zero isolated particles, which provides an "
-        "operational risk metric for unproductive scan effort."
+        "The Poisson model is used here as a baseline count model for Stage 1 feasibility, not as a claim that particle "
+        "occurrence is microscopically ideal in every physical sense. Its practical value is that it converts the observed "
+        "isolated particle rate into a reproducible scan budget and a zero yield risk estimate. The corresponding "
+        "contrapositive question is the probability of scanning n regions and still obtaining zero isolated particles."
+    )
+    doc.add_paragraph(
+        "Within this model, the required scan count at 95 percent confidence is the smallest scan total n for which the "
+        "accumulated isolated candidate count reaches the target threshold with probability at least 0.95."
+    )
+    doc.add_paragraph(
+        "A simple way to read this is as follows. If the isolated candidate yield per scan is low, then more scans are needed "
+        "before the cumulative count has a high probability of reaching the target. If the isolated candidate yield per scan "
+        "is high, then the same target can be reached with fewer scans. For example, a dataset that averages one isolated "
+        "candidate every few scans will require a much larger scan budget than a dataset that averages several isolated "
+        "candidates per scan. The probability model therefore translates the observed per scan isolation rate into a practical "
+        "scan budget."
     )
 
-    doc.add_heading("5.5 Required Map Count for 95% Confidence", level=1)
+    doc.add_heading("5.6 Processing Route Validation", level=1)
     doc.add_paragraph(
-        "The thesis decision rule is based on the number of scans required to achieve a target total number of isolated "
-        "particles with a specified confidence level. If T is the target isolated-particle total and q is the target "
-        "confidence level, then the required number of scans is the smallest n such that the probability of obtaining at "
-        "least T isolated particles after n scans is at least q."
-    )
-    doc.add_paragraph("Required scan count definition:")
-    doc.add_paragraph("Find the smallest n such that P(S_n >= T) >= q")
-    doc.add_paragraph(
-        "In the present work, the central reporting threshold is q = 0.95. This is the quantity later reported in Chapter "
-        "6 as the required scan count for 95% confidence. The reported result is therefore confidence-based and should not "
-        "be reduced to the intuition shortcut N/p. The N/p form is useful only as a rough heuristic when discussing how a "
-        "future Stage 2 confirmation fraction would scale the required scan effort."
-    )
-
-    doc.add_heading("5.6 Processing-Route Validation", level=1)
-    doc.add_paragraph(
-        "Processing-route validation is included in Chapter 5 only to the extent required to justify the Stage 1 framework. "
+        "Processing route validation is included in Chapter 5 only to the extent required to justify the Stage 1 framework. "
         "Its role is not to optimize every possible preprocessing choice, but to show that the feasibility workflow is not "
         "defined by one arbitrary route. Multiple topography routes were therefore retained as controlled validation checks "
-        "on the same underlying particle-counting framework."
+        "applied to the same underlying particle counting framework."
     )
     doc.add_paragraph(
-        "A second route-consistency input came from prior modulus comparison work, where forward and backward scan directions "
-        "were compared under the baseline modulus workflow and found to agree closely enough that retaining both directions "
-        "would add redundancy without materially changing the Stage 1 decision logic. That prior comparison was therefore "
-        "used as the method-selection basis for restricting the present topography workflow to forward scans only."
+        "A second route consistency input came from the prior modulus comparison study, where forward and backward scan "
+        "directions were compared under the baseline modulus workflow and found to agree closely enough that retaining both "
+        "directions would add redundancy without materially changing the Stage 1 decision logic. That prior comparison was "
+        "therefore used as the method selection basis for restricting the present topography workflow to forward scans only."
     )
     doc.add_paragraph(
-        "The present thesis therefore treats route validation in two layers: directional consistency from prior modulus "
-        "comparison work, and within-topography consistency across the controlled preprocessing and threshold routes defined "
-        "in the Stage 1 job matrix. The quantitative route-comparison outcomes themselves are deferred to Chapter 6. A "
-        "manual Gwyddion GUI parity SOP is retained only as an appendix verification artifact and is not part of the "
-        "primary numbered Chapter 5 method sequence."
+        "The present thesis therefore treats route validation in two layers. The first is directional consistency from prior "
+        "modulus comparison work. The second is within topography consistency across the controlled preprocessing and threshold "
+        "routes defined in the Stage 1 job matrix. The quantitative route comparison outcomes themselves are deferred to "
+        "Chapter 6."
+    )
+
+    doc.add_heading("5.7 Stage 1 Decision Statement", level=1)
+    doc.add_paragraph(
+        "The Stage 1 decision rule is as follows. Stage 2 follow on work is justified only when the isolated candidate yield, "
+        "under the defined processing route and filtering rules, is sufficient to meet the target candidate count at the "
+        "stated confidence level. If T is the target isolated particle total and q is the target confidence level, then the "
+        "required number of scans is the smallest n such that the probability of obtaining at least T isolated particles "
+        "after n scans is at least q."
+    )
+    doc.add_paragraph("Required scan count definition:")
+    doc.add_paragraph(r"Find the smallest $n$ such that $P(S_n \geq T) \geq q$")
+    doc.add_paragraph(
+        "In the present work, the central reporting threshold is q = 0.95. That means the Stage 1 rule asks for the "
+        "smallest number of scans that gives at least 95 percent confidence of obtaining the target number of isolated "
+        "Stage 1 candidates. The result is therefore confidence based and should not be reduced to the intuition shortcut "
+        "N/p. That shortcut can still be useful as a rough scaling argument when discussing how a future Stage 2 "
+        "confirmation fraction would change the required scan effort. For example, if later validation shows that only 20 "
+        "of the expected 30 isolated candidates become good Stage 2 targets, the same framework can be used to increase the "
+        "scan count accordingly."
     )
 
     docx_path.parent.mkdir(parents=True, exist_ok=True)
@@ -306,7 +333,7 @@ def main() -> None:
     ap = argparse.ArgumentParser(description="Populate Chapter 5 draft docx.")
     ap.add_argument(
         "--docx-path",
-        default="docs/Thesis/Chapter5_Statistical_Validation_Framework_DRAFT_refresh_20260306.docx",
+        default="docs/Thesis/REP-AFM-CRO-Chapter5_Statistical_Validation_Framework_Draft-v1H-030826.docx",
         help="Output docx path.",
     )
     args = ap.parse_args()
