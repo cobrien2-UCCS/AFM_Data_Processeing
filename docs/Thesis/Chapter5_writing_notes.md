@@ -298,3 +298,56 @@ Reference math file:
   - what the available-scan line means
   - what the crossover point means physically
 - Keep this as a methods/definitions task first; do not let it drift into Chapter 6-style result interpretation.
+
+## Uncertainty / Error Sources To Document (Chapter 5)
+
+These are workflow-relevant uncertainty sources that should be acknowledged in Chapter 5 as method limitations and as a guide for what should be exported/recorded in future runs.
+
+- Feedback/servo tracking quality (instrument "error" channels):
+  - Not currently exported in the Stage 1 pipeline.
+  - Future: export the mode-appropriate error channel (e.g., height/deflection/amplitude/peak-force error) and compute per-scan QA metrics (mean/percentiles; % pixels above a threshold).
+- Cantilever/tip calibration uncertainty (systematic, modulus):
+  - Spring constant, sensitivity/InvOLS, and tip radius uncertainties propagate into modulus magnitude.
+  - Future: record calibration values/dates per run and treat as systematic uncertainty (not pixel noise).
+- Setpoint / force-regime variability (systematic, modulus):
+  - Differences in setpoint/force conditions between scans can shift modulus even if the sample is unchanged.
+  - Future: capture setpoint/force metadata and stratify/flag where it changes.
+- Drift / creep / hysteresis (scan-time effects):
+  - Can bias particle geometry (apparent diameter) and isolation distances via image distortion.
+  - Future: log drift proxies (frame shifts) or use instrument drift values if available; flag unstable scans.
+- Tip convolution and geometric bias (particle sizing):
+  - AFM does not recover a true particle sphere; topography yields an apparent bump shaped by tip geometry and scan direction.
+  - Treat diameter as an effective/segmented equivalent diameter and document this as a biased estimator.
+- Preprocessing/masking sensitivity (workflow uncertainty):
+  - Leveling/row-align/threshold choices change grain retention.
+  - Treat cross-method variation as a workflow-induced uncertainty term (separate from Poisson count-model uncertainty).
+- Unit provenance (workflow assumption risk):
+  - If Z-units are missing and assumed, absolute magnitude claims are provisional.
+  - Keep unit provenance fields and describe when values are fallback-labeled versus metadata-derived.
+
+## Statistical Rigor Enhancements (Planned / Future Work)
+
+These items strengthen statistical defensibility by reducing unmodeled systematic bias, improving data quality screening, and making modeling assumptions (iid, stationarity, unit correctness) more credible.
+
+- Instrument tracking QA (error-channel export + thresholds):
+  - Export the mode-appropriate AFM error/feedback channel alongside the main field.
+  - Define objective acceptance/flag criteria (e.g., per-scan percentiles, % pixels above a threshold).
+  - Rationale: reduces silent inclusion of scans that violate the statistical assumptions of the count model.
+- Calibration provenance (modulus):
+  - Record spring constant, sensitivity/InvOLS, tip radius assumptions, and calibration timestamps.
+  - Rationale: separates systematic calibration uncertainty from random scan-to-scan variability.
+- Acquisition-condition provenance (setpoint/force regime):
+  - Export or record setpoint/force parameters per scan (or per run session).
+  - Rationale: prevents mixing distributions produced under different force regimes into one model fit.
+- Drift / distortion screening:
+  - Add drift proxies (frame-to-frame shift, line-to-line mismatch metrics) and flag unstable scans.
+  - Rationale: improves validity of geometric metrics (diameter, isolation distance) and count stability.
+- Bias-aware particle geometry reporting:
+  - Treat particle size as an effective/segmented equivalent diameter (tip convolution + viewing geometry).
+  - Rationale: avoids claiming unbiased “true” diameter from topography-only scans.
+- Method sensitivity as uncertainty:
+  - Use cross-method variation as a workflow-induced uncertainty term (separate from Poisson count-model uncertainty).
+  - Rationale: makes conclusions robust to reasonable preprocessing/threshold choices.
+- Unit provenance enforcement:
+  - Treat missing or inferred units as an explicit state in the pipeline outputs and in the thesis.
+  - Rationale: prevents accidental over-interpretation of absolute magnitudes when unit metadata is incomplete.

@@ -289,3 +289,34 @@ These belong in appendices, supplementary material, or selective in-text callout
   - use box plots rather than the old crowded all-method presentation
 - Add more thesis-style discussion text throughout the chapter using the user's direct observations, rather than report/log phrasing.
 - Keep a representative raw particle/topography image near the front of `6.2.2`, before the mean density maps.
+
+## Uncertainty / Error Sources To Acknowledge (Chapter 6)
+
+These points belong in results-side discussion/limits as context for why counts, modulus magnitudes, and filtering behavior can vary even under consistent pipeline settings.
+
+- Instrument feedback/servo tracking quality:
+  - If error channels are not exported, we cannot quantify tracking instability directly; treat as a limitation.
+  - If available later, add a short QA table/plot summarizing per-scan error-channel percentiles and flagged scans.
+- Calibration/systematic uncertainty (modulus):
+  - Absolute modulus magnitude depends on calibration and model settings upstream; relative comparisons remain useful but absolute values may require independent validation.
+- Setpoint/force-regime consistency:
+  - If setpoint/force conditions differ between scans or days, those differences can dominate the absolute modulus spread even when maps look spatially uniform.
+- Drift / scan distortion:
+  - Distortion can affect perceived particle geometry and isolation distances; treat as a potential bias, especially when comparing across sample sets acquired on different days.
+- Tip convolution / geometric bias for particles:
+  - Particle sizing from topography should be described as effective/segmented geometry, not a direct measurement of true particle diameter.
+- Workflow/method sensitivity:
+  - Differences across preprocessing families and threshold variants represent workflow-induced uncertainty; interpret overlaps and separations as sensitivity bounds, not as a single "true" value.
+
+## Statistical Assumptions / Limits (Thesis Language)
+
+Use the following thesis-safe language to frame rigor without over-claiming:
+
+- Scan quality screening:
+  - Because instrument error/feedback channels were not exported in the present Stage 1 dataset, tracking stability cannot be quantified directly and remains a limitation of this feasibility analysis.
+- Systematic modulus uncertainty:
+  - Absolute modulus magnitudes depend on calibration and upstream model settings; therefore the modulus baseline validation is interpreted primarily as a relative route-consistency and direction-consistency check, not as final proof of absolute PEGDA modulus magnitude.
+- Count-model assumptions:
+  - The Poisson model is used as a baseline count model to convert observed isolated-candidate yield into scan requirements at fixed confidence. Method sensitivity and preparation-state effects are treated as additional uncertainty beyond the count-model variance.
+- Geometry bias:
+  - Particle diameter and isolation are computed from segmented topography features and should be interpreted as effective geometry subject to tip-convolution and scan-geometry bias.
